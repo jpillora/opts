@@ -1,57 +1,81 @@
 package flag
 
-import (
-	"fmt"
-	"testing"
-)
+import "testing"
+
+func check(t *testing.T, a, b interface{}) {
+	if a != b {
+		t.Fatalf("got '%v', expected '%v'", a, b)
+	}
+}
 
 func TestSimple(t *testing.T) {
-
 	//application config
 	type AppConfig struct {
-		Foo string `help:"Foo does stuff"`
-		Bar string `help:"Bar does stuff"`
+		Foo string
+		Bar string
 	}
 
 	c := &AppConfig{}
 
 	//flag example parse
-	f := /*flag.*/ New(c)
-	f.Version = "1.1.0"
+	f := New(c)
 	f.Args = []string{"--foo", "hello", "--bar", "world"} //replace os.Args
 	f.Parse()
 
-	fmt.Println(c.Foo)
-	fmt.Println(c.Bar)
 	//check config is filled
-	if c.Foo != "hello" {
-		t.Fatal("Foo should be 'hello'")
-	}
-	if c.Bar != "world" {
-		t.Fatal("Bar should be 'world'")
-	}
+	check(t, c.Foo, "hello")
+	check(t, c.Bar, "world")
 }
 
 func TestSubCommand(t *testing.T) {
 
 	type FooConfig struct {
-		Ping string `opt`
-		Pong string `opt`
+		Ping string
+		Pong string
 	}
-
-	// type BarConfig
 
 	//application config
 	type AppConfig struct {
-		Foo FooConfig
+		//struct ptr (automatically new'd)
+		Foo *FooConfig
+		//inline struct
 		Bar struct {
-			Zip string `opt`
-			Zap string `opt`
+			Zip string
+			Zap string
 		}
-		// Bazz struct{}
 	}
 
-	New(&AppConfig{})
+	c := &AppConfig{}
 
-	// c := AppConfig{}
+	f := New(c)
+	f.Args = []string{"bar", "--zip", "hello", "--zap", "world"}
+	f.Parse()
+
+	//check config is filled
+	check(t, c.Foo.Ping, "")
+	check(t, c.Foo.Pong, "")
+	check(t, c.Bar.Zip, "hello")
+	check(t, c.Bar.Zap, "world")
+}
+
+func TestHelp(t *testing.T) {
+	//application config
+	type AppConfig struct {
+		Foo string
+		Bar string `help:"some help text"`
+	}
+
+	c := &AppConfig{}
+
+	//flag example parse
+	f := New(c)
+	f.Name = "zoop"
+
+	//check config is filled
+	check(t, f.Help(), `Usage: zoop [options]
+
+Options:
+--foo
+--bar some help text
+`)
 }

@@ -6,12 +6,13 @@ import (
 	"github.com/jpillora/flag"
 )
 
-type Config struct {
-	Foo string
-	Bar string
-}
-
 func main() {
+
+	type Config struct {
+		Foo string
+		Bar string
+	}
+
 	c := &Config{}
 
 	flag.New(c).Parse()

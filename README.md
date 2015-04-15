@@ -34,6 +34,12 @@ func main() {
 ```
 </tmpl>
 
+```
+$ ./main --foo hello --bar world
+hello
+world
+```
+
 #### MIT License
 
 Copyright © 2015 &lt;dev@jpillora.com&gt;

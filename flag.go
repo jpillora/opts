@@ -14,20 +14,26 @@ type Flag struct {
 	//privates
 	config reflect.Value
 	parent *Flag
-	subs   map[string]*Flag
-	opts   []*option
-	//publics
-	Name      string
-	Version   string
-	Author    string
-	Args      []string
-	LineWidth int
-	Templates map[string]string
+	Subs   map[string]*Flag
+	Opts   []*Option
+	//public settings
+	Name, Version string
+	Repo, Author  string
+	Args          []string //os.Args
+	LineWidth     int      //42
+	PadAll        bool     //true
+	PadWidth      int      //2
+	Padding       string   //calculated
+	Templates     map[string]string
 }
 
-type option struct {
-	name string
-	val  reflect.Value
+type Option struct {
+	val reflect.Value
+	//"publics" for templating
+	Name        string
+	DisplayName string //calculated
+	TypeName    string
+	Help        string
 }
 
 //NewFlag creates a new Flag
@@ -53,7 +59,7 @@ func fork(parent *Flag, c reflect.Value) *Flag {
 	t := c.Type()
 	k := t.Kind()
 
-	//meaningless to modify an incorrect copy of the struct
+	//must be pointer (meaningless to modify a copy of the struct)
 	if k != reflect.Ptr {
 		log.Fatalf("flag.New(config): config should be a pointer (%s) to a struct", k)
 	}
@@ -66,25 +72,21 @@ func fork(parent *Flag, c reflect.Value) *Flag {
 		log.Fatalf("flag.New(config): config should be a pointer to a struct (%s)", k)
 	}
 
-	//copy defaults
-	tmpls := map[string]string{}
-	for k, v := range defaultTemplates {
-		defaultTemplates[k] = v
-	}
-
 	//instantiate
 	f := &Flag{
 		config: c,
 		parent: parent,
-		subs:   map[string]*Flag{},
-		opts:   []*option{},
+		Subs:   map[string]*Flag{},
+		Opts:   []*Option{},
 		//public defaults
 		Name:      "",
 		Version:   "",
 		Author:    "",
 		Args:      os.Args[1:],
-		LineWidth: 72,
-		Templates: tmpls,
+		LineWidth: 42,
+		PadAll:    true,
+		PadWidth:  2,
+		Templates: map[string]string{},
 	}
 
 	//parse struct fields
@@ -107,47 +109,69 @@ func fork(parent *Flag, c reflect.Value) *Flag {
 
 func (f *Flag) addSubcmd(sf reflect.StructField, val reflect.Value) {
 	//requires address
-	if sf.Type.Kind() == reflect.Struct {
+	switch sf.Type.Kind() {
+	case reflect.Ptr:
+		//if nil ptr, auto-create new struct
+		if val.IsNil() {
+			ptr := reflect.New(val.Type().Elem())
+			val.Set(ptr)
+		}
+	case reflect.Struct:
 		val = val.Addr()
 	}
 	subname := camel2dash(sf.Name)
-	log.Printf("define subcmd: %s =====", subname)
+	// log.Printf("define subcmd: %s =====", subname)
 	sub := fork(f, val)
 	sub.Name = subname
-	f.subs[subname] = sub
+	f.Subs[subname] = sub
 }
 
 func (f *Flag) addOption(sf reflect.StructField, val reflect.Value) {
 
 	n := camel2dash(sf.Name)
-	log.Printf("define option: %s %s", n, sf.Type)
+	// log.Printf("define Option: %s %s", n, sf.Type)
+	// fmt.Printf("\thelp:%s\n", sf.Tag.Get("help"))
+	// fmt.Printf("\tflag:%s\n", sf.Tag.Get("flag"))
 
-	f.opts = append(f.opts, &option{
-		name: n,
-		val:  val,
+	f.Opts = append(f.Opts, &Option{
+		val:      val,
+		Name:     n,
+		TypeName: sf.Type.Name(),
+		Help:     sf.Tag.Get("help"),
 	})
 }
 
 func (f *Flag) Parse() *Flag {
 
-	flagset := flag.NewFlagSet("tmp", flag.ContinueOnError)
+	//peek at args, maybe use subcommand
+	if len(f.Args) > 0 {
+		a := f.Args[0]
+		//matching subcommand, use it
+		if sub, exists := f.Subs[a]; exists {
+			sub.Args = f.Args[1:]
+			return sub.Parse()
+		}
+	}
+
+	//use this command
+	flagset := flag.NewFlagSet(f.Name, flag.ContinueOnError)
 	flagset.Usage = func() {
 		fmt.Fprint(os.Stdout, f.Help())
 	}
 
-	for _, opt := range f.opts {
-		log.Printf("parse prepare option: %s", opt.name)
+	for _, opt := range f.Opts {
+		// log.Printf("parse prepare Option: %s", opt.name)
 		//take address, not value
 		addr := opt.val.Addr().Interface()
 		switch addr := addr.(type) {
 		case *string:
-			flagset.StringVar(addr, opt.name, "", "")
+			flagset.StringVar(addr, opt.Name, "", "")
 		case *int:
-			flagset.IntVar(addr, opt.name, 0, "")
+			flagset.IntVar(addr, opt.Name, 0, "")
 		}
 	}
 
-	log.Printf("parse %+v", f.Args)
+	// log.Printf("parse %+v", f.Args)
 	flagset.Parse(f.Args)
 	//user config is now set
 	return f
