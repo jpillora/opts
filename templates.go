@@ -18,52 +18,63 @@ var DefaultTemplates = map[string]string{
 		"\n" +
 		`{{template "version" .}}` +
 		`{{template "optionslist" .}}` +
-		`{{template "repo" .}}` +
-		`{{template "author" .}}`,
+		`{{template "author" .}}` +
+		`{{template "repo" .}}`,
 	"version": "{{if .Version}}\nVersion: {{.Version}}\n{{end}}",
 	"optionslist": `{{if .Opts}}` + "\nOptions:\n" +
 		`{{range .Opts}}{{template "option" .}}{{end}}{{end}}`,
-	"option": `  {{.Name}}{{if .Help}}   {{.Help}}{{end}}` + "\n",
-	"repo":   "{{if .Repo}}\nRead more:\n  {{.Repo}}\n{{end}}",
-	"author": "{{if .Author}}\nAuthor:\n  {{.Author}}\n{{end}}",
+	"option": `{{.Pad}}{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
+	"repo":   "{{if .Repo}}\nRead more:\n{{.Pad}}{{.Repo}}\n{{end}}",
+	"author": "{{if .Author}}\nAuthor:\n{{.Pad}}{{.Author}}\n{{end}}",
 }
 
 type tFlag struct {
-	*Flag
-	Opts []*tOption
+	Opts                        []*tOption
+	Name, Version, Repo, Author string
+	Pad                         string
 }
 
 type tOption struct {
-	*Option
 	Name string
 	Help string
+	Pad  string
 }
 
 var anyspace = regexp.MustCompile(`[\s]+`)
 
 func (f *Flag) Help() string {
 
-	var err error
+	//last ditch effort at finding a name
+	if f.name == "" {
+		if exe, err := osext.Executable(); err == nil {
+			_, f.name = path.Split(exe)
+		} else {
+			f.name = "main"
+		}
+	}
 
-	numOpts := len(f.Opts)
-	opts := make([]*tOption, numOpts)
+	var err error
+	opts := make([]*tOption, len(f.opts))
 	tf := &tFlag{
-		Flag: f,
-		Opts: opts,
+		Name:    f.name,
+		Version: f.version,
+		Repo:    f.repo,
+		Author:  f.author,
+		Opts:    opts,
 	}
 
 	//calculate padding etc.
 	max := 0
-	letters := map[string]bool{}
-	f.Padding = nletters(' ', f.PadWidth)
+	shorts := map[string]bool{}
+	tf.Pad = nletters(' ', f.PadWidth)
 
-	for i, opt := range f.Opts {
-		to := &tOption{Option: opt}
-		to.Name = "--" + opt.Name
-		n := opt.Name[0:1]
-		if _, ok := letters[n]; !ok {
+	for i, opt := range f.opts {
+		to := &tOption{Pad: tf.Pad}
+		to.Name = "--" + opt.name
+		n := opt.name[0:1]
+		if _, ok := shorts[n]; !ok {
 			to.Name += ", -" + n
-			letters[n] = true
+			shorts[n] = true
 		}
 		l := len(to.Name)
 		if l > max {
@@ -72,18 +83,20 @@ func (f *Flag) Help() string {
 		opts[i] = to
 	}
 
-	spaces := nletters(' ', max+5) //extra spaces
+	padsInOption := f.PadWidth * 2
+	spaces := nletters(' ', max+padsInOption) //extra spaces
 	helpWidth := f.LineWidth - max
 
-	for _, to := range opts {
+	for i, to := range opts {
 		//pad
-		to.Name += spaces[:max-numOpts]
+		to.Name += spaces[:max-len(to.Name)]
 		//constrain help text
-		words := anyspace.Split(to.Option.Help, -1)
+		words := anyspace.Split(f.opts[i].help, -1)
 		n := 0
 		for i, w := range words {
+			d := helpWidth - n
 			n += len(w)
-			if n > helpWidth {
+			if n > helpWidth && d < n-helpWidth {
 				n = 0
 				w = "\n" + string(spaces) + w
 			}
@@ -92,17 +105,8 @@ func (f *Flag) Help() string {
 		to.Help = strings.Join(words, " ")
 	}
 
-	//last ditch effort at finding a name
-	if f.Name == "" {
-		if exe, err := osext.Executable(); err == nil {
-			_, f.Name = path.Split(exe)
-		} else {
-			f.Name = "main"
-		}
-	}
-
-	//
-	t := template.New(f.Name)
+	//parse each template
+	t := template.New(f.name)
 	for name, str := range DefaultTemplates {
 		//check for user template
 		if s, ok := f.Templates[name]; ok {
@@ -114,6 +118,7 @@ func (f *Flag) Help() string {
 		}
 	}
 
+	//execute all templates
 	b := &bytes.Buffer{}
 	err = t.ExecuteTemplate(b, "help", tf)
 	if err != nil {
@@ -125,7 +130,7 @@ func (f *Flag) Help() string {
 	if f.PadAll {
 		lines := strings.Split(out, "\n")
 		for i, l := range lines {
-			lines[i] = f.Padding + l
+			lines[i] = tf.Pad + l
 		}
 		out = "\n" + strings.Join(lines, "\n") + "\n"
 	}

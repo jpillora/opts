@@ -18,9 +18,7 @@ func TestSimple(t *testing.T) {
 	c := &AppConfig{}
 
 	//flag example parse
-	f := New(c)
-	f.Args = []string{"--foo", "hello", "--bar", "world"} //replace os.Args
-	f.Parse()
+	New(c).ParseArgs([]string{"--foo", "hello", "--bar", "world"})
 
 	//check config is filled
 	check(t, c.Foo, "hello")
@@ -36,9 +34,10 @@ func TestSubCommand(t *testing.T) {
 
 	//application config
 	type AppConfig struct {
-		//struct ptr (automatically new'd)
-		Foo *FooConfig
-		//inline struct
+		Cmd string `cmd:"!"`
+		//subcommand (external struct)
+		Foo FooConfig
+		//subcommand (inline struct)
 		Bar struct {
 			Zip string
 			Zap string
@@ -47,15 +46,34 @@ func TestSubCommand(t *testing.T) {
 
 	c := &AppConfig{}
 
-	f := New(c)
-	f.Args = []string{"bar", "--zip", "hello", "--zap", "world"}
-	f.Parse()
+	New(c).ParseArgs([]string{"bar", "--zip", "hello", "--zap", "world"})
 
 	//check config is filled
+	check(t, c.Cmd, "bar")
 	check(t, c.Foo.Ping, "")
 	check(t, c.Foo.Pong, "")
 	check(t, c.Bar.Zip, "hello")
 	check(t, c.Bar.Zap, "world")
+}
+
+func TestUnsupportedType(t *testing.T) {
+	//application config
+	type AppConfig struct {
+		Foo string
+		Bar interface{}
+	}
+
+	c := &AppConfig{}
+
+	//flag example parse
+	err := New(c).Process([]string{"--foo", "hello", "--bar", "world"})
+
+	if err == nil {
+		t.Fatal("Expected error")
+	}
+	if err.Error() != "Struct field 'Bar' has unsupported type: interface" {
+		t.Fatal("Unexpected error type")
+	}
 }
 
 func TestHelp(t *testing.T) {
@@ -68,14 +86,13 @@ func TestHelp(t *testing.T) {
 	c := &AppConfig{}
 
 	//flag example parse
-	f := New(c)
-	f.Name = "zoop"
+	New(c).Name("zoop")
 
 	//check config is filled
-	check(t, f.Help(), `Usage: zoop [options]
+	// 	check(t, f.Help(), `Usage: zoop [options]
 
-Options:
---foo
---bar some help text
-`)
+	// Options:
+	// --foo
+	// --bar some help text
+	// `)
 }
