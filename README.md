@@ -1,21 +1,23 @@
-# flag
+# opts
 
-A simple CLI library for Go
+A minimalist, yet powerful CLI library for Go
 
 :warning: In progress
 
 ---
 
-### Example
+### Examples
 
-<tmpl,code:cat example/main.go>
-``` go
+Simple
+
+<tmpl,code=go:cat example/simple/simple.go>
+``` go 
 package main
 
 import (
 	"fmt"
 
-	"github.com/jpillora/flag"
+	"github.com/jpillora/opts"
 )
 
 type Config struct {
@@ -24,9 +26,10 @@ type Config struct {
 }
 
 func main() {
+
 	c := &Config{}
 
-	flag.New(c).Parse()
+	opts.New(c).Parse()
 
 	fmt.Println(c.Foo)
 	fmt.Println(c.Bar)
@@ -35,10 +38,98 @@ func main() {
 </tmpl>
 
 ```
-$ ./main --foo hello --bar world
+simple --foo hello --bar world
+```
+<tmpl,code:go run example/simple/simple.go --foo hello --bar world>
+``` plain 
 hello
 world
 ```
+</tmpl>
+
+```
+simple --help
+```
+<tmpl,code:go run example/simple/simple.go --help>
+``` plain 
+
+  Usage: simple [options]
+  
+  Options:
+  --foo, -f 
+  --bar, -b 
+  --help, -h
+  
+```
+</tmpl>
+
+Defaults
+
+<tmpl,code=go:cat example/defaults/defaults.go>
+``` go 
+package main
+
+import (
+	"fmt"
+
+	"github.com/jpillora/opts"
+)
+
+type Config struct {
+	Foo string
+	Bar string
+}
+
+func main() {
+
+	c := &Config{
+		Bar: "moon",
+	}
+
+	opts.New(c).Parse()
+
+	fmt.Println(c.Foo)
+	fmt.Println(c.Bar)
+}
+```
+</tmpl>
+```
+defaults --foo hello
+```
+<tmpl,code:go run example/defaults/defaults.go --foo hello>
+``` plain 
+hello
+moon
+```
+</tmpl>
+```
+defaults --help
+```
+<tmpl,code:go run example/defaults/defaults.go --help>
+``` plain 
+
+  Usage: defaults [options]
+  
+  Options:
+  --foo, -f 
+  --bar, -b    (default moon).
+  --help, -h
+  
+```
+</tmpl>
+
+
+<!-- 
+tmpl,code=go:cat example/defaults/defaults.go></tmpl>
+```
+defaults --foo hello
+```
+tmpl,code:go run example/defaults/defaults.go --foo hello></tmpl>
+```
+defaults --help
+```
+tmpl,code:go run example/defaults/defaults.go --help></tmpl>
+ -->
 
 #### MIT License
 

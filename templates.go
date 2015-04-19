@@ -1,4 +1,4 @@
-package flag
+package opts
 
 import (
 	"bytes"
@@ -12,24 +12,27 @@ import (
 	"github.com/kardianos/osext"
 )
 
-var DefaultTemplates = map[string]string{
-	"hasoptions": `{{with len .Opts}}{{if ge . 0}} [options]{{end}}{{end}}`,
-	"help": `Usage: {{.Name }}{{template "hasoptions" .}}` +
-		"\n" +
-		`{{template "version" .}}` +
-		`{{template "optionslist" .}}` +
-		`{{template "author" .}}` +
-		`{{template "repo" .}}`,
-	"version": "{{if .Version}}\nVersion: {{.Version}}\n{{end}}",
-	"optionslist": `{{if .Opts}}` + "\nOptions:\n" +
-		`{{range .Opts}}{{template "option" .}}{{end}}{{end}}`,
-	"option": `{{.Pad}}{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
-	"repo":   "{{if .Repo}}\nRead more:\n{{.Pad}}{{.Repo}}\n{{end}}",
-	"author": "{{if .Author}}\nAuthor:\n{{.Pad}}{{.Author}}\n{{end}}",
+var DefaultOrder = []string{
+	"usage",
+	"version",
+	"options",
 }
 
-type tFlag struct {
+var DefaultTemplates = map[string]string{
+	"help":       `{{ $r := . }}{{range $o := .Order}}{{ templ $o $r }}{{end}}`,
+	"usage":      `Usage: {{.Name }}{{template "hasoptions" .}}` + "\n",
+	"hasoptions": `{{with len .Opts}}{{if ge . 0}} [options]{{end}}{{end}}`,
+	"version":    "{{if .Version}}\nVersion: {{.Version}}\n{{end}}",
+	"options": `{{if .Opts}}` + "\nOptions:\n" +
+		`{{range .Opts}}{{template "option" .}}{{end}}{{end}}`,
+	"option": `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}.{{end}}` + "\n",
+	"repo":   "\nRead more:\n{{.Pad}}{{.Repo}}\n",
+	"author": "\nAuthor:\n{{.Pad}}{{.Author}}\n",
+}
+
+type tOpts struct {
 	Opts                        []*tOption
+	Order                       []string
 	Name, Version, Repo, Author string
 	Pad                         string
 }
@@ -42,7 +45,7 @@ type tOption struct {
 
 var anyspace = regexp.MustCompile(`[\s]+`)
 
-func (f *Flag) Help() string {
+func (f *Opts) Help() string {
 
 	//last ditch effort at finding a name
 	if f.name == "" {
@@ -55,13 +58,16 @@ func (f *Flag) Help() string {
 
 	var err error
 	opts := make([]*tOption, len(f.opts))
-	tf := &tFlag{
+	tf := &tOpts{
+		Order:   f.order,
 		Name:    f.name,
 		Version: f.version,
 		Repo:    f.repo,
 		Author:  f.author,
 		Opts:    opts,
 	}
+
+	// log.Printf("order %+v", tf.Order)
 
 	//calculate padding etc.
 	max := 0
@@ -83,21 +89,24 @@ func (f *Flag) Help() string {
 		opts[i] = to
 	}
 
-	padsInOption := f.PadWidth * 2
-	spaces := nletters(' ', max+padsInOption) //extra spaces
-	helpWidth := f.LineWidth - max
+	padsInOption := f.PadWidth
+	optionNameWidth := max + padsInOption
+	spaces := nletters(' ', optionNameWidth)
+	helpWidth := f.LineWidth - optionNameWidth
 
+	//render each option
 	for i, to := range opts {
-		//pad
+		//pad all names to be the same length
 		to.Name += spaces[:max-len(to.Name)]
 		//constrain help text
 		words := anyspace.Split(f.opts[i].help, -1)
 		n := 0
 		for i, w := range words {
 			d := helpWidth - n
-			n += len(w)
-			if n > helpWidth && d < n-helpWidth {
-				n = 0
+			wn := len(w) + 1 //+space
+			n += wn
+			if n > helpWidth && n-helpWidth > d {
+				n = wn
 				w = "\n" + string(spaces) + w
 			}
 			words[i] = w
@@ -105,11 +114,25 @@ func (f *Flag) Help() string {
 		to.Help = strings.Join(words, " ")
 	}
 
-	//parse each template
+	//root
 	t := template.New(f.name)
+
+	t = t.Funcs(map[string]interface{}{
+		//reimplementation of "template" except with dynamic name
+		"templ": func(name string, data interface{}) (string, error) {
+			b := &bytes.Buffer{}
+			err = t.ExecuteTemplate(b, name, data)
+			if err != nil {
+				return "", err
+			}
+			return b.String(), nil
+		},
+	})
+
+	//parse each template
 	for name, str := range DefaultTemplates {
 		//check for user template
-		if s, ok := f.Templates[name]; ok {
+		if s, ok := f.templates[name]; ok {
 			str = s
 		}
 		t, err = t.Parse(fmt.Sprintf(`{{define "%s"}}%s{{end}}`, name, str))
