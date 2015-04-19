@@ -7,7 +7,7 @@ import (
 )
 
 type Config struct {
-	Foo string
+	Foo string `arg:"!" help:"foo is a very important argument"`
 	Bar string
 }
 
@@ -15,7 +15,7 @@ func main() {
 
 	c := &Config{}
 
-	opts.Parse(c)
+	opts.New(c).Version("1.0.0").Parse()
 
 	fmt.Println(c.Foo)
 	fmt.Println(c.Bar)

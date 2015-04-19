@@ -2,6 +2,7 @@ package opts
 
 import (
 	"bytes"
+	"strconv"
 	"strings"
 )
 
@@ -34,4 +35,41 @@ func nletters(r rune, n int) string {
 		str[i] = r
 	}
 	return string(str)
+}
+
+func str2str(src string, dst *string) {
+	if src != "" {
+		*dst = src
+	}
+}
+
+func str2bool(src string, dst *bool) {
+	if src != "" {
+		*dst = src == "true" || src == "1"
+	}
+}
+
+func str2int(src string, dst *int) {
+	if src != "" {
+		n, err := strconv.Atoi(src)
+		if err == nil {
+			*dst = n
+		}
+	}
+}
+
+func constrain(str string, width int) string {
+	words := anyspace.Split(str, -1)
+	n := 0
+	for i, w := range words {
+		d := width - n
+		wn := len(w) + 1 //+space
+		n += wn
+		if n > width && n-width > d {
+			n = wn
+			w = "\n" + w
+		}
+		words[i] = w
+	}
+	return strings.Join(words, " ")
 }

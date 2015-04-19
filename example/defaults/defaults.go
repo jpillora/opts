@@ -17,7 +17,7 @@ func main() {
 		Bar: "moon",
 	}
 
-	opts.New(c).Parse()
+	opts.Parse(c)
 
 	fmt.Println(c.Foo)
 	fmt.Println(c.Bar)

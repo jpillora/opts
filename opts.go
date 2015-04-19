@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"reflect"
 	"strings"
@@ -15,14 +14,15 @@ import (
 //all parsing state for a single set of
 //arguments
 type Opts struct {
-	config     reflect.Value
-	parent     *Opts
-	subs       map[string]*Opts
-	opts       []*option
-	shorts     map[string]bool
-	order      []string
-	templates  map[string]string
-	globalOpts struct {
+	config       reflect.Value
+	parent       *Opts
+	subs         map[string]*Opts
+	opts         []*option
+	args         []*argument
+	shorts       map[string]bool
+	order        []string
+	templates    map[string]string
+	internalOpts struct {
 		//pretend these are in the user struct :)
 		Help, Version bool
 	}
@@ -50,15 +50,39 @@ type option struct {
 	help        string
 }
 
+type argument struct {
+	val    reflect.Value
+	name   string
+	help   string
+	hasdef bool
+}
+
+//AutoParse creates a new Opts instance and then
+//attempts to infer the package name and repo
+//from the config's import path and then
+//parses the default command line options
+func AutoParse(config interface{}) *Opts {
+	return autoNew(true, config).Parse()
+}
+
+//Parse creates a new Opts instance
+func Parse(config interface{}) *Opts {
+	return autoNew(false, config).Parse()
+}
+
 //New creates a new Opts instance
 func New(config interface{}) *Opts {
-	return fork(nil, reflect.ValueOf(config))
+	return autoNew(false, config)
 }
 
 //AutoNew creates a new Opts instance and then
 //attempts to infer the package name and repo
 //from the config's import path
 func AutoNew(config interface{}) *Opts {
+	return autoNew(true, config)
+}
+
+func autoNew(auto bool, config interface{}) *Opts {
 	v := reflect.ValueOf(config)
 	//nil parent -> root command
 	o := fork(nil, v)
@@ -66,24 +90,25 @@ func AutoNew(config interface{}) *Opts {
 		return o
 	}
 
-	//auto infer package name and repo or author
-	pkgpath := v.Elem().Type().PkgPath()
-	parts := strings.Split(pkgpath, "/")
-	if len(parts) < 3 {
-		o.errorf("Failed to auto-detect package name."+
-			" Try moving your %s struct out of the main package.",
-			v.Elem().Type().Name())
-		return o
-	}
-
-	domain := parts[0]
-	author := parts[1]
-	o.Name(parts[2])
-	switch domain {
-	case "github.com":
-		o.Repo(strings.Join(parts[0:3], "/"))
-	default:
-		o.Author(author)
+	if auto {
+		//auto infer package name and repo or author
+		pkgpath := v.Elem().Type().PkgPath()
+		parts := strings.Split(pkgpath, "/")
+		if len(parts) < 3 {
+			o.errorf("Failed to auto-detect package name."+
+				" Try moving your %s struct out of the main package.",
+				v.Elem().Type().Name())
+			return o
+		}
+		domain := parts[0]
+		author := parts[1]
+		o.Name(parts[2])
+		switch domain {
+		case "github.com":
+			o.Repo("https://" + strings.Join(parts[0:3], "/"))
+		default:
+			o.Author(author)
+		}
 	}
 
 	return o
@@ -113,7 +138,7 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 	k := t.Kind()
 	//must be pointer (meaningless to modify a copy of the struct)
 	if k != reflect.Ptr {
-		o.errorf("opts.New(config): %s should be a pointer to a struct", t.Name())
+		o.errorf("opts: %s should be a pointer to a struct", t.Name())
 		return o
 	}
 
@@ -121,7 +146,7 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 	t = c.Type()
 	k = t.Kind()
 	if k != reflect.Struct {
-		o.errorf("opts.New(config): %s should be a pointer to a struct (got %s)", t.Name(), k)
+		o.errorf("opts: %s should be a pointer to a struct (got %s)", t.Name(), k)
 		return o
 	}
 
@@ -129,28 +154,29 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 	for i := 0; i < c.NumField(); i++ {
 		val := c.Field(i)
 		sf := t.Field(i)
-		switch sf.Type.Kind() {
+		k := sf.Type.Kind()
+		switch k {
 		case reflect.Ptr, reflect.Struct:
 			o.addSubcmd(sf, val)
 		case reflect.Bool, reflect.String, reflect.Int:
 			if sf.Tag.Get("cmd") != "" {
+				if k != reflect.String {
+					o.errorf("'cmd' field '%s' must be a string", sf.Name)
+					return o
+				}
 				o.cmdname = &val
-			} else if sf.Tag.Get("arg") != "" {
-				o.addArgument(sf, val)
 			} else {
-				o.addOption(sf, val)
+				o.addOptArg(sf, val)
 			}
-
 		default:
-			o.errorf("Struct field '%s' has unsupported type: %s",
-				sf.Name, sf.Type.Kind().String())
+			o.errorf("Struct field '%s' has unsupported type: %s", sf.Name, k)
 			return o
 		}
 	}
 
 	//add help option
-	g := reflect.ValueOf(&o.globalOpts).Elem()
-	o.addOption(g.Type().Field(0), g.Field(0))
+	g := reflect.ValueOf(&o.internalOpts).Elem()
+	o.addOptArg(g.Type().Field(0), g.Field(0))
 
 	return o
 }
@@ -179,40 +205,57 @@ func (o *Opts) addSubcmd(sf reflect.StructField, val reflect.Value) {
 	o.subs[subname] = sub
 }
 
-func (o *Opts) addOption(sf reflect.StructField, val reflect.Value) {
-
-	name := sf.Tag.Get("opt")
-	if name == "" {
-		name = camel2dash(sf.Name)
+func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
+	//assume opt, unless arg tag is present
+	t := "opt"
+	if sf.Tag.Get("arg") != "" {
+		t = "arg"
+	}
+	//find name
+	name := sf.Tag.Get(t)
+	if name == "" || name == "!" {
+		name = camel2dash(sf.Name) //default to struct field name
 	}
 
-	n := name[0:1]
-	if _, ok := o.shorts[n]; ok {
-		n = ""
-	} else {
-		o.shorts[n] = true
-	}
-
+	//get help text
 	help := sf.Tag.Get("help")
 
-	//display default when set
+	//display default, when non-zero-val
+	hasdef := false
 	def := val.Interface()
 	if def != reflect.Zero(sf.Type).Interface() {
-		help += fmt.Sprintf(" (default %v)", def)
+		hasdef = true
+		if help != "" {
+			help += " "
+		}
+		help += fmt.Sprintf("(default %v)", def)
 	}
 
-	// log.Printf("define option: %s %s", name, sf.Type)
-
-	o.opts = append(o.opts, &option{
-		val:       val,
-		name:      name,
-		shortName: n,
-		help:      help,
-	})
-}
-
-func (o *Opts) addArgument(sf reflect.StructField, val reflect.Value) {
-	log.Printf("define arg: %s %s", sf.Name, sf.Type)
+	switch t {
+	case "opt":
+		n := name[0:1]
+		if _, ok := o.shorts[n]; ok {
+			n = ""
+		} else {
+			o.shorts[n] = true
+		}
+		// log.Printf("define option: %s %s", name, sf.Type)
+		o.opts = append(o.opts, &option{
+			val:       val,
+			name:      name,
+			shortName: n,
+			help:      help,
+		})
+	case "arg":
+		o.args = append(o.args, &argument{
+			val:    val,
+			name:   name,
+			help:   help,
+			hasdef: hasdef,
+		})
+	default:
+		o.errorf("Invalid optype: %s", t)
+	}
 }
 
 func (o *Opts) Name(name string) *Opts {
@@ -222,9 +265,9 @@ func (o *Opts) Name(name string) *Opts {
 
 func (o *Opts) Version(version string) *Opts {
 	//add version option
-	g := reflect.ValueOf(&o.globalOpts).Elem()
-	o.addOption(g.Type().Field(1), g.Field(1))
-
+	g := reflect.ValueOf(&o.internalOpts).Elem()
+	o.addOptArg(g.Type().Field(1), g.Field(1))
+	o.order = append(o.order, "version")
 	o.version = version
 	return o
 }
@@ -243,7 +286,6 @@ func (o *Opts) Author(author string) *Opts {
 
 //Doc inserts a text block at the end of the help text
 func (o *Opts) Doc(paragraph string) *Opts {
-
 	return o
 }
 
@@ -322,26 +364,25 @@ func (o *Opts) Process(args []string) error {
 		if o.useEnv {
 			envName := camel2const(opt.name)
 			envVal = os.Getenv(envName)
-			log.Println(envName, envVal)
 		}
 
 		//3. set config via Go's pkg/flags
 		addr := opt.val.Addr().Interface()
 		switch addr := addr.(type) {
 		case *bool:
+			str2bool(envVal, addr)
 			flagset.BoolVar(addr, opt.name, *addr, "")
 			if opt.shortName != "" {
 				flagset.BoolVar(addr, opt.shortName, *addr, "")
 			}
 		case *string:
-			if envVal != "" {
-				*addr = envVal
-			}
+			str2str(envVal, addr)
 			flagset.StringVar(addr, opt.name, *addr, "")
 			if opt.shortName != "" {
 				flagset.StringVar(addr, opt.shortName, *addr, "")
 			}
 		case *int:
+			str2int(envVal, addr)
 			flagset.IntVar(addr, opt.name, *addr, "")
 			if opt.shortName != "" {
 				flagset.IntVar(addr, opt.shortName, *addr, "")
@@ -358,16 +399,26 @@ func (o *Opts) Process(args []string) error {
 		return err
 	}
 
-	if o.globalOpts.Help {
+	//internal opts
+	if o.internalOpts.Help {
 		flagset.Usage()
-	}
-
-	if o.globalOpts.Version {
+	} else if o.internalOpts.Version {
 		fmt.Println(o.version)
 		os.Exit(0)
 	}
 
+	//fill args
 	args = flagset.Args()
+	for i, argument := range o.args {
+		if len(args) > 0 {
+			str := args[0]
+			args = args[1:]
+			argument.val.SetString(str)
+		} else if !argument.hasdef {
+			//not-set and no default!
+			return fmt.Errorf("Argument #%d '%s' is missing", i+1, argument.name)
+		}
+	}
 
 	//peek at args, maybe use subcommand
 	if len(args) > 0 {

@@ -1,6 +1,9 @@
 package opts
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func check(t *testing.T, a, b interface{}) {
 	if a != b {
@@ -9,13 +12,13 @@ func check(t *testing.T, a, b interface{}) {
 }
 
 func TestSimple(t *testing.T) {
-	//application config
-	type AppConfig struct {
+	//config
+	type Config struct {
 		Foo string
 		Bar string
 	}
 
-	c := &AppConfig{}
+	c := &Config{}
 
 	//flag example parse
 	New(c).ParseArgs([]string{"--foo", "hello", "--bar", "world"})
@@ -32,8 +35,8 @@ func TestSubCommand(t *testing.T) {
 		Pong string
 	}
 
-	//application config
-	type AppConfig struct {
+	//config
+	type Config struct {
 		Cmd string `cmd:"!"`
 		//subcommand (external struct)
 		Foo FooConfig
@@ -44,7 +47,7 @@ func TestSubCommand(t *testing.T) {
 		}
 	}
 
-	c := &AppConfig{}
+	c := &Config{}
 
 	New(c).ParseArgs([]string{"bar", "--zip", "hello", "--zap", "world"})
 
@@ -57,13 +60,13 @@ func TestSubCommand(t *testing.T) {
 }
 
 func TestUnsupportedType(t *testing.T) {
-	//application config
-	type AppConfig struct {
+	//config
+	type Config struct {
 		Foo string
 		Bar interface{}
 	}
 
-	c := &AppConfig{}
+	c := &Config{}
 
 	//flag example parse
 	err := New(c).Process([]string{"--foo", "hello", "--bar", "world"})
@@ -76,23 +79,48 @@ func TestUnsupportedType(t *testing.T) {
 	}
 }
 
-func TestHelp(t *testing.T) {
-	//application config
-	type AppConfig struct {
-		Foo string
-		Bar string `help:"some help text"`
+func TestEnv(t *testing.T) {
+
+	os.Setenv("STR", "helloworld")
+	os.Setenv("NUM", "42")
+	os.Setenv("BOOL", "true")
+
+	//config
+	type Config struct {
+		Str  string
+		Num  int
+		Bool bool
 	}
 
-	c := &AppConfig{}
+	c := &Config{}
 
 	//flag example parse
-	New(c).Name("zoop")
+	New(c).UseEnv().Parse()
+
+	os.Unsetenv("STR")
+	os.Unsetenv("NUM")
+	os.Unsetenv("BOOL")
 
 	//check config is filled
-	// 	check(t, f.Help(), `Usage: zoop [options]
+	check(t, c.Str, `helloworld`)
+	check(t, c.Num, 42)
+	check(t, c.Bool, true)
+}
 
-	// Options:
-	// --foo
-	// --bar some help text
-	// `)
+func TestArgs(t *testing.T) {
+
+	//config
+	type Config struct {
+		Foo string `arg:"foo"`
+		Bar string
+	}
+
+	c := &Config{}
+
+	//flag example parse
+	New(c).ParseArgs([]string{"-b", "wld", "hel"})
+
+	//check config is filled
+	check(t, c.Foo, `hel`)
+	check(t, c.Bar, `wld`)
 }
