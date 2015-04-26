@@ -15,21 +15,24 @@ import (
 var DefaultOrder = []string{
 	"usage",
 	"args",
+	"arglist",
 	"options",
 }
 
 var DefaultTemplates = map[string]string{
 	//loop through the default order and render all templates
-	"help": `{{ $root := . }}{{range $o := .Order}}{{ templ $o $root }}{{end}}`,
+	"help": `{{ $root := . }}{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
 	//sections, from top to bottom
-	"usage":        `Usage: {{.Name }}{{template "usageoptions" .}}{{template "usageargs" .}}` + "\n",
+	"usage":        `Usage: {{.Name }}{{template "usageoptions" .}}{{template "usageargs" .}}{{template "usagearglist" .}}` + "\n",
 	"usageoptions": `{{ $nopts := len .Opts}}{{if gt $nopts 0}} [options]{{end}}`,
 	"usageargs":    `{{ range .Args}} {{.Name}}{{end}}`,
+	"usagearglist": `{{ if .ArgList}} {{.ArgList.Name}}{{end}}`,
 	"args":         `{{ range .Args}}{{template "arg" .}}{{end}}`,
-	"arg":          "{{if .Help}}\n{{.Help}}\n{{end}}",
+	"arg":          "{{ if .Help}}\n{{.Help}}\n{{end}}",
+	"arglist":      "{{ if .ArgList}}{{ if .ArgList.Help}}\n{{.ArgList.Help}}\n{{end}}{{end}}",
 	"options": `{{if .Opts}}` + "\nOptions:\n" +
 		`{{ range $opt := .Opts}}{{template "option" $opt}}{{end}}{{end}}`,
-	"option":  `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}.{{end}}` + "\n",
+	"option":  `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
 	"version": "\nVersion:\n{{.Pad}}{{.Version}}\n",
 	"repo":    "\nRead more:\n{{.Pad}}{{.Repo}}\n",
 	"author":  "\nAuthor:\n{{.Pad}}{{.Author}}\n",
@@ -37,6 +40,7 @@ var DefaultTemplates = map[string]string{
 
 type tOpts struct {
 	Args                        []*targument
+	ArgList                     *targlist
 	Opts                        []*toption
 	Order                       []string
 	Name, Version, Repo, Author string
@@ -54,22 +58,27 @@ type targument struct {
 	Help string
 }
 
+type targlist struct {
+	Name string
+	Help string
+}
+
 var anyspace = regexp.MustCompile(`[\s]+`)
 
-func (f *Opts) Help() string {
+func (o *Opts) Help() string {
 
 	//last ditch effort at finding a name
-	if f.name == "" {
+	if o.name == "" {
 		if exe, err := osext.Executable(); err == nil {
-			_, f.name = path.Split(exe)
+			_, o.name = path.Split(exe)
 		} else {
-			f.name = "main"
+			o.name = "main"
 		}
 	}
 
 	var err error
-	args := make([]*targument, len(f.args))
-	for i, arg := range f.args {
+	args := make([]*targument, len(o.args))
+	for i, arg := range o.args {
 		//mark argument as required
 		n := "<" + arg.name + ">"
 		if arg.hasdef { //or optional
@@ -77,27 +86,40 @@ func (f *Opts) Help() string {
 		}
 		args[i] = &targument{
 			Name: n,
-			Help: constrain(arg.help, f.LineWidth),
+			Help: constrain(arg.help, o.LineWidth),
 		}
 	}
 
-	opts := make([]*toption, len(f.opts))
+	var arglist *targlist = nil
+	if o.arglist != nil {
+		n := o.arglist.name + "..."
+		if o.arglist.min == 0 { //optional
+			n = "[" + n + "]"
+		}
+		arglist = &targlist{
+			Name: n,
+			Help: o.arglist.help,
+		}
+	}
+
+	opts := make([]*toption, len(o.opts))
 	tf := &tOpts{
 		Args:    args,
+		ArgList: arglist,
 		Opts:    opts,
-		Order:   f.order,
-		Name:    f.name,
-		Version: f.version,
-		Repo:    f.repo,
-		Author:  f.author,
+		Order:   o.order,
+		Name:    o.name,
+		Version: o.version,
+		Repo:    o.repo,
+		Author:  o.author,
 	}
 
 	//calculate padding etc.
 	max := 0
 	shorts := map[string]bool{}
-	tf.Pad = nletters(' ', f.PadWidth)
+	tf.Pad = nletters(' ', o.PadWidth)
 
-	for i, opt := range f.opts {
+	for i, opt := range o.opts {
 		to := &toption{Pad: tf.Pad}
 		to.Name = "--" + opt.name
 		n := opt.name[0:1]
@@ -112,17 +134,17 @@ func (f *Opts) Help() string {
 		opts[i] = to
 	}
 
-	padsInOption := f.PadWidth
+	padsInOption := o.PadWidth
 	optionNameWidth := max + padsInOption
 	spaces := nletters(' ', optionNameWidth)
-	helpWidth := f.LineWidth - optionNameWidth
+	helpWidth := o.LineWidth - optionNameWidth
 
 	//render each option
 	for i, to := range opts {
 		//pad all names to be the same length
 		to.Name += spaces[:max-len(to.Name)]
 		//constrain help text
-		h := constrain(f.opts[i].help, helpWidth)
+		h := constrain(o.opts[i].help, helpWidth)
 		lines := strings.Split(h, "\n")
 		for i, l := range lines {
 			if i > 0 {
@@ -133,7 +155,7 @@ func (f *Opts) Help() string {
 	}
 
 	//begin
-	t := template.New(f.name)
+	t := template.New(o.name)
 
 	t = t.Funcs(map[string]interface{}{
 		//reimplementation of "template" except with dynamic name
@@ -150,7 +172,7 @@ func (f *Opts) Help() string {
 	//parse each template
 	for name, str := range DefaultTemplates {
 		//check for user template
-		if s, ok := f.templates[name]; ok {
+		if s, ok := o.templates[name]; ok {
 			str = s
 		}
 		t, err = t.Parse(fmt.Sprintf(`{{define "%s"}}%s{{end}}`, name, str))
@@ -168,7 +190,7 @@ func (f *Opts) Help() string {
 
 	out := b.String()
 
-	if f.PadAll {
+	if o.PadAll {
 		lines := strings.Split(out, "\n")
 		for i, l := range lines {
 			lines[i] = tf.Pad + l

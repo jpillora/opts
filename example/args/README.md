@@ -11,28 +11,28 @@ import (
 )
 
 type Config struct {
-	Foo string
-	Bar string
+	Bazzes []string `min:"2"`
 }
 
 func main() {
 
-	c := &Config{}
+	c := Config{}
 
-	opts.Parse(c)
+	opts.New(&c).Parse()
 
-	fmt.Println(c.Foo)
-	fmt.Println(c.Bar)
+	for i, foo := range c.Bazzes {
+		fmt.Println(i, foo)
+	}
 }
 ```
 </tmpl>
 ```
 $ args --foo hello --bar world
 ```
-<tmpl,code:go run args.go --foo hello --bar world>
+<tmpl,code:go run args.go foo bar>
 ``` plain 
-hello
-world
+0 foo
+1 bar
 ```
 </tmpl>
 ```
@@ -41,11 +41,9 @@ $ args --help
 <tmpl,code:go run args.go --help>
 ``` plain 
 
-  Usage: args [options]
+  Usage: args [options] bazzes...
   
   Options:
-  --foo, -f 
-  --bar, -b 
   --help, -h
   
 ```

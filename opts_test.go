@@ -37,7 +37,7 @@ func TestSubCommand(t *testing.T) {
 
 	//config
 	type Config struct {
-		Cmd string `cmd:"!"`
+		Cmd string `type:"cmdname"`
 		//subcommand (external struct)
 		Foo FooConfig
 		//subcommand (inline struct)
@@ -111,7 +111,7 @@ func TestArgs(t *testing.T) {
 
 	//config
 	type Config struct {
-		Foo string `arg:"foo"`
+		Foo string `type:"arg"`
 		Bar string
 	}
 

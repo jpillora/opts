@@ -13,9 +13,9 @@ type Config struct {
 
 func main() {
 
-	c := &Config{}
+	c := Config{}
 
-	opts.New(c).
+	opts.New(&c).
 		ConfigPath("config.json").
 		Parse()
 

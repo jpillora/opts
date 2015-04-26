@@ -1,14 +1,14 @@
-
-
-:warning: In progress
-
----
-
 # opts
 
-A minimalist, yet powerful CLI library for Go
+A minimalist CLI library for Go
 
-### Quick Example
+### Features
+
+* Easy to use
+* Promotes separation of CLI code and library code
+* Extensible via `flag.Value`
+
+### [Simple Example](example/simple)
 
 ``` go 
 package main
@@ -36,16 +36,38 @@ func main() {
 ```
 
 ```
-$ ./main --foo hello --bar world
+$ ./myprog --foo hello --bar world
 hello
 world
 ```
 
-#### [See all examples](examples/)
+``` plain 
+$ ./myprog --help
+
+  Usage: myprog [options]
+  
+  Options:
+  --foo, -f 
+  --bar, -b 
+  --help, -h
+  
+```
+
+### More examples
+
+* [Sub-commands](example/subcmds)
+* [Args](example/arg)
+* [ArgList](example/args)
+* [Defaults](example/defaults)
+* [Environment Variables](example/env)
+* [JSON Config](example/env)
+* [Custom Flag Types](example/types)
 
 ### Todo
 
-* Subcommands
+* More tests
+* Sub-command help
+* Mention env vars in help when enabled
 
 #### MIT License
 

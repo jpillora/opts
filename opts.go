@@ -7,7 +7,9 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
+	"time"
 )
 
 //Opts is the main class, it contains
@@ -19,6 +21,7 @@ type Opts struct {
 	subs         map[string]*Opts
 	opts         []*option
 	args         []*argument
+	arglist      *argumentlist
 	shorts       map[string]bool
 	order        []string
 	templates    map[string]string
@@ -31,12 +34,22 @@ type Opts struct {
 	erred   error
 	cmdname *reflect.Value
 
-	name, version string
-	repo, author  string
+	name, version      string
+	repo, author       string
+	pkgrepo, pkgauthor string
 	//public format settings
 	LineWidth int  //42
 	PadAll    bool //true
 	PadWidth  int  //2
+}
+
+//argumentlist represends a
+//named string slice
+type argumentlist struct {
+	val  reflect.Value
+	name string
+	help string
+	min  int
 }
 
 //option is the structure representing a
@@ -50,6 +63,7 @@ type option struct {
 	help        string
 }
 
+//argument represents a single named argument
 type argument struct {
 	val    reflect.Value
 	name   string
@@ -57,57 +71,30 @@ type argument struct {
 	hasdef bool
 }
 
-//AutoParse creates a new Opts instance and then
-//attempts to infer the package name and repo
-//from the config's import path and then
-//parses the default command line options
-func AutoParse(config interface{}) *Opts {
-	return autoNew(true, config).Parse()
-}
-
-//Parse creates a new Opts instance
+//Creates a new Opts instance and Parses it
 func Parse(config interface{}) *Opts {
-	return autoNew(false, config).Parse()
+	return New(config).Parse()
 }
 
 //New creates a new Opts instance
 func New(config interface{}) *Opts {
-	return autoNew(false, config)
-}
-
-//AutoNew creates a new Opts instance and then
-//attempts to infer the package name and repo
-//from the config's import path
-func AutoNew(config interface{}) *Opts {
-	return autoNew(true, config)
-}
-
-func autoNew(auto bool, config interface{}) *Opts {
 	v := reflect.ValueOf(config)
 	//nil parent -> root command
 	o := fork(nil, v)
 	if o.erred != nil {
+		//opts has already encounted an error
 		return o
 	}
 
-	if auto {
-		//auto infer package name and repo or author
-		pkgpath := v.Elem().Type().PkgPath()
-		parts := strings.Split(pkgpath, "/")
-		if len(parts) < 3 {
-			o.errorf("Failed to auto-detect package name."+
-				" Try moving your %s struct out of the main package.",
-				v.Elem().Type().Name())
-			return o
-		}
-		domain := parts[0]
-		author := parts[1]
+	//attempt to infer package name, repo, author
+	pkgpath := v.Elem().Type().PkgPath()
+	parts := strings.Split(pkgpath, "/")
+	if len(parts) >= 3 {
+		o.pkgauthor = parts[1]
 		o.Name(parts[2])
-		switch domain {
-		case "github.com":
-			o.Repo("https://" + strings.Join(parts[0:3], "/"))
-		default:
-			o.Author(author)
+		switch parts[0] {
+		case "github.com", "bitbucket.org":
+			o.pkgrepo = "https://" + strings.Join(parts[0:3], "/")
 		}
 	}
 
@@ -158,10 +145,16 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 		switch k {
 		case reflect.Ptr, reflect.Struct:
 			o.addSubcmd(sf, val)
-		case reflect.Bool, reflect.String, reflect.Int:
-			if sf.Tag.Get("cmd") != "" {
+		case reflect.Slice:
+			if sf.Type.Elem().Kind() != reflect.String {
+				o.errorf("arglist must be of type []string")
+				return o
+			}
+			o.addArgs(sf, val)
+		case reflect.Bool, reflect.String, reflect.Int, reflect.Int64:
+			if sf.Tag.Get("type") == "cmdname" {
 				if k != reflect.String {
-					o.errorf("'cmd' field '%s' must be a string", sf.Name)
+					o.errorf("cmdname field '%s' must be a string", sf.Name)
 					return o
 				}
 				o.cmdname = &val
@@ -181,11 +174,21 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 	return o
 }
 
-func (o *Opts) errorf(format string, args ...interface{}) {
-	o.erred = fmt.Errorf(format, args...)
+func (o *Opts) errorf(format string, args ...interface{}) *Opts {
+	//only store the first error
+	if o.erred == nil {
+		o.erred = fmt.Errorf(format, args...)
+	}
+	return o
 }
 
 func (o *Opts) addSubcmd(sf reflect.StructField, val reflect.Value) {
+
+	if o.arglist != nil {
+		o.errorf("argslists and subcommands cannot be used together")
+		return
+	}
+
 	//requires address
 	switch sf.Type.Kind() {
 	case reflect.Ptr:
@@ -198,23 +201,68 @@ func (o *Opts) addSubcmd(sf reflect.StructField, val reflect.Value) {
 		val = val.Addr()
 	}
 
-	subname := camel2dash(sf.Name)
-	// log.Printf("define subcmd: %s =====", subname)
-	sub := fork(o, val)
-	sub.name = subname
-	o.subs[subname] = sub
-}
-
-func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
-	//assume opt, unless arg tag is present
-	t := "opt"
-	if sf.Tag.Get("arg") != "" {
-		t = "arg"
-	}
-	//find name
-	name := sf.Tag.Get(t)
+	name := sf.Tag.Get("name")
 	if name == "" || name == "!" {
 		name = camel2dash(sf.Name) //default to struct field name
+	}
+	// log.Printf("define subcmd: %s =====", subname)
+	sub := fork(o, val)
+	sub.name = name
+	o.subs[name] = sub
+}
+
+func (o *Opts) addArgs(sf reflect.StructField, val reflect.Value) {
+
+	if len(o.subs) > 0 {
+		o.errorf("argslists and subcommands cannot be used together")
+		return
+	}
+	if o.arglist != nil {
+		o.errorf("only 1 arglist field is allowed ('%s' already defined)", o.arglist.name)
+		return
+	}
+
+	name := sf.Tag.Get("name")
+	if name == "" || name == "!" {
+		name = camel2dash(sf.Name) //default to struct field name
+	}
+
+	if val.Len() != 0 {
+		o.errorf("arglist '%s' is required so it should not be set. "+
+			"If you'd like to set a default, consider using an option instead.", name)
+		return
+	}
+
+	min, _ := strconv.Atoi(sf.Tag.Get("min"))
+
+	//insert
+	o.arglist = &argumentlist{
+		val:  val,
+		name: name,
+		help: sf.Tag.Get("help"),
+		min:  min,
+	}
+}
+
+var durationType = reflect.TypeOf(time.Second)
+
+func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
+
+	//find name
+	name := sf.Tag.Get("name")
+	if name == "" {
+		name = camel2dash(sf.Name) //default to struct field name
+	}
+
+	if sf.Type.Kind() == reflect.Int64 &&
+		!sf.Type.AssignableTo(durationType) {
+		o.errorf("int64 field '%s' must be of type time.Duration", name)
+	}
+
+	//assume opt, unless arg tag is present
+	t := sf.Tag.Get("type")
+	if t == "" {
+		t = "opt"
 	}
 
 	//get help text
@@ -225,10 +273,11 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 	def := val.Interface()
 	if def != reflect.Zero(sf.Type).Interface() {
 		hasdef = true
-		if help != "" {
-			help += " "
+		if help == "" {
+			help = fmt.Sprintf("default %v", def)
+		} else {
+			help += fmt.Sprintf(" (default %v)", def)
 		}
-		help += fmt.Sprintf("(default %v)", def)
 	}
 
 	switch t {
@@ -272,9 +321,25 @@ func (o *Opts) Version(version string) *Opts {
 	return o
 }
 
+func (o *Opts) PkgRepo() *Opts {
+	if o.pkgrepo == "" {
+		return o.errorf("Package repository could not be infered")
+	}
+	o.Repo(o.pkgrepo)
+	return o
+}
+
 func (o *Opts) Repo(repo string) *Opts {
 	o.repo = repo
 	o.order = append(o.order, "repo")
+	return o
+}
+
+func (o *Opts) PkgAuthor() *Opts {
+	if o.pkgrepo == "" {
+		return o.errorf("Package author could not be infered")
+	}
+	o.Author(o.pkgauthor)
 	return o
 }
 
@@ -284,20 +349,20 @@ func (o *Opts) Author(author string) *Opts {
 	return o
 }
 
-//Doc inserts a text block at the end of the help text
-func (o *Opts) Doc(paragraph string) *Opts {
-	return o
-}
+// //Doc inserts a text block at the end of the help text
+// func (o *Opts) Doc(paragraph string) *Opts {
+// 	return o
+// }
 
-//DocAfter inserts a text block after the specified help entry
-func (o *Opts) DocAfter(id, paragraph string) *Opts {
-	return o
-}
+// //DocAfter inserts a text block after the specified help entry
+// func (o *Opts) DocAfter(id, paragraph string) *Opts {
+// 	return o
+// }
 
-//DecSet replaces the specified
-func (o *Opts) DocSet(id, paragraph string) *Opts {
-	return o
-}
+// //DecSet replaces the specified
+// func (o *Opts) DocSet(id, paragraph string) *Opts {
+// 	return o
+// }
 
 //ConfigPath defines a path to a JSON file which matches
 //the structure of the provided config. Environment variables
@@ -330,7 +395,7 @@ func (o *Opts) ParseArgs(args []string) *Opts {
 }
 
 //Process is the same as ParseArgs except
-//it returns an error instead of calling log.Fatal
+//it returns an error on failure
 func (o *Opts) Process(args []string) error {
 
 	//already errored
@@ -369,6 +434,11 @@ func (o *Opts) Process(args []string) error {
 		//3. set config via Go's pkg/flags
 		addr := opt.val.Addr().Interface()
 		switch addr := addr.(type) {
+		case flag.Value:
+			flagset.Var(addr, opt.name, "")
+			if opt.shortName != "" {
+				flagset.Var(addr, opt.shortName, "")
+			}
 		case *bool:
 			str2bool(envVal, addr)
 			flagset.BoolVar(addr, opt.name, *addr, "")
@@ -387,8 +457,13 @@ func (o *Opts) Process(args []string) error {
 			if opt.shortName != "" {
 				flagset.IntVar(addr, opt.shortName, *addr, "")
 			}
+		case *time.Duration:
+			flagset.DurationVar(addr, opt.name, *addr, "")
+			if opt.shortName != "" {
+				flagset.DurationVar(addr, opt.shortName, *addr, "")
+			}
 		default:
-			panic("Unexpected logic error")
+			return fmt.Errorf("Option '%s' uses unsupported type", opt.name)
 		}
 	}
 
@@ -420,8 +495,8 @@ func (o *Opts) Process(args []string) error {
 		}
 	}
 
-	//peek at args, maybe use subcommand
-	if len(args) > 0 {
+	//use subcommand? peek at args
+	if len(o.subs) > 0 && len(args) > 0 {
 		a := args[0]
 		//matching subcommand, use it
 		if sub, exists := o.subs[a]; exists {
@@ -431,6 +506,14 @@ func (o *Opts) Process(args []string) error {
 			}
 			return sub.Process(args[1:])
 		}
+	}
+
+	//use arglist, assign slice
+	if o.arglist != nil {
+		if len(args) < o.arglist.min {
+			return fmt.Errorf("Too few arguments (expected %d, got %d)", o.arglist.min, len(args))
+		}
+		o.arglist.val.Set(reflect.ValueOf(args))
 	}
 
 	return nil

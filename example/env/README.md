@@ -1,6 +1,6 @@
-## defaults example
+## env example
 
-<tmpl,code=go:cat defaults.go>
+<tmpl,code=go:cat env.go>
 ``` go 
 package main
 
@@ -17,11 +17,9 @@ type Config struct {
 
 func main() {
 
-	c := Config{
-		Bar: "moon",
-	}
+	c := Config{}
 
-	opts.Parse(&c)
+	opts.New(&c).UseEnv().Parse()
 
 	fmt.Println(c.Foo)
 	fmt.Println(c.Bar)
@@ -29,25 +27,27 @@ func main() {
 ```
 </tmpl>
 ```
-$ defaults --foo hello
+$ export FOO=hello
+$ export BAR=world
+$ env
 ```
-<tmpl,code:go run defaults.go --foo hello>
+<tmpl,code:(export FOO=hello && export BAR=world && go run env.go)>
 ``` plain 
 hello
-moon
+world
 ```
 </tmpl>
 ```
-$ defaults --help
+$ env --help
 ```
-<tmpl,code:go run defaults.go --help>
+<tmpl,code:go run env.go --help>
 ``` plain 
 
-  Usage: defaults [options]
+  Usage: env [options]
   
   Options:
   --foo, -f 
-  --bar, -b   default moon
+  --bar, -b 
   --help, -h
   
 ```

@@ -13,9 +13,9 @@ type Config struct {
 
 func main() {
 
-	c := &Config{}
+	c := Config{}
 
-	opts.New(c).UseEnv().Parse()
+	opts.New(&c).UseEnv().Parse()
 
 	fmt.Println(c.Foo)
 	fmt.Println(c.Bar)

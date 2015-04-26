@@ -7,7 +7,8 @@ import (
 )
 
 type Config struct {
-	Bazzes []string `min:"2"`
+	Foo string `type:"arg" help:"foo is a very important argument"`
+	Bar string
 }
 
 func main() {
@@ -16,7 +17,6 @@ func main() {
 
 	opts.New(&c).Parse()
 
-	for i, foo := range c.Bazzes {
-		fmt.Println(i, foo)
-	}
+	fmt.Println(c.Foo)
+	fmt.Println(c.Bar)
 }
