@@ -12,115 +12,110 @@ import (
 	"github.com/kardianos/osext"
 )
 
-var DefaultOrder = []string{
-	"usage",
-	"args",
-	"arglist",
-	"options",
+//data is only used for templating below
+type data struct {
+	ArgList       *item
+	Opts          []*item
+	Args          []*item
+	Subcmds       []*item
+	Order         []string
+	Name, Version string
+	Repo, Author  string
+	Pad           string //Pad is Opt.PadWidth many spaces
 }
 
-var DefaultTemplates = map[string]string{
-	//loop through the default order and render all templates
-	"help": `{{ $root := . }}{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
-	//sections, from top to bottom
-	"usage":        `Usage: {{.Name }}{{template "usageoptions" .}}{{template "usageargs" .}}{{template "usagearglist" .}}` + "\n",
-	"usageoptions": `{{ $nopts := len .Opts}}{{if gt $nopts 0}} [options]{{end}}`,
-	"usageargs":    `{{ range .Args}} {{.Name}}{{end}}`,
-	"usagearglist": `{{ if .ArgList}} {{.ArgList.Name}}{{end}}`,
-	"args":         `{{ range .Args}}{{template "arg" .}}{{end}}`,
-	"arg":          "{{ if .Help}}\n{{.Help}}\n{{end}}",
-	"arglist":      "{{ if .ArgList}}{{ if .ArgList.Help}}\n{{.ArgList.Help}}\n{{end}}{{end}}",
-	"options": `{{if .Opts}}` + "\nOptions:\n" +
-		`{{ range $opt := .Opts}}{{template "option" $opt}}{{end}}{{end}}`,
-	"option":  `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
-	"version": "\nVersion:\n{{.Pad}}{{.Version}}\n",
-	"repo":    "\nRead more:\n{{.Pad}}{{.Repo}}\n",
-	"author":  "\nAuthor:\n{{.Pad}}{{.Author}}\n",
-}
-
-type tOpts struct {
-	Args                        []*targument
-	ArgList                     *targlist
-	Opts                        []*toption
-	Order                       []string
-	Name, Version, Repo, Author string
-	Pad                         string
-}
-
-type toption struct {
+type item struct {
 	Name string
 	Help string
 	Pad  string
 }
 
-type targument struct {
-	Name string
-	Help string
+var DefaultOrder = []string{
+	"usage",
+	"args",
+	"arglist",
+	"options",
+	"subcmds",
 }
 
-type targlist struct {
-	Name string
-	Help string
+var DefaultTemplates = map[string]string{
+	//loop through the default order and render all templates
+	"help": `{{ $root := . }}` +
+		`{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
+	//sections, from top to bottom
+	"usage": `Usage: {{.Name }}` +
+		`{{template "usageoptions" .}}` +
+		`{{template "usageargs" .}}` +
+		`{{template "usagearglist" .}}` +
+		`{{template "usagesubcmd" .}}` + "\n",
+	"usageoptions": `{{if .Opts}} [options]{{end}}`,
+	"usageargs":    `{{range .Args}} {{.Name}}{{end}}`,
+	"usagearglist": `{{if .ArgList}} {{.ArgList.Name}}{{end}}`,
+	"usagesubcmd":  `{{if .Subcmds}} <subcommand>{{end}}`,
+	//args and arg section
+	"args":    `{{range .Args}}{{template "arg" .}}{{end}}`,
+	"arg":     "{{if .Help}}\n{{.Help}}\n{{end}}",
+	"arglist": "{{if .ArgList}}{{ if .ArgList.Help}}\n{{.ArgList.Help}}\n{{end}}{{end}}",
+	//options
+	"options": `{{if .Opts}}` + "\nOptions:\n" +
+		`{{ range $opt := .Opts}}{{template "option" $opt}}{{end}}{{end}}`,
+	"option": `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
+	//subcmds
+	"subcmds": "{{if .Subcmds}}\nSubcommands:\n" +
+		`{{ range $sub := .Subcmds}}{{template "subcmd" $sub}}{{end}}{{end}}`,
+	"subcmd": "* {{ .Name }}{{if .Help}} - {{ .Help }}{{end}}\n",
+	//extras
+	"version": "\nVersion:\n{{.Pad}}{{.Version}}\n",
+	"repo":    "\nRead more:\n{{.Pad}}{{.Repo}}\n",
+	"author":  "\nAuthor:\n{{.Pad}}{{.Author}}\n",
 }
 
 var anyspace = regexp.MustCompile(`[\s]+`)
 
-func (o *Opts) Help() string {
+func convert(o *Opts) *data {
 
-	//last ditch effort at finding a name
-	if o.name == "" {
-		if exe, err := osext.Executable(); err == nil {
-			_, o.name = path.Split(exe)
-		} else {
-			o.name = "main"
-		}
+	names := []string{}
+	curr := o
+	for curr != nil {
+		names = append([]string{curr.name}, names...)
+		curr = curr.parent
 	}
+	name := strings.Join(names, " ")
 
-	var err error
-	args := make([]*targument, len(o.args))
+	args := make([]*item, len(o.args))
 	for i, arg := range o.args {
 		//mark argument as required
 		n := "<" + arg.name + ">"
 		if arg.hasdef { //or optional
 			n = "[" + arg.name + "]"
 		}
-		args[i] = &targument{
+		args[i] = &item{
 			Name: n,
 			Help: constrain(arg.help, o.LineWidth),
 		}
 	}
 
-	var arglist *targlist = nil
+	var arglist *item = nil
 	if o.arglist != nil {
 		n := o.arglist.name + "..."
 		if o.arglist.min == 0 { //optional
 			n = "[" + n + "]"
 		}
-		arglist = &targlist{
+		arglist = &item{
 			Name: n,
 			Help: o.arglist.help,
 		}
 	}
 
-	opts := make([]*toption, len(o.opts))
-	tf := &tOpts{
-		Args:    args,
-		ArgList: arglist,
-		Opts:    opts,
-		Order:   o.order,
-		Name:    o.name,
-		Version: o.version,
-		Repo:    o.repo,
-		Author:  o.author,
-	}
+	opts := make([]*item, len(o.opts))
 
 	//calculate padding etc.
 	max := 0
 	shorts := map[string]bool{}
-	tf.Pad = nletters(' ', o.PadWidth)
+	pad := nletters(' ', o.PadWidth)
 
 	for i, opt := range o.opts {
-		to := &toption{Pad: tf.Pad}
+		to := &item{Pad: pad}
 		to.Name = "--" + opt.name
 		n := opt.name[0:1]
 		if _, ok := shorts[n]; !ok {
@@ -141,7 +136,7 @@ func (o *Opts) Help() string {
 
 	//render each option
 	for i, to := range opts {
-		//pad all names to be the same length
+		//pad all option names to be the same length
 		to.Name += spaces[:max-len(to.Name)]
 		//constrain help text
 		h := constrain(o.opts[i].help, helpWidth)
@@ -153,6 +148,51 @@ func (o *Opts) Help() string {
 		}
 		to.Help = strings.Join(lines, "\n")
 	}
+
+	//subcommands
+	subs := make([]*item, len(o.subcmds))
+	i := 0
+	for _, s := range o.subcmds {
+		subs[i] = &item{
+			Name: s.name,
+			Help: s.help,
+			Pad:  pad,
+		}
+		i++
+	}
+
+	return &data{
+		Args:    args,
+		ArgList: arglist,
+		Opts:    opts,
+		Subcmds: subs,
+		Order:   o.order,
+		Name:    name,
+		Version: o.version,
+		Repo:    o.repo,
+		Author:  o.author,
+		Pad:     pad,
+	}
+}
+
+func (o *Opts) Help() string {
+	var err error
+
+	//last ditch effort at finding the program name
+	root := o
+	for root.parent != nil {
+		root = root.parent
+	}
+	if root.name == "" {
+		if exe, err := osext.Executable(); err == nil {
+			_, root.name = path.Split(exe)
+		} else {
+			root.name = "main"
+		}
+	}
+
+	//convert Opts into template data
+	tf := convert(o)
 
 	//begin
 	t := template.New(o.name)

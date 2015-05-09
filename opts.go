@@ -18,7 +18,7 @@ import (
 type Opts struct {
 	config       reflect.Value
 	parent       *Opts
-	subs         map[string]*Opts
+	subcmds      map[string]*Opts
 	opts         []*option
 	args         []*argument
 	arglist      *argumentlist
@@ -34,9 +34,9 @@ type Opts struct {
 	erred   error
 	cmdname *reflect.Value
 
-	name, version      string
-	repo, author       string
-	pkgrepo, pkgauthor string
+	name, help, version string
+	repo, author        string
+	pkgrepo, pkgauthor  string
 	//public format settings
 	LineWidth int  //42
 	PadAll    bool //true
@@ -111,7 +111,7 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 		config:    c,
 		parent:    parent,
 		shorts:    map[string]bool{},
-		subs:      map[string]*Opts{},
+		subcmds:   map[string]*Opts{},
 		opts:      []*option{},
 		order:     order,
 		templates: map[string]string{},
@@ -208,12 +208,13 @@ func (o *Opts) addSubcmd(sf reflect.StructField, val reflect.Value) {
 	// log.Printf("define subcmd: %s =====", subname)
 	sub := fork(o, val)
 	sub.name = name
-	o.subs[name] = sub
+	sub.help = sf.Tag.Get("help")
+	o.subcmds[name] = sub
 }
 
 func (o *Opts) addArgs(sf reflect.StructField, val reflect.Value) {
 
-	if len(o.subs) > 0 {
+	if len(o.subcmds) > 0 {
 		o.errorf("argslists and subcommands cannot be used together")
 		return
 	}
@@ -254,6 +255,7 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 		name = camel2dash(sf.Name) //default to struct field name
 	}
 
+	//assume int64s are durations
 	if sf.Type.Kind() == reflect.Int64 &&
 		!sf.Type.AssignableTo(durationType) {
 		o.errorf("int64 field '%s' must be of type time.Duration", name)
@@ -296,6 +298,11 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 			help:      help,
 		})
 	case "arg":
+		//TODO allow other types in 'arg' fields
+		if sf.Type.Kind() != reflect.String {
+			o.errorf("arg '%s' type must be a string", name)
+			return
+		}
 		o.args = append(o.args, &argument{
 			val:    val,
 			name:   name,
@@ -407,8 +414,8 @@ func (o *Opts) Process(args []string) error {
 	if o.cfgPath != "" {
 		b, err := ioutil.ReadFile(o.cfgPath)
 		if err == nil {
-			v := o.config.Interface()
-			err = json.Unmarshal(b, v) //*struct
+			v := o.config.Interface() //*struct
+			err = json.Unmarshal(b, v)
 			if err != nil {
 				return fmt.Errorf("Invalid config file: %s", err)
 			}
@@ -463,7 +470,7 @@ func (o *Opts) Process(args []string) error {
 				flagset.DurationVar(addr, opt.shortName, *addr, "")
 			}
 		default:
-			return fmt.Errorf("Option '%s' uses unsupported type", opt.name)
+			return fmt.Errorf("Option '%s' has unsupported type", opt.name)
 		}
 	}
 
@@ -482,7 +489,7 @@ func (o *Opts) Process(args []string) error {
 		os.Exit(0)
 	}
 
-	//fill args
+	//fill each individual arg
 	args = flagset.Args()
 	for i, argument := range o.args {
 		if len(args) > 0 {
@@ -496,10 +503,10 @@ func (o *Opts) Process(args []string) error {
 	}
 
 	//use subcommand? peek at args
-	if len(o.subs) > 0 && len(args) > 0 {
+	if len(o.subcmds) > 0 && len(args) > 0 {
 		a := args[0]
 		//matching subcommand, use it
-		if sub, exists := o.subs[a]; exists {
+		if sub, exists := o.subcmds[a]; exists {
 			//user wants name to be set
 			if o.cmdname != nil {
 				o.cmdname.SetString(a)
@@ -508,12 +515,18 @@ func (o *Opts) Process(args []string) error {
 		}
 	}
 
-	//use arglist, assign slice
+	//fill arglist? assign remaining as slice
 	if o.arglist != nil {
 		if len(args) < o.arglist.min {
 			return fmt.Errorf("Too few arguments (expected %d, got %d)", o.arglist.min, len(args))
 		}
 		o.arglist.val.Set(reflect.ValueOf(args))
+		args = nil
+	}
+
+	//we *should* have consumed all args
+	if len(args) != 0 {
+		return fmt.Errorf("Unexpected arguments: %+v", args)
 	}
 
 	return nil

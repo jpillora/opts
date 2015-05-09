@@ -45,7 +45,7 @@ func str2str(src string, dst *string) {
 
 func str2bool(src string, dst *bool) {
 	if src != "" {
-		*dst = src == "true" || src == "1"
+		*dst = strings.ToLower(src) == "true" || src == "1"
 	}
 }
 

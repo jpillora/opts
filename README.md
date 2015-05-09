@@ -1,11 +1,44 @@
 # opts
 
-A minimalist CLI library for Go
+A minimalist CLI library for Go.
+
+`opts` automatically creates `flag.FlagSet`s from your configuration structs using `reflect`. Given the following configuration:
+
+``` go
+type Config struct {
+	A string `help:"a string"`
+	B int    `help:"an int"`
+}
+```
+
+Then:
+
+``` go
+c := Config{}
+opts.Parse(&c)
+```
+
+Will *approximately* perform the following:
+
+``` go
+config := Config{}
+set := flag.NewFlagSet("Config")
+set.StringVar(&config.A, "", "a string")
+set.IntVar(&config.B, 0, "an int")
+set.Parse(os.Args)
+```
 
 ### Features
 
 * Easy to use
 * Promotes separation of CLI code and library code
+* Automatically generated `--help` text
+* Insert help text by adding a struct tags
+* Sub-commands by nesting structs (each struct is another `flag.FlagSet`)
+* Default values by modifying the struct prior to `Parse()`
+* Default values from JSON file, unmarshalled via your config struct
+* Default values from environment, defined by your field names
+* Infers program name from package name (and optional repository link)
 * Extensible via `flag.Value`
 
 ### [Simple Example](example/simple)
@@ -25,11 +58,8 @@ type Config struct {
 }
 
 func main() {
-
-	c := &Config{}
-
-	opts.Parse(c)
-
+	c := Config{}
+	opts.Parse(&c)
 	fmt.Println(c.Foo)
 	fmt.Println(c.Bar)
 }
@@ -61,7 +91,7 @@ $ ./myprog --help
 * [Defaults](example/defaults)
 * [Environment Variables](example/env)
 * [JSON Config](example/env)
-* [Custom Flag Types](example/types)
+* [Custom Flag Types](example/customtypes)
 
 ### Todo
 
