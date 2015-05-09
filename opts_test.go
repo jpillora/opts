@@ -74,9 +74,7 @@ func TestUnsupportedType(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected error")
 	}
-	if err.Error() != "Struct field 'Bar' has unsupported type: interface" {
-		t.Fatal("Unexpected error type")
-	}
+	check(t, err.Error(), "Struct field 'Bar' has unsupported type: interface")
 }
 
 func TestEnv(t *testing.T) {
@@ -107,20 +105,39 @@ func TestEnv(t *testing.T) {
 	check(t, c.Bool, true)
 }
 
-func TestArgs(t *testing.T) {
+func TestArg(t *testing.T) {
 
 	//config
 	type Config struct {
 		Foo string `type:"arg"`
+		Zip string `type:"arg"`
 		Bar string
 	}
 
 	c := &Config{}
 
 	//flag example parse
-	New(c).ParseArgs([]string{"-b", "wld", "hel"})
+	New(c).ParseArgs([]string{"-b", "wld", "hel", "lo"})
 
 	//check config is filled
 	check(t, c.Foo, `hel`)
+	check(t, c.Zip, `lo`)
 	check(t, c.Bar, `wld`)
+}
+
+func TestIgnoreUnexported(t *testing.T) {
+
+	//config
+	type Config struct {
+		Foo string
+		bar string
+	}
+
+	c := &Config{}
+
+	//flag example parse
+	err := New(c).Process([]string{"-f", "1", "-b", "2"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
 }

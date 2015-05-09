@@ -22,6 +22,7 @@ type data struct {
 	Name, Version string
 	Repo, Author  string
 	Pad           string //Pad is Opt.PadWidth many spaces
+	ErrMsg        string
 }
 
 type item struct {
@@ -36,10 +37,14 @@ var DefaultOrder = []string{
 	"arglist",
 	"options",
 	"subcmds",
+	"author",
+	"version",
+	"repo",
+	"errmsg",
 }
 
 var DefaultTemplates = map[string]string{
-	//loop through the default order and render all templates
+	//loop through the 'order' and render all templates
 	"help": `{{ $root := . }}` +
 		`{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
 	//sections, from top to bottom
@@ -65,9 +70,10 @@ var DefaultTemplates = map[string]string{
 		`{{ range $sub := .Subcmds}}{{template "subcmd" $sub}}{{end}}{{end}}`,
 	"subcmd": "* {{ .Name }}{{if .Help}} - {{ .Help }}{{end}}\n",
 	//extras
-	"version": "\nVersion:\n{{.Pad}}{{.Version}}\n",
-	"repo":    "\nRead more:\n{{.Pad}}{{.Repo}}\n",
-	"author":  "\nAuthor:\n{{.Pad}}{{.Author}}\n",
+	"version": "{{if .Version}}\nVersion:\n{{.Pad}}{{.Version}}\n{{end}}",
+	"repo":    "{{if .Repo}}\nRead more:\n{{.Pad}}{{.Repo}}\n{{end}}",
+	"author":  "{{if .Author}}\nAuthor:\n{{.Pad}}{{.Author}}\n{{end}}",
+	"errmsg":  "{{if .ErrMsg}}\nError:\n{{.Pad}}{{.ErrMsg}}\n{{end}}",
 }
 
 var anyspace = regexp.MustCompile(`[\s]+`)
@@ -161,6 +167,11 @@ func convert(o *Opts) *data {
 		i++
 	}
 
+	err := ""
+	if o.erred != nil {
+		err = o.erred.Error()
+	}
+
 	return &data{
 		Args:    args,
 		ArgList: arglist,
@@ -172,6 +183,7 @@ func convert(o *Opts) *data {
 		Repo:    o.repo,
 		Author:  o.author,
 		Pad:     pad,
+		ErrMsg:  err,
 	}
 }
 

@@ -2,6 +2,7 @@ package opts
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -103,8 +104,13 @@ func New(config interface{}) *Opts {
 
 func fork(parent *Opts, c reflect.Value) *Opts {
 	//copy default ordering
-	order := make([]string, len(DefaultOrder))
-	copy(order, DefaultOrder)
+	var order []string
+
+	//root only
+	if parent == nil {
+		order = make([]string, len(DefaultOrder))
+		copy(order, DefaultOrder)
+	}
 
 	//instantiate
 	o := &Opts{
@@ -140,6 +146,10 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 	//parse struct fields
 	for i := 0; i < c.NumField(); i++ {
 		val := c.Field(i)
+		//ignore unexported
+		if !val.CanSet() {
+			continue
+		}
 		sf := t.Field(i)
 		k := sf.Type.Kind()
 		switch k {
@@ -323,7 +333,6 @@ func (o *Opts) Version(version string) *Opts {
 	//add version option
 	g := reflect.ValueOf(&o.internalOpts).Elem()
 	o.addOptArg(g.Type().Field(1), g.Field(1))
-	o.order = append(o.order, "version")
 	o.version = version
 	return o
 }
@@ -338,7 +347,6 @@ func (o *Opts) PkgRepo() *Opts {
 
 func (o *Opts) Repo(repo string) *Opts {
 	o.repo = repo
-	o.order = append(o.order, "repo")
 	return o
 }
 
@@ -352,7 +360,6 @@ func (o *Opts) PkgAuthor() *Opts {
 
 func (o *Opts) Author(author string) *Opts {
 	o.author = author
-	o.order = append(o.order, "author")
 	return o
 }
 
@@ -395,7 +402,7 @@ func (o *Opts) Parse() *Opts {
 //ParseArgs with the provided arguments
 func (o *Opts) ParseArgs(args []string) *Opts {
 	if err := o.Process(args); err != nil {
-		fmt.Fprint(os.Stderr, err.Error()+"\n")
+		fmt.Fprintf(os.Stderr, err.Error())
 		os.Exit(1)
 	}
 	return o
@@ -405,7 +412,7 @@ func (o *Opts) ParseArgs(args []string) *Opts {
 //it returns an error on failure
 func (o *Opts) Process(args []string) error {
 
-	//already errored
+	//cannot be processed - already encountered error
 	if o.erred != nil {
 		return o.erred
 	}
@@ -423,21 +430,16 @@ func (o *Opts) Process(args []string) error {
 	}
 
 	flagset := flag.NewFlagSet(o.name, flag.ContinueOnError)
-	flagset.Usage = func() {
-		fmt.Fprint(os.Stderr, o.Help())
-		os.Exit(1)
-	}
+	flagset.SetOutput(ioutil.Discard)
 
 	for _, opt := range o.opts {
-		// log.Printf("parse prepare option: %s", opt.name)
-
+		// TODO remove debug - log.Printf("parse prepare option: %s", opt.name)
 		//2. set config via environment
 		envVal := ""
 		if o.useEnv {
 			envName := camel2const(opt.name)
 			envVal = os.Getenv(envName)
 		}
-
 		//3. set config via Go's pkg/flags
 		addr := opt.val.Addr().Interface()
 		switch addr := addr.(type) {
@@ -478,12 +480,14 @@ func (o *Opts) Process(args []string) error {
 	//set user config
 	err := flagset.Parse(args)
 	if err != nil {
-		return err
+		//insert flag errors into help text
+		o.erred = err
+		o.internalOpts.Help = true
 	}
 
 	//internal opts
 	if o.internalOpts.Help {
-		flagset.Usage()
+		return errors.New(o.Help())
 	} else if o.internalOpts.Version {
 		fmt.Println(o.version)
 		os.Exit(0)
