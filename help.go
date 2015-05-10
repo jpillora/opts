@@ -14,10 +14,10 @@ import (
 
 //data is only used for templating below
 type data struct {
-	ArgList       *item
-	Opts          []*item
-	Args          []*item
-	Subcmds       []*item
+	ArgList       *datum
+	Opts          []*datum
+	Args          []*datum
+	Subcmds       []*datum
 	Order         []string
 	Name, Version string
 	Repo, Author  string
@@ -25,7 +25,7 @@ type data struct {
 	ErrMsg        string
 }
 
-type item struct {
+type datum struct {
 	Name string
 	Help string
 	Pad  string
@@ -88,32 +88,32 @@ func convert(o *Opts) *data {
 	}
 	name := strings.Join(names, " ")
 
-	args := make([]*item, len(o.args))
+	args := make([]*datum, len(o.args))
 	for i, arg := range o.args {
 		//mark argument as required
 		n := "<" + arg.name + ">"
-		if arg.hasdef { //or optional
+		if arg.hasDef { //or optional
 			n = "[" + arg.name + "]"
 		}
-		args[i] = &item{
+		args[i] = &datum{
 			Name: n,
 			Help: constrain(arg.help, o.LineWidth),
 		}
 	}
 
-	var arglist *item = nil
+	var arglist *datum = nil
 	if o.arglist != nil {
 		n := o.arglist.name + "..."
 		if o.arglist.min == 0 { //optional
 			n = "[" + n + "]"
 		}
-		arglist = &item{
+		arglist = &datum{
 			Name: n,
 			Help: o.arglist.help,
 		}
 	}
 
-	opts := make([]*item, len(o.opts))
+	opts := make([]*datum, len(o.opts))
 
 	//calculate padding etc.
 	max := 0
@@ -121,7 +121,7 @@ func convert(o *Opts) *data {
 	pad := nletters(' ', o.PadWidth)
 
 	for i, opt := range o.opts {
-		to := &item{Pad: pad}
+		to := &datum{Pad: pad}
 		to.Name = "--" + opt.name
 		n := opt.name[0:1]
 		if _, ok := shorts[n]; !ok {
@@ -156,10 +156,10 @@ func convert(o *Opts) *data {
 	}
 
 	//subcommands
-	subs := make([]*item, len(o.subcmds))
+	subs := make([]*datum, len(o.subcmds))
 	i := 0
 	for _, s := range o.subcmds {
-		subs[i] = &item{
+		subs[i] = &datum{
 			Name: s.name,
 			Help: s.help,
 			Pad:  pad,

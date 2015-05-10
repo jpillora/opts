@@ -28,13 +28,15 @@ set.IntVar(&config.B, 0, "an int")
 set.Parse(os.Args)
 ```
 
+This is quite manageable with two only options, though when we reach 20 options with subcommands, it quickly becomes a chore to keep each value and their flag in sync.
+
 ### Features
 
 * Easy to use
 * Promotes separation of CLI code and library code
 * Automatically generated `--help` text
-* Insert help text by adding a struct tags
-* Sub-commands by nesting structs (each struct is another `flag.FlagSet`)
+* Help text via struct tags `help:"Foo bar"`
+* Subcommands by nesting structs (each struct represents a `flag.FlagSet`)
 * Default values by modifying the struct prior to `Parse()`
 * Default values from JSON file, unmarshalled via your config struct
 * Default values from environment, defined by your field names

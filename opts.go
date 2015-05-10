@@ -17,11 +17,12 @@ import (
 //all parsing state for a single set of
 //arguments
 type Opts struct {
-	config       reflect.Value
+	//embed item since an Opts can also be an item
+	item
 	parent       *Opts
 	subcmds      map[string]*Opts
-	opts         []*option
-	args         []*argument
+	opts         []*item
+	args         []*item
 	arglist      *argumentlist
 	shorts       map[string]bool
 	order        []string
@@ -30,14 +31,11 @@ type Opts struct {
 		//pretend these are in the user struct :)
 		Help, Version bool
 	}
-	cfgPath string
-	useEnv  bool
-	erred   error
-	cmdname *reflect.Value
-
-	name, help, version string
-	repo, author        string
-	pkgrepo, pkgauthor  string
+	cfgPath               string
+	erred                 error
+	cmdname               *reflect.Value
+	repo, author, version string
+	pkgrepo, pkgauthor    string
 	//public format settings
 	LineWidth int  //42
 	PadAll    bool //true
@@ -47,29 +45,21 @@ type Opts struct {
 //argumentlist represends a
 //named string slice
 type argumentlist struct {
-	val  reflect.Value
-	name string
-	help string
-	min  int
+	item
+	min int
 }
 
-//option is the structure representing a
-//single flag, exposed for templating
-type option struct {
-	val         reflect.Value
-	name        string
-	shortName   string
-	displayName string //calculated
-	typeName    string
-	help        string
-}
-
-//argument represents a single named argument
-type argument struct {
-	val    reflect.Value
-	name   string
-	help   string
-	hasdef bool
+//item is the structure representing a
+//an opt item
+type item struct {
+	val       reflect.Value
+	name      string
+	shortName string
+	envName   string
+	useEnv    bool
+	typeName  string
+	help      string
+	hasDef    bool
 }
 
 //Creates a new Opts instance and Parses it
@@ -114,11 +104,13 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 
 	//instantiate
 	o := &Opts{
-		config:    c,
+		item: item{
+			val: c,
+		},
 		parent:    parent,
 		shorts:    map[string]bool{},
 		subcmds:   map[string]*Opts{},
-		opts:      []*option{},
+		opts:      []*item{},
 		order:     order,
 		templates: map[string]string{},
 		//public defaults
@@ -248,10 +240,12 @@ func (o *Opts) addArgs(sf reflect.StructField, val reflect.Value) {
 
 	//insert
 	o.arglist = &argumentlist{
-		val:  val,
-		name: name,
-		help: sf.Tag.Get("help"),
-		min:  min,
+		item: item{
+			val:  val,
+			name: name,
+			help: sf.Tag.Get("help"),
+		},
+		min: min,
 	}
 }
 
@@ -259,16 +253,27 @@ var durationType = reflect.TypeOf(time.Second)
 
 func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 
+	i := &item{val: val}
+
 	//find name
-	name := sf.Tag.Get("name")
-	if name == "" {
-		name = camel2dash(sf.Name) //default to struct field name
+	i.name = sf.Tag.Get("name")
+	if i.name == "" {
+		i.name = camel2dash(sf.Name) //default to struct field name
 	}
 
 	//assume int64s are durations
 	if sf.Type.Kind() == reflect.Int64 &&
 		!sf.Type.AssignableTo(durationType) {
-		o.errorf("int64 field '%s' must be of type time.Duration", name)
+		o.errorf("int64 field '%s' must be of type time.Duration", i.name)
+		return
+	}
+
+	i.envName = sf.Tag.Get("env")
+	if i.envName != "" {
+		i.useEnv = true
+	}
+	if i.envName == "" || i.envName == "!" {
+		i.envName = camel2const(sf.Name)
 	}
 
 	//assume opt, unless arg tag is present
@@ -278,47 +283,40 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 	}
 
 	//get help text
-	help := sf.Tag.Get("help")
+	i.help = sf.Tag.Get("help")
 
 	//display default, when non-zero-val
-	hasdef := false
+	i.hasDef = false
 	def := val.Interface()
 	if def != reflect.Zero(sf.Type).Interface() {
-		hasdef = true
-		if help == "" {
-			help = fmt.Sprintf("default %v", def)
+		i.hasDef = true
+		if i.help == "" {
+			i.help = fmt.Sprintf("default %v", def)
 		} else {
-			help += fmt.Sprintf(" (default %v)", def)
+			i.help += fmt.Sprintf(" (default %v)", def)
 		}
 	}
 
 	switch t {
 	case "opt":
-		n := name[0:1]
+		//only options have short names
+		n := i.name[0:1]
 		if _, ok := o.shorts[n]; ok {
 			n = ""
 		} else {
 			o.shorts[n] = true
 		}
+		i.shortName = n
+
 		// log.Printf("define option: %s %s", name, sf.Type)
-		o.opts = append(o.opts, &option{
-			val:       val,
-			name:      name,
-			shortName: n,
-			help:      help,
-		})
+		o.opts = append(o.opts, i)
 	case "arg":
 		//TODO allow other types in 'arg' fields
 		if sf.Type.Kind() != reflect.String {
-			o.errorf("arg '%s' type must be a string", name)
+			o.errorf("arg '%s' type must be a string", i.name)
 			return
 		}
-		o.args = append(o.args, &argument{
-			val:    val,
-			name:   name,
-			help:   help,
-			hasdef: hasdef,
-		})
+		o.args = append(o.args, i)
 	default:
 		o.errorf("Invalid optype: %s", t)
 	}
@@ -421,7 +419,7 @@ func (o *Opts) Process(args []string) error {
 	if o.cfgPath != "" {
 		b, err := ioutil.ReadFile(o.cfgPath)
 		if err == nil {
-			v := o.config.Interface() //*struct
+			v := o.val.Interface() //*struct
 			err = json.Unmarshal(b, v)
 			if err != nil {
 				return fmt.Errorf("Invalid config file: %s", err)
@@ -433,12 +431,13 @@ func (o *Opts) Process(args []string) error {
 	flagset.SetOutput(ioutil.Discard)
 
 	for _, opt := range o.opts {
-		// TODO remove debug - log.Printf("parse prepare option: %s", opt.name)
+		// TODO remove debug
+		// log.Printf("parse prepare option: %s", opt.name)
+
 		//2. set config via environment
 		envVal := ""
-		if o.useEnv {
-			envName := camel2const(opt.name)
-			envVal = os.Getenv(envName)
+		if opt.useEnv || o.useEnv {
+			envVal = os.Getenv(opt.envName)
 		}
 		//3. set config via Go's pkg/flags
 		addr := opt.val.Addr().Interface()
@@ -500,7 +499,7 @@ func (o *Opts) Process(args []string) error {
 			str := args[0]
 			args = args[1:]
 			argument.val.SetString(str)
-		} else if !argument.hasdef {
+		} else if !argument.hasDef {
 			//not-set and no default!
 			return fmt.Errorf("Argument #%d '%s' is missing", i+1, argument.name)
 		}
