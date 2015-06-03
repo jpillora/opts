@@ -24,7 +24,8 @@ type Opts struct {
 	opts         []*item
 	args         []*item
 	arglist      *argumentlist
-	shorts       map[string]bool
+	optnames     map[string]bool
+	envnames     map[string]bool
 	order        []string
 	templates    map[string]string
 	internalOpts struct {
@@ -59,7 +60,7 @@ type item struct {
 	useEnv    bool
 	typeName  string
 	help      string
-	hasDef    bool
+	defstr    string
 }
 
 //Creates a new Opts instance and Parses it
@@ -93,13 +94,14 @@ func New(config interface{}) *Opts {
 }
 
 func fork(parent *Opts, c reflect.Value) *Opts {
-	//copy default ordering
-	var order []string
-
-	//root only
+	//TODO allow order and template per subcmd
+	//for now, there is only the root
+	var order []string = nil
+	var tmpls map[string]string = nil
 	if parent == nil {
 		order = make([]string, len(DefaultOrder))
 		copy(order, DefaultOrder)
+		tmpls = map[string]string{}
 	}
 
 	//instantiate
@@ -107,12 +109,15 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 		item: item{
 			val: c,
 		},
-		parent:    parent,
-		shorts:    map[string]bool{},
-		subcmds:   map[string]*Opts{},
-		opts:      []*item{},
+		parent: parent,
+		//each cmd/subcmd has its own set of names
+		optnames: map[string]bool{},
+		envnames: map[string]bool{},
+		subcmds:  map[string]*Opts{},
+		opts:     []*item{},
+		//these are only set at the root
 		order:     order,
-		templates: map[string]string{},
+		templates: tmpls,
 		//public defaults
 		LineWidth: 72,
 		PadAll:    true,
@@ -268,12 +273,15 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 		return
 	}
 
+	//specific environment name
 	i.envName = sf.Tag.Get("env")
 	if i.envName != "" {
+		if o.envnames[i.envName] {
+			o.errorf("option env name '%s' already in use", i.name)
+			return
+		}
+		o.envnames[i.envName] = true
 		i.useEnv = true
-	}
-	if i.envName == "" || i.envName == "!" {
-		i.envName = camel2const(sf.Name)
 	}
 
 	//assume opt, unless arg tag is present
@@ -282,32 +290,37 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 		t = "opt"
 	}
 
+	//opt names cannot clash with each other
+	if o.optnames[i.name] {
+		o.errorf("option name '%s' already in use", i.name)
+		return
+	}
+	o.optnames[i.name] = true
+
 	//get help text
 	i.help = sf.Tag.Get("help")
 
-	//display default, when non-zero-val
-	i.hasDef = false
-	def := val.Interface()
-	if def != reflect.Zero(sf.Type).Interface() {
-		i.hasDef = true
-		if i.help == "" {
-			i.help = fmt.Sprintf("default %v", def)
-		} else {
-			i.help += fmt.Sprintf(" (default %v)", def)
-		}
+	//the **displayed** default, use 'default' tag, otherwise infer
+	defstr := sf.Tag.Get("default")
+	if defstr != "" {
+		i.defstr = defstr
+	} else if def := val.Interface(); def != reflect.Zero(sf.Type).Interface() {
+		//not the zero-value, stringify!
+		i.defstr = fmt.Sprintf("%v", def)
 	}
 
 	switch t {
 	case "opt":
-		//only options have short names
-		n := i.name[0:1]
-		if _, ok := o.shorts[n]; ok {
-			n = ""
-		} else {
-			o.shorts[n] = true
+		//options can also set short names
+		if short := sf.Tag.Get("short"); short != "" {
+			if o.optnames[short] {
+				o.errorf("option short name '%s' already in use", short)
+				return
+			} else {
+				o.optnames[i.shortName] = true
+				i.shortName = short
+			}
 		}
-		i.shortName = n
-
 		// log.Printf("define option: %s %s", name, sf.Type)
 		o.opts = append(o.opts, i)
 	case "arg":
@@ -361,20 +374,48 @@ func (o *Opts) Author(author string) *Opts {
 	return o
 }
 
-// //Doc inserts a text block at the end of the help text
-// func (o *Opts) Doc(paragraph string) *Opts {
-// 	return o
-// }
+//DocBefore inserts a text block before the specified template
+func (o *Opts) DocBefore(target, newid, template string) *Opts {
+	return o.docOffset(0, target, newid, template)
+}
 
-// //DocAfter inserts a text block after the specified help entry
-// func (o *Opts) DocAfter(id, paragraph string) *Opts {
-// 	return o
-// }
+//DocAfter inserts a text block after the specified template
+func (o *Opts) DocAfter(target, newid, template string) *Opts {
+	return o.docOffset(1, target, newid, template)
+}
 
-// //DecSet replaces the specified
-// func (o *Opts) DocSet(id, paragraph string) *Opts {
-// 	return o
-// }
+func (o *Opts) docOffset(offset int, target, newid, template string) *Opts {
+	if _, ok := o.templates[newid]; ok {
+		o.errorf("new template already exists: %s", newid)
+		return o
+	}
+	for i, id := range o.order {
+		if id == target {
+			o.templates[newid] = template
+			index := i + offset
+			rest := []string{newid}
+			if index < len(o.order) {
+				rest = append(rest, o.order[index:]...)
+			}
+			o.order = append(o.order[:index], rest...)
+			return o
+		}
+	}
+	o.errorf("target template not found: %s", target)
+	return o
+}
+
+//DecSet replaces the specified template
+func (o *Opts) DocSet(id, template string) *Opts {
+	if _, ok := DefaultTemplates[id]; !ok {
+		if _, ok := o.templates[id]; !ok {
+			o.errorf("template does not exist: %s", id)
+			return o
+		}
+	}
+	o.templates[id] = template
+	return o
+}
 
 //ConfigPath defines a path to a JSON file which matches
 //the structure of the provided config. Environment variables
@@ -400,7 +441,7 @@ func (o *Opts) Parse() *Opts {
 //ParseArgs with the provided arguments
 func (o *Opts) ParseArgs(args []string) *Opts {
 	if err := o.Process(args); err != nil {
-		fmt.Fprintf(os.Stderr, err.Error())
+		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)
 	}
 	return o
@@ -429,6 +470,23 @@ func (o *Opts) Process(args []string) error {
 
 	flagset := flag.NewFlagSet(o.name, flag.ContinueOnError)
 	flagset.SetOutput(ioutil.Discard)
+
+	//pre-loop through the options and
+	//add shortnames and env names where possible
+	for _, opt := range o.opts {
+		short := opt.name[0:1]
+		if !o.optnames[short] {
+			opt.shortName = short
+			o.optnames[short] = true
+		}
+
+		env := camel2const(opt.name)
+		if o.useEnv && (opt.envName == "" || opt.envName == "!") &&
+			opt.name != "help" && opt.name != "version" &&
+			!o.envnames[env] {
+			opt.envName = env
+		}
+	}
 
 	for _, opt := range o.opts {
 		// TODO remove debug
@@ -499,9 +557,10 @@ func (o *Opts) Process(args []string) error {
 			str := args[0]
 			args = args[1:]
 			argument.val.SetString(str)
-		} else if !argument.hasDef {
+		} else if argument.defstr == "" {
 			//not-set and no default!
-			return fmt.Errorf("Argument #%d '%s' is missing", i+1, argument.name)
+			o.erred = fmt.Errorf("Argument #%d '%s' has no default value", i+1, argument.name)
+			return errors.New(o.Help())
 		}
 	}
 
@@ -521,15 +580,19 @@ func (o *Opts) Process(args []string) error {
 	//fill arglist? assign remaining as slice
 	if o.arglist != nil {
 		if len(args) < o.arglist.min {
-			return fmt.Errorf("Too few arguments (expected %d, got %d)", o.arglist.min, len(args))
+			o.erred = fmt.Errorf("Too few arguments (expected %d, got %d)", o.arglist.min, len(args))
+			return errors.New(o.Help())
 		}
 		o.arglist.val.Set(reflect.ValueOf(args))
 		args = nil
 	}
 
 	//we *should* have consumed all args
+	//prevents:  ./foo --bar 42 -z 21 ping --pong 7
+	//where --pong 7 is ignored
 	if len(args) != 0 {
-		return fmt.Errorf("Unexpected arguments: %+v", args)
+		o.erred = fmt.Errorf("Unexpected arguments: %+v", args)
+		return errors.New(o.Help())
 	}
 
 	return nil

@@ -14,21 +14,23 @@ import (
 
 //data is only used for templating below
 type data struct {
-	ArgList       *datum
-	Opts          []*datum
-	Args          []*datum
-	Subcmds       []*datum
-	Order         []string
-	Name, Version string
-	Repo, Author  string
-	Pad           string //Pad is Opt.PadWidth many spaces
-	ErrMsg        string
+	datum        //data is also a datum
+	ArgList      *datum
+	Opts         []*datum
+	Args         []*datum
+	Subcmds      []*datum
+	Order        []string
+	Version      string
+	Repo, Author string
+	ErrMsg       string
 }
 
 type datum struct {
-	Name string
-	Help string
-	Pad  string
+	Name, Help, Pad string //Pad is Opt.PadWidth many spaces
+}
+
+type text struct {
+	Text, Def, Env string
 }
 
 var DefaultOrder = []string{
@@ -44,7 +46,8 @@ var DefaultOrder = []string{
 }
 
 var DefaultTemplates = map[string]string{
-	//loop through the 'order' and render all templates
+	//the root template simply loops through
+	//the 'order' and renders each template by name
 	"help": `{{ $root := . }}` +
 		`{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
 	//sections, from top to bottom
@@ -57,6 +60,10 @@ var DefaultTemplates = map[string]string{
 	"usageargs":    `{{range .Args}} {{.Name}}{{end}}`,
 	"usagearglist": `{{if .ArgList}} {{.ArgList.Name}}{{end}}`,
 	"usagesubcmd":  `{{if .Subcmds}} <subcommand>{{end}}`,
+	//extra help text
+	"helpextra": `{{if .Def}}default {{.Def}}{{end}}` +
+		`{{if and .Def .Env}}, {{end}}` +
+		`{{if .Env}}env {{.Env}}{{end}}`,
 	//args and arg section
 	"args":    `{{range .Args}}{{template "arg" .}}{{end}}`,
 	"arg":     "{{if .Help}}\n{{.Help}}\n{{end}}",
@@ -76,6 +83,75 @@ var DefaultTemplates = map[string]string{
 	"errmsg":  "{{if .ErrMsg}}\nError:\n{{.Pad}}{{.ErrMsg}}\n{{end}}",
 }
 
+func (o *Opts) Help() string {
+	var err error
+
+	//final attempt at finding the program name
+	root := o
+	for root.parent != nil {
+		root = root.parent
+	}
+	if root.name == "" {
+		if exe, err := osext.Executable(); err == nil {
+			_, root.name = path.Split(exe)
+		} else {
+			root.name = "main"
+		}
+	}
+
+	//add default templates
+	for name, str := range DefaultTemplates {
+		if _, ok := o.templates[name]; !ok {
+			o.templates[name] = str
+		}
+	}
+
+	//prepare templates
+	t := template.New(o.name)
+
+	t = t.Funcs(map[string]interface{}{
+		//reimplementation of "template" except with dynamic name
+		"templ": func(name string, data interface{}) (string, error) {
+			b := &bytes.Buffer{}
+			err = t.ExecuteTemplate(b, name, data)
+			if err != nil {
+				return "", err
+			}
+			return b.String(), nil
+		},
+	})
+
+	//verify all templates
+	for name, str := range o.templates {
+		t, err = t.Parse(fmt.Sprintf(`{{define "%s"}}%s{{end}}`, name, str))
+		if err != nil {
+			log.Fatalf("Template error: %s: %s", name, err)
+		}
+	}
+
+	//convert Opts into template data
+	tf := convert(o)
+
+	//execute all templates
+	b := &bytes.Buffer{}
+	err = t.ExecuteTemplate(b, "help", tf)
+	if err != nil {
+		log.Fatalf("Template execute: %s", err)
+	}
+
+	out := b.String()
+
+	if o.PadAll {
+		lines := strings.Split(out, "\n")
+		for i, l := range lines {
+			lines[i] = tf.Pad + l
+		}
+		out = "\n" + strings.Join(lines, "\n") + "\n"
+	}
+
+	return out
+}
+
 var anyspace = regexp.MustCompile(`[\s]+`)
 
 func convert(o *Opts) *data {
@@ -88,16 +164,33 @@ func convert(o *Opts) *data {
 	}
 	name := strings.Join(names, " ")
 
+	//get item help, with optional default values and env names and
+	//constrain to a specific line width
+	extratmpl, _ := template.New("").Parse(o.templates["helpextra"])
+	itemHelp := func(i *item, width int) string {
+		b := bytes.Buffer{}
+		extratmpl.Execute(&b, &text{Def: i.defstr, Env: i.envName})
+		extra := b.String()
+		help := i.help
+		if help == "" {
+			help = extra
+		} else if extra != "" {
+			help += " (" + extra + ")"
+		}
+		return constrain(help, width)
+	}
+
 	args := make([]*datum, len(o.args))
 	for i, arg := range o.args {
 		//mark argument as required
 		n := "<" + arg.name + ">"
-		if arg.hasDef { //or optional
+		if arg.defstr != "" { //or optional
 			n = "[" + arg.name + "]"
 		}
+
 		args[i] = &datum{
 			Name: n,
-			Help: constrain(arg.help, o.LineWidth),
+			Help: itemHelp(arg, o.LineWidth),
 		}
 	}
 
@@ -109,7 +202,7 @@ func convert(o *Opts) *data {
 		}
 		arglist = &datum{
 			Name: n,
-			Help: o.arglist.help,
+			Help: itemHelp(&o.arglist.item, o.LineWidth),
 		}
 	}
 
@@ -117,16 +210,13 @@ func convert(o *Opts) *data {
 
 	//calculate padding etc.
 	max := 0
-	shorts := map[string]bool{}
 	pad := nletters(' ', o.PadWidth)
 
 	for i, opt := range o.opts {
 		to := &datum{Pad: pad}
 		to.Name = "--" + opt.name
-		n := opt.name[0:1]
-		if _, ok := shorts[n]; !ok {
-			to.Name += ", -" + n
-			shorts[n] = true
+		if opt.shortName != "" {
+			to.Name += ", -" + opt.shortName
 		}
 		l := len(to.Name)
 		if l > max {
@@ -145,8 +235,9 @@ func convert(o *Opts) *data {
 		//pad all option names to be the same length
 		to.Name += spaces[:max-len(to.Name)]
 		//constrain help text
-		h := constrain(o.opts[i].help, helpWidth)
-		lines := strings.Split(h, "\n")
+		help := itemHelp(o.opts[i], helpWidth)
+		//add a margin
+		lines := strings.Split(help, "\n")
 		for i, l := range lines {
 			if i > 0 {
 				lines[i] = spaces + l
@@ -167,88 +258,26 @@ func convert(o *Opts) *data {
 		i++
 	}
 
+	//convert error to string
 	err := ""
 	if o.erred != nil {
 		err = o.erred.Error()
 	}
 
 	return &data{
+		datum: datum{
+			Name: name,
+			Help: o.help,
+			Pad:  pad,
+		},
 		Args:    args,
 		ArgList: arglist,
 		Opts:    opts,
 		Subcmds: subs,
 		Order:   o.order,
-		Name:    name,
 		Version: o.version,
 		Repo:    o.repo,
 		Author:  o.author,
-		Pad:     pad,
 		ErrMsg:  err,
 	}
-}
-
-func (o *Opts) Help() string {
-	var err error
-
-	//last ditch effort at finding the program name
-	root := o
-	for root.parent != nil {
-		root = root.parent
-	}
-	if root.name == "" {
-		if exe, err := osext.Executable(); err == nil {
-			_, root.name = path.Split(exe)
-		} else {
-			root.name = "main"
-		}
-	}
-
-	//convert Opts into template data
-	tf := convert(o)
-
-	//begin
-	t := template.New(o.name)
-
-	t = t.Funcs(map[string]interface{}{
-		//reimplementation of "template" except with dynamic name
-		"templ": func(name string, data interface{}) (string, error) {
-			b := &bytes.Buffer{}
-			err = t.ExecuteTemplate(b, name, data)
-			if err != nil {
-				return "", err
-			}
-			return b.String(), nil
-		},
-	})
-
-	//parse each template
-	for name, str := range DefaultTemplates {
-		//check for user template
-		if s, ok := o.templates[name]; ok {
-			str = s
-		}
-		t, err = t.Parse(fmt.Sprintf(`{{define "%s"}}%s{{end}}`, name, str))
-		if err != nil {
-			log.Fatalf("Template error: %s: %s", name, err)
-		}
-	}
-
-	//execute all templates
-	b := &bytes.Buffer{}
-	err = t.ExecuteTemplate(b, "help", tf)
-	if err != nil {
-		log.Fatalf("Template execute: %s", err)
-	}
-
-	out := b.String()
-
-	if o.PadAll {
-		lines := strings.Split(out, "\n")
-		for i, l := range lines {
-			lines[i] = tf.Pad + l
-		}
-		out = "\n" + strings.Join(lines, "\n") + "\n"
-	}
-
-	return out
 }

@@ -15,6 +15,8 @@ func main() {
 
 	c := Config{}
 
+	//in this case UseEnv() is equivalent to
+	//adding `env:"FOO"` and `env:"BAR"` tags
 	opts.New(&c).UseEnv().Parse()
 
 	fmt.Println(c.Foo)

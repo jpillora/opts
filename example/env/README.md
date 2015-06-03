@@ -1,6 +1,6 @@
 ## env example
 
-<tmpl,code=go:cat env.go>
+<tmpl,code=go:cat env_all.go>
 ``` go 
 package main
 
@@ -19,6 +19,8 @@ func main() {
 
 	c := Config{}
 
+	//in this case UseEnv() is equivalent to
+	//adding `env:"FOO"` and `env:"BAR"` tags
 	opts.New(&c).UseEnv().Parse()
 
 	fmt.Println(c.Foo)
@@ -29,9 +31,9 @@ func main() {
 ```
 $ export FOO=hello
 $ export BAR=world
-$ env
+$ go run env_all.go
 ```
-<tmpl,code:(export FOO=hello && export BAR=world && go run env.go)>
+<tmpl,code:(export FOO=hello && export BAR=world && go run env_all.go)>
 ``` plain 
 hello
 world
@@ -40,15 +42,16 @@ world
 ```
 $ env --help
 ```
-<tmpl,code:go run env.go --help>
+<tmpl,code:go run env_all.go --help>
 ``` plain 
 
-  Usage: env [options]
+  Usage: env_all [options]
   
   Options:
-  --foo, -f 
-  --bar, -b 
+  --foo, -f   env FOO
+  --bar, -b   env BAR
   --help, -h
   
+
 ```
 </tmpl>

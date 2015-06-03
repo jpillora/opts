@@ -17,7 +17,6 @@ type FooConfig struct {
 
 //config
 type Config struct {
-	//optionally store current command name
 	Cmd string `type:"cmdname"`
 	//subcommand (external struct)
 	Foo FooConfig
@@ -56,10 +55,15 @@ $ subcmds --help
 <tmpl,code:go run subcmds.go --help>
 ``` plain 
 
-  Usage: subcmds [options]
+  Usage: subcmds [options] <subcommand>
   
   Options:
   --help, -h
   
+  Subcommands:
+  * foo
+  * bar
+  
+
 ```
 </tmpl>

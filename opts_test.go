@@ -1,13 +1,26 @@
 package opts
 
 import (
+	"fmt"
 	"os"
+	"regexp"
 	"testing"
 )
 
+var spaces = regexp.MustCompile(`\ `)
+var newlines = regexp.MustCompile(`\n`)
+
+func readable(s string) string {
+	s = spaces.ReplaceAllString(s, ".")
+	s = newlines.ReplaceAllString(s, "\\n\n")
+	return s
+}
+
 func check(t *testing.T, a, b interface{}) {
 	if a != b {
-		t.Fatalf("got '%v', expected '%v'", a, b)
+		stra := readable(fmt.Sprintf("%v", a))
+		strb := readable(fmt.Sprintf("%v", b))
+		t.Fatalf("got '%v', expected '%v'", stra, strb)
 	}
 }
 
@@ -140,4 +153,58 @@ func TestIgnoreUnexported(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
+}
+
+func TestDocBefore(t *testing.T) {
+
+	//config
+	type Config struct {
+		Foo string
+		bar string
+	}
+
+	c := &Config{}
+
+	//flag example parse
+	o := New(c)
+
+	l := len(o.order)
+	o.DocBefore("usage", "mypara", "hello world this some text\n\n")
+	check(t, len(o.order), l+1)
+	check(t, o.Help(), `
+  hello world this some text
+  
+  Usage: opts [options]
+  
+  Options:
+  --foo 
+  --help
+  `+"\n")
+}
+
+func TestDocAfter(t *testing.T) {
+
+	//config
+	type Config struct {
+		Foo string
+		bar string
+	}
+
+	c := &Config{}
+
+	//flag example parse
+	o := New(c)
+
+	l := len(o.order)
+	o.DocAfter("usage", "mypara", "\nhello world this some text\n")
+	check(t, len(o.order), l+1)
+	check(t, o.Help(), `
+  Usage: opts [options]
+  
+  hello world this some text
+  
+  Options:
+  --foo 
+  --help
+  `+"\n")
 }
