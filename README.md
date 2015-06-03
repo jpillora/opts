@@ -162,13 +162,13 @@ This default assignment can be overruled with a `type` struct tags. For example 
 
 * **`arg`**
 
-	An argument (`arg`) field will appear in the usage and *mostly* be required (restricted to `string`s)
+	An argument (`arg`) field will appear in the usage and will be required if it does not have a default value set.
 
 	Restricted to fields with type `string`
 
 * **`arglist`**
 
-	An argument list (`arglist`) field will appear in the usage and *mostly* be required (restricted to `string`s)
+	An argument list (`arglist`) field will appear in the usage. Useful for a you allow any number number of arguments. For example file and directory targets.
 
 	* `min` - An integer representing the minimum number of args specified
 
