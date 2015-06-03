@@ -6,9 +6,9 @@
 
 Command-line parsing should be simple, `opts` tries to be as low friction as possible. In many cases, all you need is:
 
-`` go
+``` go
 opts.Parse(&foo)
-``
+```
 
 Under the covers, `opts` automatically creates `flag.FlagSet`s from your configuration structs using `pkg/reflect`. Given the following:
 
@@ -149,42 +149,42 @@ This default assignment can be overruled with a `type` struct tags. For example 
 
 #### `type` list and type specific properties
 
-**`opt`**
+* **`opt`**
 
-An option (`opt`) field will appear in the options list and by definition, be optional.
+	An option (`opt`) field will appear in the options list and by definition, be optional.
 
-* `short` - An alias or shortcut to this option (defaults to the first letter of the `name` property)
-* `env` - An environment variable to use to retrieve the default (**when `UseEnv()` is set** this defaults to `name` property converted to uppercase and underscores)
+	* `short` - An alias or shortcut to this option (defaults to the first letter of the `name` property)
+	* `env` - An environment variable to use to retrieve the default (**when `UseEnv()` is set** this defaults to `name` property converted to uppercase and underscores)
 
-Restricted to fields with type `int`,`string`,`bool`,`time.Duration` and `flag.Value`
+	Restricted to fields with type `int`,`string`,`bool`,`time.Duration` and `flag.Value`
 
-**`arg`**
+* **`arg`**
 
-An argument (`arg`) field will appear in the usage and *mostly* be required (restricted to `string`s)
+	An argument (`arg`) field will appear in the usage and *mostly* be required (restricted to `string`s)
 
-Restricted to fields with type `string`
+	Restricted to fields with type `string`
 
-**`arglist`**
+* **`arglist`**
 
-An argument list (`arglist`) field will appear in the usage and *mostly* be required (restricted to `string`s)
+	An argument list (`arglist`) field will appear in the usage and *mostly* be required (restricted to `string`s)
 
-* `min` - An integer representing the minimum number of args specified
+	* `min` - An integer representing the minimum number of args specified
 
-Restricted to fields with type `[]string`
+	Restricted to fields with type `[]string`
 
-**`subcmd`**
+* **`subcmd`**
 
-A subcommand is nested `opts.Opt` instance, so its fields behave in exactly the same way as the parent struct.
+	A subcommand is nested `opts.Opt` instance, so its fields behave in exactly the same way as the parent struct.
 
-You can access the options of a subcommand with `prog --prog-opt X subcmd --subcmd-opt Y`
+	You can access the options of a subcommand with `prog --prog-opt X subcmd --subcmd-opt Y`
 
-Restricted to fields with type `struct`
+	Restricted to fields with type `struct`
 
-**`cmdname`**
+* **`cmdname`**
 
-A special type which will assume the name of the selected subcommand
+	A special type which will assume the name of the selected subcommand
 
-Restricted to fields with type `string`
+	Restricted to fields with type `string`
 
 ### Todo
 
