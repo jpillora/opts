@@ -32,9 +32,9 @@ type Config struct {
 
 func main() {
 
-	c := &Config{}
+	c := Config{}
 
-	opts.Parse(c)
+	opts.Parse(&c)
 
 	fmt.Printf("%3.0f %s %d\n", c.Foo.Seconds(), c.Bar, c.Bazz)
 }

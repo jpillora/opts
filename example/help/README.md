@@ -16,11 +16,11 @@ type HelpConfig struct {
 
 func main() {
 
-	c := &HelpConfig{
+	c := HelpConfig{
 		Foo: "42",
 	}
 
-	opts.New(c).
+	opts.New(&c).
 		Name("help").
 		Version("1.0.0").
 		Repo("https://github.com/jpillora/foo").
@@ -57,5 +57,6 @@ $ help --help
   Read more:
     https://github.com/jpillora/foo
   
+
 ```
 </tmpl>
