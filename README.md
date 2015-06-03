@@ -2,15 +2,17 @@
 
 **A low friction command-line interface library for Go (Golang)**
 
+[![GoDoc](https://godoc.org/github.com/jpillora/opts?status.svg)](https://godoc.org/github.com/jpillora/opts)
+
 ### Overview
 
-Command-line parsing should be simple, `opts` tries to be as low friction as possible. In many cases, all you need is:
+Command-line parsing should be easy. We shouldn't be forced to keep our configuration in sync with our command-line flags. `opts` attempts solve this with the goal of being as low friction as possible:
 
 ``` go
 opts.Parse(&foo)
 ```
 
-Under the covers, `opts` automatically creates `flag.FlagSet`s from your configuration structs using `pkg/reflect`. Given the following:
+Internally, `opts` creates `flag.FlagSet`s from your configuration structs using `pkg/reflect`. So, given the following program:
 
 ``` go
 type FooConfig struct {
@@ -28,7 +30,7 @@ foo := FooConfig{
 opts.Parse(&foo)
 ```
 
-`opts` will *approximately* perform:
+`opts` would *approximately* perform:
 
 ``` go
 foo := FooConfig{}
@@ -40,7 +42,7 @@ set.DurationVar(&foo.Delta, 2 * time.Minute, "a duration")
 set.Parse(os.Args)
 ```
 
-And ofcourse, you get pretty `--help` output for free:
+And, you get pretty `--help` output:
 
 ```
 $ ./foo --help
@@ -117,7 +119,7 @@ $ ./myprog --help
 
 ### Struct Tag API
 
-`opts` relies on struct tags to "compile" your flag set. A struct field can any number of struct tag properties. These come in the form:
+`opts` relies on struct tags to "compile" your flag set. Since there are defaults in all cases however, `opts` use any struct as as a flag set, even with no struct tags defined. A struct field can contain any number of struct tag properties. These come in the form:
 
 ```
 A int `foo:"bar" ping:"pong"`
@@ -186,9 +188,18 @@ This default assignment can be overruled with a `type` struct tags. For example 
 
 	Restricted to fields with type `string`
 
+### Other projects
+
+Other CLI libraries which infer flags from struct tags:
+
+* https://github.com/jessevdk/go-flags is similar though it still could be simpler and more customizable.
+
 ### Todo
 
 * More tests
+* Option groups (Separate sets of options in `--help`)
+* Bash completion
+* Multiple short options `-aux` (Requires a non-`pkg/flag` parser)
 
 #### MIT License
 
