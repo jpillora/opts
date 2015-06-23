@@ -93,7 +93,7 @@ func New(config interface{}) *Opts {
 	return o
 }
 
-func fork(parent *Opts, c reflect.Value) *Opts {
+func fork(parent *Opts, val reflect.Value) *Opts {
 	//TODO allow order and template per subcmd
 	//for now, there is only the root
 	var order []string = nil
@@ -107,7 +107,7 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 	//instantiate
 	o := &Opts{
 		item: item{
-			val: c,
+			val: val,
 		},
 		parent: parent,
 		//each cmd/subcmd has its own set of names
@@ -124,17 +124,30 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 		PadWidth:  2,
 	}
 
-	t := c.Type()
-	k := t.Kind()
-	//must be pointer (meaningless to modify a copy of the struct)
-	if k != reflect.Ptr {
-		o.errorf("opts: %s should be a pointer to a struct", t.Name())
+	//all fields from val
+	if val.Type().Kind() != reflect.Ptr {
+		o.errorf("opts: %s should be a pointer to a struct", val.Type().Name())
 		return o
 	}
+	o.addFields(val.Elem())
 
-	c = c.Elem()
-	t = c.Type()
-	k = t.Kind()
+	//add help option
+	g := reflect.ValueOf(&o.internalOpts).Elem()
+	o.addOptArg(g.Type().Field(0), g.Field(0))
+
+	return o
+}
+
+func (o *Opts) addFields(c reflect.Value) *Opts {
+	t := c.Type()
+	k := t.Kind()
+	//deref pointer
+	if k == reflect.Ptr {
+		c = c.Elem()
+		t = c.Type()
+		k = t.Kind()
+	}
+
 	if k != reflect.Struct {
 		o.errorf("opts: %s should be a pointer to a struct (got %s)", t.Name(), k)
 		return o
@@ -151,7 +164,11 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 		k := sf.Type.Kind()
 		switch k {
 		case reflect.Ptr, reflect.Struct:
-			o.addSubcmd(sf, val)
+			if sf.Tag.Get("type") == "embedded" {
+				o.addFields(val)
+			} else {
+				o.addSubcmd(sf, val)
+			}
 		case reflect.Slice:
 			if sf.Type.Elem().Kind() != reflect.String {
 				o.errorf("arglist must be of type []string")
@@ -173,10 +190,6 @@ func fork(parent *Opts, c reflect.Value) *Opts {
 			return o
 		}
 	}
-
-	//add help option
-	g := reflect.ValueOf(&o.internalOpts).Elem()
-	o.addOptArg(g.Type().Field(0), g.Field(0))
 
 	return o
 }
