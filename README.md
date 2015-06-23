@@ -188,6 +188,10 @@ This default assignment can be overruled with a `type` struct tags. For example 
 
 	Restricted to fields with type `string`
 
+* **`embedded`**
+
+	A special type which causes the fields of struct to be used in the current struct. Useful if you want to extend existing structs with extra command-line options.
+
 ### Other projects
 
 Other CLI libraries which infer flags from struct tags:
