@@ -102,6 +102,9 @@ func fork(parent *Opts, val reflect.Value) *Opts {
 		order = make([]string, len(DefaultOrder))
 		copy(order, DefaultOrder)
 		tmpls = map[string]string{}
+	} else {
+		order = parent.order
+		tmpls = parent.templates
 	}
 
 	//instantiate
