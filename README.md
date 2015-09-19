@@ -7,14 +7,22 @@
 Command-line parsing should be easy. Use configuration structs:
 
 ``` go
-config := struct {
-	File  string
-	Lines int
-}{}
+package main
 
-opts.Parse(&config)
+import (
+	"fmt"
 
-fmt.Println(config)
+	"github.com/jpillora/opts"
+)
+
+func main() {
+	config := struct {
+		File  string `help:"file to load"`
+		Lines int    `help:"number of lines to show"`
+	}{}
+	opts.Parse(&config)
+	fmt.Println(config)
+}
 ```
 
 ```
