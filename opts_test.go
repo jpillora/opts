@@ -219,7 +219,7 @@ func TestDocBefore(t *testing.T) {
   Options:
   --foo
   --help
-`+"\n")
+`)
 }
 
 func TestDocAfter(t *testing.T) {
@@ -246,5 +246,5 @@ func TestDocAfter(t *testing.T) {
   Options:
   --foo
   --help
-`+"\n")
+`)
 }

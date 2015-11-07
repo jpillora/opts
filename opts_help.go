@@ -75,7 +75,7 @@ var DefaultTemplates = map[string]string{
 	//cmds
 	"cmds": "{{if .Cmds}}\nCommands:\n" +
 		`{{ range $sub := .Cmds}}{{template "cmd" $sub}}{{end}}{{end}}`,
-	"cmd": "* {{ .Name }}{{if .Help}} - {{ .Help }}{{end}}\n",
+	"cmd": "• {{ .Name }}{{if .Help}} - {{ .Help }}{{end}}\n",
 	//extras
 	"version": "{{if .Version}}\nVersion:\n{{.Pad}}{{.Version}}\n{{end}}",
 	"repo":    "{{if .Repo}}\nRead more:\n{{.Pad}}{{.Repo}}\n{{end}}",
@@ -158,7 +158,7 @@ func (o *Opts) Help() string {
 		for i, l := range lines {
 			lines[i] = tf.Pad + l
 		}
-		out = "\n" + strings.Join(lines, "\n") + "\n"
+		out = "\n" + strings.Join(lines, "\n")
 	}
 
 	out = trailingSpaces.ReplaceAllString(out, "")

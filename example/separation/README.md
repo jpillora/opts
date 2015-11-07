@@ -95,23 +95,24 @@ $ ./foo --help
 ```
 <tmpl,code: go build -ldflags "-X main.VERSION 0.2.6" -o foo && ./foo --help && rm foo>
 ``` plain 
+# github.com/jpillora/opts/example/separation
+link: warning: option -X main.VERSION 0.2.6 may not work in future releases; use -X main.VERSION=0.2.6
 
   Usage: foo [options]
-  
+
   Options:
   --ping, -p     default !
   --pong         default ?
-  --zip, -z    
-  --zop        
-  --help, -h   
+  --zip, -z
+  --zop
+  --help, -h
   --version, -v
-  
+
   Version:
     0.2.6
-  
+
   Read more:
     https://github.com/jpillora/opts
-  
 
 ```
 </tmpl>
