@@ -1,6 +1,6 @@
-## subcmds example
+## cmds example
 
-<tmpl,code=go:cat subcmds.go>
+<tmpl,code=go:cat cmds.go>
 ``` go 
 package main
 
@@ -18,9 +18,9 @@ type FooConfig struct {
 //config
 type Config struct {
 	Cmd string `type:"cmdname"`
-	//subcommand (external struct)
+	//command (external struct)
 	Foo FooConfig
-	//subcommand (inline struct)
+	//command (inline struct)
 	Bar struct {
 		Zip string
 		Zap string
@@ -40,9 +40,9 @@ func main() {
 ```
 </tmpl>
 ```
-$ subcmds bar --zip hello --zap world
+$ cmds bar --zip hello --zap world
 ```
-<tmpl,code:go run subcmds.go bar --zip hello --zap world>
+<tmpl,code:go run cmds.go bar --zip hello --zap world>
 ``` plain 
 bar
 hello
@@ -50,17 +50,17 @@ world
 ```
 </tmpl>
 ```
-$ subcmds --help
+$ cmds --help
 ```
-<tmpl,code:go run subcmds.go --help>
+<tmpl,code:go run cmds.go --help>
 ``` plain 
 
-  Usage: subcmds [options] <subcommand>
+  Usage: cmds [options] <command>
   
   Options:
   --help, -h
   
-  Subcommands:
+  Commands:
   * foo
   * bar
   

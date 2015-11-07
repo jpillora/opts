@@ -14,9 +14,9 @@ type FooConfig struct {
 //config
 type Config struct {
 	Cmd string `type:"cmdname"`
-	//subcommand (external struct)
+	//command (external struct)
 	Foo FooConfig
-	//subcommand (inline struct)
+	//command (inline struct)
 	Bar struct {
 		Zip string
 		Zap string
