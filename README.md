@@ -187,7 +187,7 @@ Other CLI libraries which infer flags from struct tags:
 ### Why
 
 Why yet another struct-based command-line library? I started this project [back in April](https://github.com/jpillora/opts/commit/b87563662e56b05fbcc326449db57a7761ef4d51)
-when the only thing around was `jessevdk/go-flags` and I wanted more customization. Now there is [tj/go-config](https://github.com/tj/go-config) and [alexflint/go-arg](https://github.com/alexflint/go-arg) and still, these don't allow nested structs (([commands](example/cmds/))) and customization help text (([customhelp](example/customhelp/))).
+when the only thing around was `jessevdk/go-flags` and I wanted more customization. Now there is [tj/go-config](https://github.com/tj/go-config) and [alexflint/go-arg](https://github.com/alexflint/go-arg) and still, these don't yet include [nested structs](example/cmds/) and [customizable help text](example/customhelp/).
 
 ### Todo
 
