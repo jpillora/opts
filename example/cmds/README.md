@@ -56,14 +56,13 @@ $ cmds --help
 ``` plain 
 
   Usage: cmds [options] <command>
-  
+
   Options:
   --help, -h
-  
+
   Commands:
-  * foo
-  * bar
-  
+  • foo
+  • bar
 
 ```
 </tmpl>

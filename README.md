@@ -103,11 +103,13 @@ $ ./foo --help
 
 ### Package API
 
-
+See [![GoDoc](https://godoc.org/github.com/jpillora/opts?status.svg)](https://godoc.org/github.com/jpillora/opts)
 
 ### Struct Tag API
 
-
+**opts** tries to set sane defaults so, for the most part, you'll get the desired behaviour
+by simply providing a configuration struct. These defaults can be overridden using the struct
+tag `key:"value"`s outlined below.
 
 #### **Common tags**
 
@@ -181,6 +183,11 @@ This default assignment can be overridden with a `type` struct tag. For example 
 Other CLI libraries which infer flags from struct tags:
 
 * https://github.com/jessevdk/go-flags is similar though it still could be simpler and more customizable.
+
+### Why
+
+Why yet another struct-based command-line library? I started this project [back in April](https://github.com/jpillora/opts/commit/b87563662e56b05fbcc326449db57a7761ef4d51)
+when the only thing around was `jessevdk/go-flags` and I wanted more customization. Now there is [tj/go-config](https://github.com/tj/go-config) and [alexflint/go-arg](https://github.com/alexflint/go-arg) and still, these don't allow nested structs (([commands](example/cmds/))) and customization help text (([customhelp](example/customhelp/))).
 
 ### Todo
 
