@@ -19,8 +19,8 @@ var VERSION = "0.0.0"
 func main() {
 	//configuration with defaults
 	c := lib.Config{
-		Ping: "!",
-		Pong: "?",
+		Ping: "hello",
+		Pong: "world",
 	}
 	//parse config, note the library version, and extract the
 	//repository link from the config package import path
@@ -90,7 +90,7 @@ func (f *Foo) Run() {
 
 
 ```
-$ go build -ldflags "-X main.VERSION 0.2.6" -o foo
+$ go build -ldflags "-X main.VERSION=0.2.6" -o foo
 $ ./foo --help
 ```
 <tmpl,code: go build -ldflags "-X main.VERSION 0.2.6" -o foo && ./foo --help && rm foo>
@@ -101,8 +101,8 @@ link: warning: option -X main.VERSION 0.2.6 may not work in future releases; use
   Usage: foo [options]
 
   Options:
-  --ping, -p     default !
-  --pong         default ?
+  --ping, -p     default hello
+  --pong         default world
   --zip, -z
   --zop
   --help, -h

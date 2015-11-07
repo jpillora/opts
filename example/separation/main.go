@@ -13,8 +13,8 @@ var VERSION = "0.0.0"
 func main() {
 	//configuration with defaults
 	c := lib.Config{
-		Ping: "!",
-		Pong: "?",
+		Ping: "hello",
+		Pong: "world",
 	}
 	//parse config, note the library version, and extract the
 	//repository link from the config package import path
