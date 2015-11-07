@@ -487,9 +487,9 @@ func (o *Opts) ParseArgs(args []string) *Opts {
 //it returns an error on failure
 func (o *Opts) Process(args []string) error {
 
-	//cannot be processed - already encountered error
+	//cannot be processed - already encountered error - programmer error
 	if o.erred != nil {
-		return o.erred
+		return fmt.Errorf("Process error: %s", o.erred)
 	}
 
 	//1. set config via JSON file
@@ -499,7 +499,8 @@ func (o *Opts) Process(args []string) error {
 			v := o.val.Interface() //*struct
 			err = json.Unmarshal(b, v)
 			if err != nil {
-				return fmt.Errorf("Invalid config file: %s", err)
+				o.erred = fmt.Errorf("Invalid config file: %s", err)
+				return errors.New(o.Help())
 			}
 		}
 	}
@@ -510,12 +511,14 @@ func (o *Opts) Process(args []string) error {
 	//pre-loop through the options and
 	//add shortnames and env names where possible
 	for _, opt := range o.opts {
-		short := opt.name[0:1]
-		if !o.optnames[short] {
-			opt.shortName = short
-			o.optnames[short] = true
+		//should generate shortname?
+		if len(opt.name) >= 3 && opt.shortName == "" {
+			//not already taken?
+			if s := opt.name[0:1]; !o.optnames[s] {
+				opt.shortName = s
+				o.optnames[s] = true
+			}
 		}
-
 		env := camel2const(opt.name)
 		if o.useEnv && (opt.envName == "" || opt.envName == "!") &&
 			opt.name != "help" && opt.name != "version" &&
@@ -578,7 +581,7 @@ func (o *Opts) Process(args []string) error {
 		o.internalOpts.Help = true
 	}
 
-	//internal opts
+	//internal opts (--help and --version)
 	if o.internalOpts.Help {
 		return errors.New(o.Help())
 	} else if o.internalOpts.Version {

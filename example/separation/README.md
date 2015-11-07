@@ -3,14 +3,14 @@
 *`main.go`*
 
 <tmpl,code=go:cat main.go>
-``` go 
+``` go
 package main
 
 import (
 	"log"
 
 	"github.com/jpillora/opts"
-	"github.com/jpillora/opts/example/separation/lib"
+	"github.com/jpillora/opts/example/separation/foo"
 )
 
 //set this via ldflags
@@ -18,35 +18,33 @@ var VERSION = "0.0.0"
 
 func main() {
 	//configuration with defaults
-	c := lib.Config{
+	c := foo.Config{
 		Ping: "hello",
 		Pong: "world",
 	}
 	//parse config, note the library version, and extract the
 	//repository link from the config package import path
 	opts.New(&c).
-		Name("foo"). //explicitly name (otherwise it will use the project name from the pkg import path)
+		Name("foo").
 		Version(VERSION).
-		PkgRepo().
+		PkgRepo(). //includes the infered URL to the package in the help text
 		Parse()
 	//construct a foo
-	foo, err := lib.NewFoo(c)
+	f, err := foo.New(c)
 	if err != nil {
 		log.Fatal(err)
 	}
 	//ready! run foo!
-	foo.Run()
+	f.Run()
 }
 ```
 </tmpl>
 
-*`lib/foo.go`*
+*`foo/foo.go`*
 
-<tmpl,code=go:cat lib/foo.go>
-``` go 
-package lib
-
-import "errors"
+<tmpl,code=go:cat foo/foo.go>
+``` go
+package foo
 
 //this Config struct can used both by opts to parse CLI input
 //and by library users who wish to use this code in their programs
@@ -58,12 +56,8 @@ type Config struct {
 }
 
 //use a Config value, not Config pointer.
-//this prevents modification from outside the library.
-func NewFoo(c Config) (*Foo, error) {
-	//validate config
-	if c.Zip < 7 {
-		return nil, errors.New("Zip too small!")
-	}
+//this prevents future modification from outside the library.
+func New(c Config) (*Foo, error) {
 	//ensure proper initialization of Foo
 	foo := &Foo{
 		c:    c,
@@ -89,14 +83,13 @@ func (f *Foo) Run() {
 </tmpl>
 
 
-```
+```sh
+# build program and set VERSION at compile time
 $ go build -ldflags "-X main.VERSION=0.2.6" -o foo
 $ ./foo --help
 ```
-<tmpl,code: go build -ldflags "-X main.VERSION 0.2.6" -o foo && ./foo --help && rm foo>
-``` plain 
-# github.com/jpillora/opts/example/separation
-link: warning: option -X main.VERSION 0.2.6 may not work in future releases; use -X main.VERSION=0.2.6
+<tmpl,code: go build -ldflags "-X main.VERSION=0.2.6" -o tmp && ./tmp --help && rm tmp>
+``` plain
 
   Usage: foo [options]
 
