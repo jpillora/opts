@@ -1,7 +1,7 @@
 ## env example
 
-<tmpl,code=go:cat env_all.go>
-``` go 
+<tmpl,code=go:cat env.go>
+``` go
 package main
 
 import (
@@ -31,10 +31,10 @@ func main() {
 ```
 $ export FOO=hello
 $ export BAR=world
-$ go run env_all.go
+$ go run env.go
 ```
-<tmpl,code:(export FOO=hello && export BAR=world && go run env_all.go)>
-``` plain 
+<tmpl,code:(export FOO=hello && export BAR=world && go run env.go)>
+``` plain
 hello
 world
 ```
@@ -42,16 +42,16 @@ world
 ```
 $ env --help
 ```
-<tmpl,code:go run env_all.go --help>
-``` plain 
+<tmpl,code:go run env.go --help>
+``` plain
 
-  Usage: env_all [options]
-  
+  Usage: env [options]
+
   Options:
   --foo, -f   env FOO
   --bar, -b   env BAR
   --help, -h
-  
+
 
 ```
 </tmpl>
