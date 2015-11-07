@@ -1,6 +1,4 @@
-package lib
-
-import "errors"
+package foo
 
 //this Config struct can used both by opts to parse CLI input
 //and by library users who wish to use this code in their programs
@@ -12,12 +10,8 @@ type Config struct {
 }
 
 //use a Config value, not Config pointer.
-//this prevents modification from outside the library.
-func NewFoo(c Config) (*Foo, error) {
-	//validate config
-	if c.Zip < 7 {
-		return nil, errors.New("Zip too small!")
-	}
+//this prevents future modification from outside the library.
+func New(c Config) (*Foo, error) {
 	//ensure proper initialization of Foo
 	foo := &Foo{
 		c:    c,
