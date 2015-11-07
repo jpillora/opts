@@ -6,6 +6,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strings"
 	"testing"
 )
 
@@ -125,7 +126,8 @@ func TestUnsupportedType(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected error")
 	}
-	check(t, err.Error(), "Struct field 'Bar' has unsupported type: interface")
+
+	check(t, strings.Contains(err.Error(), "has unsupported type: interface"), true)
 }
 
 func TestEnv(t *testing.T) {
