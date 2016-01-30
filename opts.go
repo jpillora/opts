@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+var flagValueType = reflect.TypeOf((*flag.Value)(nil)).Elem()
+
 //Opts is the main class, it contains
 //all parsing state for a single set of
 //arguments
@@ -194,6 +196,12 @@ func (o *Opts) addFields(c reflect.Value) *Opts {
 			} else {
 				o.addOptArg(sf, val)
 			}
+		case reflect.Interface:
+			if !sf.Type.Implements(flagValueType) {
+				o.errorf("Struct field '%s' interface type must implement flag.Value", sf.Name)
+				return o
+			}
+			o.addOptArg(sf, val)
 		default:
 			o.errorf("Struct field '%s' has unsupported type: %s", sf.Name, k)
 			return o
@@ -539,10 +547,11 @@ func (o *Opts) Process(args []string) error {
 		//3. set config via Go's pkg/flags
 		addr := opt.val.Addr().Interface()
 		switch addr := addr.(type) {
-		case flag.Value:
-			flagset.Var(addr, opt.name, "")
+		case *flag.Value:
+			fvalue := *addr
+			flagset.Var(fvalue, opt.name, "")
 			if opt.shortName != "" {
-				flagset.Var(addr, opt.shortName, "")
+				flagset.Var(fvalue, opt.shortName, "")
 			}
 		case *bool:
 			str2bool(envVal, addr)
