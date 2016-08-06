@@ -172,6 +172,10 @@ func (o *Opts) addFields(c reflect.Value) *Opts {
 			continue
 		}
 		sf := t.Field(i)
+		//ignore `opts:"-"`
+		if sf.Tag.Get("opts") == "-" {
+			continue
+		}
 		k := sf.Type.Kind()
 
 		if sf.Type.Implements(flagValueType) {
@@ -187,10 +191,16 @@ func (o *Opts) addFields(c reflect.Value) *Opts {
 			}
 		case reflect.Slice:
 			if sf.Type.Elem().Kind() != reflect.String {
-				o.errorf("arglist must be of type []string")
+				o.errorf("slice (list) types must be []string")
 				return o
 			}
-			o.addArgs(sf, val)
+			if sf.Tag.Get("type") == "commalist" {
+				o.addOptArg(sf, val)
+			} else if sf.Tag.Get("type") == "spacelist" {
+				o.addOptArg(sf, val)
+			} else {
+				o.addArgList(sf, val)
+			}
 		case reflect.Bool, reflect.String, reflect.Int, reflect.Int64:
 			if sf.Tag.Get("type") == "cmdname" {
 				if k != reflect.String {
@@ -251,7 +261,7 @@ func (o *Opts) addCmd(sf reflect.StructField, val reflect.Value) {
 	o.cmds[name] = sub
 }
 
-func (o *Opts) addArgs(sf reflect.StructField, val reflect.Value) {
+func (o *Opts) addArgList(sf reflect.StructField, val reflect.Value) {
 
 	if len(o.cmds) > 0 {
 		o.errorf("argslists and commands cannot be used together")
@@ -290,7 +300,16 @@ var durationType = reflect.TypeOf(time.Second)
 
 func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 
-	i := &item{val: val}
+	//assume opt, unless arg tag is present
+	t := sf.Tag.Get("type")
+	if t == "" {
+		t = "opt"
+	}
+
+	i := &item{
+		val:      val,
+		typeName: t,
+	}
 
 	//find name
 	i.name = sf.Tag.Get("name")
@@ -309,12 +328,6 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 		i.useEnv = true
 	}
 
-	//assume opt, unless arg tag is present
-	t := sf.Tag.Get("type")
-	if t == "" {
-		t = "opt"
-	}
-
 	//opt names cannot clash with each other
 	if o.optnames[i.name] {
 		o.errorf("option name '%s' already in use", i.name)
@@ -329,13 +342,15 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 	defstr := sf.Tag.Get("default")
 	if defstr != "" {
 		i.defstr = defstr
+	} else if val.Kind() == reflect.Slice {
+		i.defstr = ""
 	} else if def := val.Interface(); def != reflect.Zero(sf.Type).Interface() {
 		//not the zero-value, stringify!
 		i.defstr = fmt.Sprintf("%v", def)
 	}
 
 	switch t {
-	case "opt":
+	case "opt", "commalist", "spacelist":
 		//options can also set short names
 		if short := sf.Tag.Get("short"); short != "" {
 			if o.optnames[short] {
@@ -409,6 +424,24 @@ func (o *Opts) PkgAuthor() *Opts {
 		return o.errorf("Package author could not be infered")
 	}
 	o.Author(o.pkgauthor)
+	return o
+}
+
+//Set the padding width
+func (o *Opts) SetPadWidth(p int) *Opts {
+	o.PadWidth = p
+	return o
+}
+
+//Disable auto-padding
+func (o *Opts) DisablePadAll() *Opts {
+	o.PadAll = false
+	return o
+}
+
+//Set the line width (defaults to 72)
+func (o *Opts) SetLineWidth(l int) *Opts {
+	o.LineWidth = l
 	return o
 }
 
@@ -492,7 +525,7 @@ func (o *Opts) Process(args []string) error {
 
 	//cannot be processed - already encountered error - programmer error
 	if o.erred != nil {
-		return fmt.Errorf("Process error: %s", o.erred)
+		return fmt.Errorf("[opts] Process error: %s", o.erred)
 	}
 
 	//1. set config via JSON file
@@ -547,6 +580,19 @@ func (o *Opts) Process(args []string) error {
 			if opt.shortName != "" {
 				flagset.Var(addr, opt.shortName, "")
 			}
+		case *[]string:
+			sep := ""
+			switch opt.typeName {
+			case "commalist":
+				sep = ","
+			case "spacelist":
+				sep = " "
+			}
+			fv := &sepList{sep: sep, strs: addr}
+			flagset.Var(fv, opt.name, "")
+			if opt.shortName != "" {
+				flagset.Var(fv, opt.shortName, "")
+			}
 		case *bool:
 			str2bool(envVal, addr)
 			flagset.BoolVar(addr, opt.name, *addr, "")
@@ -571,7 +617,7 @@ func (o *Opts) Process(args []string) error {
 				flagset.DurationVar(addr, opt.shortName, *addr, "")
 			}
 		default:
-			return fmt.Errorf("Option '%s' has unsupported type", opt.name)
+			return fmt.Errorf("[opts] Option '%s' has unsupported type", opt.name)
 		}
 	}
 

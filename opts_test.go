@@ -23,12 +23,14 @@ func check(t *testing.T, a, b interface{}) {
 	if !reflect.DeepEqual(a, b) {
 		stra := readable(fmt.Sprintf("%v", a))
 		strb := readable(fmt.Sprintf("%v", b))
+		typea := reflect.ValueOf(a)
+		typeb := reflect.ValueOf(b)
 
 		extra := ""
 		if out, ok := diffstr(stra, strb); ok {
 			extra = "\n\n" + out
 		}
-		t.Fatalf("got '%v', expected '%v'%s", stra, strb, extra)
+		t.Fatalf("got '%v' (%s), expected '%v' (%s)%s", stra, typea.Kind(), strb, typeb.Kind(), extra)
 
 	}
 }
@@ -79,6 +81,23 @@ func TestSimple(t *testing.T) {
 	//check config is filled
 	check(t, c.Foo, "hello")
 	check(t, c.Bar, "world")
+}
+
+func TestList(t *testing.T) {
+	//config
+	type Config struct {
+		Foo []string `type:"commalist"`
+		Bar []string `type:"spacelist"`
+	}
+
+	c := &Config{}
+
+	//flag example parse
+	New(c).ParseArgs([]string{"--foo", "hello,world", "--bar", "ping pong"})
+
+	//check config is filled
+	check(t, c.Foo, []string{"hello", "world"})
+	check(t, c.Bar, []string{"ping", "pong"})
 }
 
 func TestSubCommand(t *testing.T) {
