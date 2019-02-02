@@ -21,6 +21,10 @@ type Helper interface {
 	Help() string
 }
 
+type Runner interface {
+	Run() error
+}
+
 type Builder interface {
 	AddSubCmd(name string, cmd Config) Builder
 	GetSubCmd(name string) Builder
@@ -41,11 +45,14 @@ type Builder interface {
 	UseEnv() Builder
 	Parse() Configured
 	ParseArgs(args []string) Configured
-	Process(args []string) (*Opts, []string, error)
+	process(args []string) (*Opts, []string, error)
 }
 
 type Configured interface {
 	Help() string
+	// Run() error
+	// IsRunner() bool
+	// Config() interface{}
 }
 
 //Opts is the main class, it contains
@@ -583,7 +590,7 @@ func (o *Opts) Parse() Configured {
 
 //ParseArgs with the provided arguments
 func (o *Opts) ParseArgs(args []string) Configured {
-	if sub, cmdname, err := o.Process(args); err != nil {
+	if sub, cmdname, err := o.process(args); err != nil {
 		fmt.Fprintf(os.Stderr, "cmd: '%s', err: %s\n", cmdname, err.Error())
 		_ = sub
 		os.Exit(1)
@@ -593,7 +600,7 @@ func (o *Opts) ParseArgs(args []string) Configured {
 
 //Process is the same as ParseArgs except
 //it returns an error on failure
-func (o *Opts) Process(args []string) (*Opts, []string, error) {
+func (o *Opts) process(args []string) (*Opts, []string, error) {
 	//cannot be processed - already encountered error - programmer error
 	if o.erred != nil {
 		return o, []string{}, fmt.Errorf("[opts] Process error: %s", o.erred)
@@ -720,7 +727,7 @@ func (o *Opts) Process(args []string) (*Opts, []string, error) {
 		a := args[0]
 		//matching command, use it
 		if sub, exists := o.cmds[a]; exists {
-			subo, cmdnames, err := sub.Process(args[1:])
+			subo, cmdnames, err := sub.process(args[1:])
 			//user wants name to be set
 			if o.cmdname != nil {
 				cmdname := a
