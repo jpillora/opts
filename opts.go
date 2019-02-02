@@ -21,6 +21,33 @@ type Helper interface {
 	Help() string
 }
 
+type Builder interface {
+	AddSubCmd(name string, cmd Config) Builder
+	GetSubCmd(name string) Builder
+	Parent() Builder
+	Name(name string) Builder
+	Version(version string) Builder
+	Repo(repo string) Builder
+	PkgRepo() Builder
+	Author(author string) Builder
+	PkgAuthor() Builder
+	SetPadWidth(p int) Builder
+	DisablePadAll() Builder
+	SetLineWidth(l int) Builder
+	DocBefore(target, newid, template string) Builder
+	DocAfter(target, newid, template string) Builder
+	DocSet(id, template string) Builder
+	ConfigPath(path string) Builder
+	UseEnv() Builder
+	Parse() Configured
+	ParseArgs(args []string) Configured
+	Process(args []string) (*Opts, []string, error)
+}
+
+type Configured interface {
+	Help() string
+}
+
 //Opts is the main class, it contains
 //all parsing state for a single set of
 //arguments
@@ -78,7 +105,7 @@ type item struct {
 }
 
 //New creates a new Opts instance
-func New(config interface{}) *Opts {
+func New(config interface{}) Builder {
 	v := reflect.ValueOf(config)
 	//nil parent -> root command
 	o := fork(nil, v)
@@ -103,7 +130,7 @@ func New(config interface{}) *Opts {
 }
 
 //Parse(&config) is shorthand for New(&config).Parse()
-func Parse(config interface{}) *Opts {
+func Parse(config interface{}) Configured {
 	return New(config).Parse()
 }
 
@@ -382,7 +409,7 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 }
 
 //AddSubCmd and return the orginal opts
-func (o *Opts) AddSubCmd(name string, cmd Config) *Opts {
+func (o *Opts) AddSubCmd(name string, cmd Config) Builder {
 	if o.arglist != nil {
 		o.errorf("argslists and commands cannot be used together")
 		panic(o.erred)
@@ -406,7 +433,7 @@ func (o *Opts) AddSubCmd(name string, cmd Config) *Opts {
 }
 
 //GetSubCmd used to get a dynamic subcommand inorder to add subcmds to it.
-func (o *Opts) GetSubCmd(name string) *Opts {
+func (o *Opts) GetSubCmd(name string) Builder {
 	sub, exists := o.cmds[name]
 	if !exists {
 		o.errorf("no command exists with name '%s'", name)
@@ -415,19 +442,19 @@ func (o *Opts) GetSubCmd(name string) *Opts {
 	return sub
 }
 
-func (o *Opts) Parent() *Opts {
+func (o *Opts) Parent() Builder {
 	return o.parent
 }
 
 //Name sets the name of the program
-func (o *Opts) Name(name string) *Opts {
+func (o *Opts) Name(name string) Builder {
 	o.name = name
 	return o
 }
 
 //Version sets the version of the program
 //and renders the 'version' template in the help text
-func (o *Opts) Version(version string) *Opts {
+func (o *Opts) Version(version string) Builder {
 	//add version option
 	g := reflect.ValueOf(&o.internalOpts).Elem()
 	o.addOptArg(g.Type().Field(1), g.Field(1))
@@ -437,7 +464,7 @@ func (o *Opts) Version(version string) *Opts {
 
 //Repo sets the repository link of the program
 //and renders the 'repo' template in the help text
-func (o *Opts) Repo(repo string) *Opts {
+func (o *Opts) Repo(repo string) Builder {
 	o.repo = repo
 	return o
 }
@@ -445,7 +472,7 @@ func (o *Opts) Repo(repo string) *Opts {
 //PkgRepo infers the repository link of the program
 //from the package import path of the struct (So note,
 //this will not work for 'main' packages)
-func (o *Opts) PkgRepo() *Opts {
+func (o *Opts) PkgRepo() Builder {
 	if o.pkgrepo == "" {
 		return o.errorf("Package repository could not be infered")
 	}
@@ -455,7 +482,7 @@ func (o *Opts) PkgRepo() *Opts {
 
 //Author sets the author of the program
 //and renders the 'author' template in the help text
-func (o *Opts) Author(author string) *Opts {
+func (o *Opts) Author(author string) Builder {
 	o.author = author
 	return o
 }
@@ -463,7 +490,7 @@ func (o *Opts) Author(author string) *Opts {
 //PkgRepo infers the repository link of the program
 //from the package import path of the struct (So note,
 //this will not work for 'main' packages)
-func (o *Opts) PkgAuthor() *Opts {
+func (o *Opts) PkgAuthor() Builder {
 	if o.pkgrepo == "" {
 		return o.errorf("Package author could not be infered")
 	}
@@ -472,30 +499,30 @@ func (o *Opts) PkgAuthor() *Opts {
 }
 
 //Set the padding width
-func (o *Opts) SetPadWidth(p int) *Opts {
+func (o *Opts) SetPadWidth(p int) Builder {
 	o.PadWidth = p
 	return o
 }
 
 //Disable auto-padding
-func (o *Opts) DisablePadAll() *Opts {
+func (o *Opts) DisablePadAll() Builder {
 	o.PadAll = false
 	return o
 }
 
 //Set the line width (defaults to 72)
-func (o *Opts) SetLineWidth(l int) *Opts {
+func (o *Opts) SetLineWidth(l int) Builder {
 	o.LineWidth = l
 	return o
 }
 
 //DocBefore inserts a text block before the specified template
-func (o *Opts) DocBefore(target, newid, template string) *Opts {
+func (o *Opts) DocBefore(target, newid, template string) Builder {
 	return o.docOffset(0, target, newid, template)
 }
 
 //DocAfter inserts a text block after the specified template
-func (o *Opts) DocAfter(target, newid, template string) *Opts {
+func (o *Opts) DocAfter(target, newid, template string) Builder {
 	return o.docOffset(1, target, newid, template)
 }
 
@@ -521,7 +548,7 @@ func (o *Opts) docOffset(offset int, target, newid, template string) *Opts {
 }
 
 //DecSet replaces the specified template
-func (o *Opts) DocSet(id, template string) *Opts {
+func (o *Opts) DocSet(id, template string) Builder {
 	if _, ok := DefaultTemplates[id]; !ok {
 		if _, ok := o.templates[id]; !ok {
 			o.errorf("template does not exist: %s", id)
@@ -535,7 +562,7 @@ func (o *Opts) DocSet(id, template string) *Opts {
 //ConfigPath defines a path to a JSON file which matches
 //the structure of the provided config. Environment variables
 //override JSON Config variables.
-func (o *Opts) ConfigPath(path string) *Opts {
+func (o *Opts) ConfigPath(path string) Builder {
 	o.cfgPath = path
 	return o
 }
@@ -544,18 +571,18 @@ func (o *Opts) ConfigPath(path string) *Opts {
 //all struct fields, the name of the field is converted
 //into an environment variable with the transform
 //`FooBar` -> `FOO_BAR`.
-func (o *Opts) UseEnv() *Opts {
+func (o *Opts) UseEnv() Builder {
 	o.useEnv = true
 	return o
 }
 
 //Parse with os.Args
-func (o *Opts) Parse() *Opts {
+func (o *Opts) Parse() Configured {
 	return o.ParseArgs(os.Args[1:])
 }
 
 //ParseArgs with the provided arguments
-func (o *Opts) ParseArgs(args []string) *Opts {
+func (o *Opts) ParseArgs(args []string) Configured {
 	if sub, cmdname, err := o.Process(args); err != nil {
 		fmt.Fprintf(os.Stderr, "cmd: '%s', err: %s\n", cmdname, err.Error())
 		_ = sub

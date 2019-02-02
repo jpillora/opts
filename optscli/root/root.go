@@ -9,6 +9,6 @@ type root struct {
 
 var rootOpt = opts.New(&root{})
 
-func Singleton() *opts.Opts {
+func Singleton() opts.Builder {
 	return rootOpt
 }
