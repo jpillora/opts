@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"path"
 	"regexp"
 	"strings"
 	"text/template"
-
-	"github.com/kardianos/osext"
 )
 
 //data is only used for templating below
@@ -95,7 +94,7 @@ func (o *Opts) Help() string {
 		root = root.parent
 	}
 	if root.name == "" {
-		if exe, err := osext.Executable(); err == nil {
+		if exe, err := os.Executable(); err == nil {
 			_, root.name = path.Split(exe)
 		} else {
 			root.name = "main"
