@@ -15,6 +15,12 @@ import (
 
 var flagValueType = reflect.TypeOf((*flag.Value)(nil)).Elem()
 
+type Config interface{}
+
+type Helper interface {
+	Help() string
+}
+
 //Opts is the main class, it contains
 //all parsing state for a single set of
 //arguments
@@ -375,6 +381,44 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 	}
 }
 
+//AddSubCmd and return the orginal opts
+func (o *Opts) AddSubCmd(name string, cmd Config) *Opts {
+	if o.arglist != nil {
+		o.errorf("argslists and commands cannot be used together")
+		panic(o.erred)
+	}
+	if _, exists := o.cmds[name]; exists {
+		o.errorf("command already exists with name '%s'. Maybe in struct or dynamic", name)
+		panic(o.erred)
+	}
+	val := reflect.ValueOf(cmd)
+	if val.Kind() != reflect.Ptr {
+		o.errorf("cmd must be a ptr. Got %T", cmd)
+		panic(o.erred)
+	}
+	sub := fork(o, val)
+	sub.name = name
+	if helper, ok := cmd.(Helper); ok {
+		sub.help = helper.Help()
+	}
+	o.cmds[name] = sub
+	return o
+}
+
+//GetSubCmd used to get a dynamic subcommand inorder to add subcmds to it.
+func (o *Opts) GetSubCmd(name string) *Opts {
+	sub, exists := o.cmds[name]
+	if !exists {
+		o.errorf("no command exists with name '%s'", name)
+		panic(o.erred)
+	}
+	return sub
+}
+
+func (o *Opts) Parent() *Opts {
+	return o.parent
+}
+
 //Name sets the name of the program
 func (o *Opts) Name(name string) *Opts {
 	o.name = name
@@ -512,8 +556,9 @@ func (o *Opts) Parse() *Opts {
 
 //ParseArgs with the provided arguments
 func (o *Opts) ParseArgs(args []string) *Opts {
-	if err := o.Process(args); err != nil {
-		fmt.Fprintf(os.Stderr, err.Error()+"\n")
+	if sub, cmdname, err := o.Process(args); err != nil {
+		fmt.Fprintf(os.Stderr, "cmd: '%s', err: %s\n", cmdname, err.Error())
+		_ = sub
 		os.Exit(1)
 	}
 	return o
@@ -521,13 +566,11 @@ func (o *Opts) ParseArgs(args []string) *Opts {
 
 //Process is the same as ParseArgs except
 //it returns an error on failure
-func (o *Opts) Process(args []string) error {
-
+func (o *Opts) Process(args []string) (*Opts, []string, error) {
 	//cannot be processed - already encountered error - programmer error
 	if o.erred != nil {
-		return fmt.Errorf("[opts] Process error: %s", o.erred)
+		return o, []string{}, fmt.Errorf("[opts] Process error: %s", o.erred)
 	}
-
 	//1. set config via JSON file
 	if o.cfgPath != "" {
 		b, err := ioutil.ReadFile(o.cfgPath)
@@ -536,14 +579,12 @@ func (o *Opts) Process(args []string) error {
 			err = json.Unmarshal(b, v)
 			if err != nil {
 				o.erred = fmt.Errorf("Invalid config file: %s", err)
-				return errors.New(o.Help())
+				return o, []string{}, errors.New(o.Help())
 			}
 		}
 	}
-
 	flagset := flag.NewFlagSet(o.name, flag.ContinueOnError)
 	flagset.SetOutput(ioutil.Discard)
-
 	//pre-loop through the options and
 	//add shortnames and env names where possible
 	for _, opt := range o.opts {
@@ -562,11 +603,9 @@ func (o *Opts) Process(args []string) error {
 			opt.envName = env
 		}
 	}
-
 	for _, opt := range o.opts {
 		// TODO remove debug
 		// log.Printf("parse prepare option: %s", opt.name)
-
 		//2. set config via environment
 		envVal := ""
 		if opt.useEnv || o.useEnv {
@@ -617,10 +656,9 @@ func (o *Opts) Process(args []string) error {
 				flagset.DurationVar(addr, opt.shortName, *addr, "")
 			}
 		default:
-			return fmt.Errorf("[opts] Option '%s' has unsupported type", opt.name)
+			return o, []string{}, fmt.Errorf("[opts] Option '%s' has unsupported type", opt.name)
 		}
 	}
-
 	// log.Printf("parse %+v", args)
 	//set user config
 	err := flagset.Parse(args)
@@ -629,15 +667,14 @@ func (o *Opts) Process(args []string) error {
 		o.erred = err
 		o.internalOpts.Help = true
 	}
-
 	//internal opts (--help and --version)
 	if o.internalOpts.Help {
-		return errors.New(o.Help())
+		fmt.Println(o.Help())
+		os.Exit(0)
 	} else if o.internalOpts.Version {
 		fmt.Println(o.version)
 		os.Exit(0)
 	}
-
 	//fill each individual arg
 	args = flagset.Args()
 	for i, argument := range o.args {
@@ -648,40 +685,41 @@ func (o *Opts) Process(args []string) error {
 		} else if argument.defstr == "" {
 			//not-set and no default!
 			o.erred = fmt.Errorf("Argument #%d '%s' has no default value", i+1, argument.name)
-			return errors.New(o.Help())
+			return o, []string{}, errors.New(o.Help())
 		}
 	}
-
 	//use command? peek at args
 	if len(o.cmds) > 0 && len(args) > 0 {
 		a := args[0]
 		//matching command, use it
 		if sub, exists := o.cmds[a]; exists {
+			subo, cmdnames, err := sub.Process(args[1:])
 			//user wants name to be set
 			if o.cmdname != nil {
-				o.cmdname.SetString(a)
+				cmdname := a
+				for i := len(cmdnames) - 1; i >= 0; i-- {
+					cmdname = cmdname + "." + cmdnames[i]
+				}
+				o.cmdname.SetString(cmdname)
 			}
-			return sub.Process(args[1:])
+			return subo, append(cmdnames, a), err
 		}
 	}
-
 	//fill arglist? assign remaining as slice
 	if o.arglist != nil {
 		if len(args) < o.arglist.min {
 			o.erred = fmt.Errorf("Too few arguments (expected %d, got %d)", o.arglist.min, len(args))
-			return errors.New(o.Help())
+			return o, []string{}, errors.New(o.Help())
 		}
 		o.arglist.val.Set(reflect.ValueOf(args))
 		args = nil
 	}
-
 	//we *should* have consumed all args at this point.
 	//this prevents:  ./foo --bar 42 -z 21 ping --pong 7
 	//where --pong 7 is ignored
 	if len(args) != 0 {
 		o.erred = fmt.Errorf("Unexpected arguments: %+v", args)
-		return errors.New(o.Help())
+		return o, []string{}, errors.New(o.Help())
 	}
-
-	return nil
+	return o, []string{}, nil
 }
