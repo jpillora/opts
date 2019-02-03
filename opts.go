@@ -50,16 +50,15 @@ type Builder interface {
 
 type Configured interface {
 	Help() string
-	// Run() error
-	// IsRunner() bool
-	// Config() interface{}
+	Run() error
+	IsRunner() bool
+	Config() Config
 }
 
 //Opts is the main class, it contains
 //all parsing state for a single set of
 //arguments
 type Opts struct {
-	//embed item since an Opts can also be an item
 	item
 	parent       *Opts
 	cmds         map[string]*Opts
@@ -415,6 +414,29 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 	}
 }
 
+// Config returns the struct, eg the one passed to New, AddSubCmd or a sub command
+func (o *Opts) Config() Config {
+	return o.item.val.Interface()
+}
+
+// IsRunner returns true if the struct implements the Runner interface
+func (o *Opts) IsRunner() bool {
+	_, ok := o.Config().(Runner)
+	return ok
+}
+
+// Run calls Run on the struct. If the struct isn't a runner the help is printed and program exists
+// The error return is from the struct's run command.
+func (o *Opts) Run() error {
+	cmd := o.item.val.Interface()
+	runner, ok := cmd.(Runner)
+	if !ok {
+		fmt.Fprintf(os.Stderr, "'%s' is not runable\n%s", o.name, o.Help())
+		os.Exit(1)
+	}
+	return runner.Run()
+}
+
 //AddSubCmd and return the orginal opts
 func (o *Opts) AddSubCmd(name string, cmd Config) Builder {
 	if o.arglist != nil {
@@ -594,8 +616,10 @@ func (o *Opts) ParseArgs(args []string) Configured {
 		fmt.Fprintf(os.Stderr, "cmd: '%s', err: %s\n", cmdname, err.Error())
 		_ = sub
 		os.Exit(1)
+	} else {
+		return sub
 	}
-	return o
+	return nil
 }
 
 //Process is the same as ParseArgs except
