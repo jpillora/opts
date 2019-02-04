@@ -19,7 +19,7 @@ type Config struct {
 	//command (inline struct)
 	Bar struct {
 		Zip string `short:"-"`
-		Zap string
+		Zap string `predict:"files"`
 	}
 }
 
@@ -27,7 +27,7 @@ func main() {
 
 	c := Config{}
 
-	opts.New(&c).Version("sadf").Complete("cmds").Parse()
+	opts.New(&c).Version("sadf").Complete("completiontest").Parse()
 
 	fmt.Println(c.Cmd)
 	fmt.Println(c.Bar.Zip)

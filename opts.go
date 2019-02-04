@@ -11,6 +11,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/posener/complete/cmd/install"
+
+	"github.com/posener/complete"
 )
 
 var flagValueType = reflect.TypeOf((*flag.Value)(nil)).Elem()
@@ -25,10 +29,17 @@ type Runner interface {
 	Run() error
 }
 
+type Predictable interface {
+	flag.Value
+	complete.Predictor
+}
+
 type Builder interface {
 	AddSubCmd(name string, cmd Config) Builder
+	SubCmd(name string, cmd Config) Builder
 	GetSubCmd(name string) Builder
 	Parent() Builder
+	Complete(name string) Builder
 	Name(name string) Builder
 	Version(version string) Builder
 	Repo(repo string) Builder
@@ -62,6 +73,9 @@ type Opts struct {
 	item
 	parent       *Opts
 	cmds         map[string]*Opts
+	completeCom  *complete.Complete
+	completeCmd  complete.Command
+	completeExec string
 	opts         []*item
 	args         []*item
 	arglist      *argumentlist
@@ -71,7 +85,7 @@ type Opts struct {
 	templates    map[string]string
 	internalOpts struct {
 		//pretend these are in the user struct :)
-		Help, Version bool
+		Help, Version, InstallCompletetion, UninstallCompletetion bool
 	}
 	cfgPath               string
 	erred                 error
@@ -101,6 +115,7 @@ type argumentlist struct {
 //an opt item
 type item struct {
 	val       reflect.Value
+	sf        reflect.StructField
 	name      string
 	shortName string
 	envName   string
@@ -135,6 +150,43 @@ func New(config interface{}) Builder {
 	return o
 }
 
+func secondPass(o2 *Opts) {
+	var recurse func(or *Opts)
+	recurse = func(or *Opts) {
+		for _, opt := range or.opts {
+			//should generate shortname?
+			if len(opt.name) >= 3 && opt.sf.Tag.Get("short") != "-" && opt.shortName == "" {
+				Log("adding short for %s\n", opt.name)
+				//not already taken?
+				if s := opt.name[0:1]; !or.optnames[s] {
+					opt.shortName = s
+					or.optnames[s] = true
+					Log("'%s' %s %+v\n", s, opt.name, or.completeCmd.Flags["--"+opt.name])
+					pre := or.completeCmd.Flags["--"+opt.name]
+					or.completeCmd.Flags["-"+s] = pre
+				}
+			}
+		}
+		for _, node := range or.cmds {
+			recurse(node)
+		}
+	}
+	recurse(o2)
+	//
+	Log("completeExec '%s'\n", o2.completeExec)
+	if o2.completeExec != "" {
+		o2.completeCom = complete.New(o2.completeExec, o2.completeCmd)
+		var recurse func(or *Opts)
+		recurse = func(or *Opts) {
+			for name, node := range or.cmds {
+				or.completeCmd.Sub[name] = node.completeCmd
+				recurse(node)
+			}
+		}
+		recurse(o2)
+	}
+}
+
 //Parse(&config) is shorthand for New(&config).Parse()
 func Parse(config interface{}) Configured {
 	return New(config).Parse()
@@ -153,7 +205,6 @@ func fork(parent *Opts, val reflect.Value) *Opts {
 		order = parent.order
 		tmpls = parent.templates
 	}
-
 	//instantiate
 	o := &Opts{
 		item: item{
@@ -172,19 +223,22 @@ func fork(parent *Opts, val reflect.Value) *Opts {
 		LineWidth: 72,
 		PadAll:    true,
 		PadWidth:  2,
+		completeCmd: complete.Command{
+			Sub:         complete.Commands{},
+			Flags:       complete.Flags{},
+			GlobalFlags: complete.Flags{},
+			// Args:
+		},
 	}
-
 	//all fields from val
 	if val.Type().Kind() != reflect.Ptr {
 		o.errorf("opts: %s should be a pointer to a struct", val.Type().Name())
 		return o
 	}
 	o.addFields(val.Elem())
-
 	//add help option
 	g := reflect.ValueOf(&o.internalOpts).Elem()
 	o.addOptArg(g.Type().Field(0), g.Field(0))
-
 	return o
 }
 
@@ -197,12 +251,10 @@ func (o *Opts) addFields(c reflect.Value) *Opts {
 		t = c.Type()
 		k = t.Kind()
 	}
-
 	if k != reflect.Struct {
 		o.errorf("opts: %s should be a pointer to a struct (got %s)", t.Name(), k)
 		return o
 	}
-
 	//parse struct fields
 	for i := 0; i < c.NumField(); i++ {
 		val := c.Field(i)
@@ -271,12 +323,10 @@ func (o *Opts) errorf(format string, args ...interface{}) *Opts {
 }
 
 func (o *Opts) addCmd(sf reflect.StructField, val reflect.Value) {
-
 	if o.arglist != nil {
 		o.errorf("argslists and commands cannot be used together")
 		return
 	}
-
 	//requires address
 	switch sf.Type.Kind() {
 	case reflect.Ptr:
@@ -288,11 +338,11 @@ func (o *Opts) addCmd(sf reflect.StructField, val reflect.Value) {
 	case reflect.Struct:
 		val = val.Addr()
 	}
-
 	name := sf.Tag.Get("name")
 	if name == "" || name == "!" {
 		name = camel2dash(sf.Name) //default to struct field name
 	}
+	// o.complete.Sub[name] =
 	// log.Printf("define cmd: %s =====", subname)
 	sub := fork(o, val)
 	sub.name = name
@@ -328,6 +378,7 @@ func (o *Opts) addArgList(sf reflect.StructField, val reflect.Value) {
 	o.arglist = &argumentlist{
 		item: item{
 			val:  val,
+			sf:   sf,
 			name: name,
 			help: sf.Tag.Get("help"),
 		},
@@ -337,46 +388,41 @@ func (o *Opts) addArgList(sf reflect.StructField, val reflect.Value) {
 
 var durationType = reflect.TypeOf(time.Second)
 
-func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
-
+func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) *item {
 	//assume opt, unless arg tag is present
 	t := sf.Tag.Get("type")
 	if t == "" {
 		t = "opt"
 	}
-
+	//
 	i := &item{
 		val:      val,
+		sf:       sf,
 		typeName: t,
 	}
-
 	//find name
 	i.name = sf.Tag.Get("name")
 	if i.name == "" {
 		i.name = camel2dash(sf.Name) //default to struct field name
 	}
-
 	//specific environment name
 	i.envName = sf.Tag.Get("env")
 	if i.envName != "" {
 		if o.envnames[i.envName] {
 			o.errorf("option env name '%s' already in use", i.name)
-			return
+			return nil
 		}
 		o.envnames[i.envName] = true
 		i.useEnv = true
 	}
-
 	//opt names cannot clash with each other
 	if o.optnames[i.name] {
 		o.errorf("option name '%s' already in use", i.name)
-		return
+		return nil
 	}
 	o.optnames[i.name] = true
-
 	//get help text
 	i.help = sf.Tag.Get("help")
-
 	//the **displayed** default, use 'default' tag, otherwise infer
 	defstr := sf.Tag.Get("default")
 	if defstr != "" {
@@ -387,17 +433,49 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 		//not the zero-value, stringify!
 		i.defstr = fmt.Sprintf("%v", def)
 	}
-
+	//
 	switch t {
 	case "opt", "commalist", "spacelist":
 		//options can also set short names
-		if short := sf.Tag.Get("short"); short != "" {
+		var predictor complete.Predictor
+		// if p, ok := o.val.Interface().(complete.Predictor); ok {
+		// 	predictor = p
+		// }
+		predict := sf.Tag.Get("predict")
+		if pable, ok := val.Interface().(Predictable); ok {
+			if predict != "" {
+				panic("predict tag set on Predictable field " + i.name)
+			}
+			predictor = pable
+		} else {
+			switch {
+			case predict == "":
+				predictor = complete.PredictAnything
+			case predict == "any":
+				predictor = complete.PredictAnything
+			case predict == "none":
+				predictor = complete.PredictNothing
+			case predict == "dirs":
+				predictor = complete.PredictDirs("*")
+			case predict == "files":
+				predictor = complete.PredictFiles("*")
+			case strings.HasPrefix(predict, "dirs:"):
+				predictor = complete.PredictDirs(predict[len("dirs:"):])
+			case strings.HasPrefix(predict, "files:"):
+				predictor = complete.PredictFiles(predict[len("files:"):])
+			default:
+				panic("bad predict '" + predict + "'")
+			}
+		}
+		o.completeCmd.Flags["--"+i.name] = predictor
+		if short := sf.Tag.Get("short"); short != "" && short != "-" {
 			if o.optnames[short] {
 				o.errorf("option short name '%s' already in use", short)
-				return
+				return nil
 			} else {
 				o.optnames[i.shortName] = true
 				i.shortName = short
+				o.completeCmd.Flags["-"+i.shortName] = predictor
 			}
 		}
 		// log.Printf("define option: %s %s", name, sf.Type)
@@ -406,12 +484,13 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 		//TODO allow other types in 'arg' fields
 		if sf.Type.Kind() != reflect.String {
 			o.errorf("arg '%s' type must be a string", i.name)
-			return
+			return nil
 		}
 		o.args = append(o.args, i)
 	default:
 		o.errorf("Invalid optype: %s", t)
 	}
+	return i
 }
 
 // Config returns the struct, eg the one passed to New, AddSubCmd or a sub command
@@ -435,6 +514,12 @@ func (o *Opts) Run() error {
 		os.Exit(1)
 	}
 	return runner.Run()
+}
+
+//SubCmd add a subcmd and return new subcmd opt
+func (o *Opts) SubCmd(name string, cmd Config) Builder {
+	o.AddSubCmd(name, cmd)
+	return o.GetSubCmd(name)
 }
 
 //AddSubCmd and return the orginal opts
@@ -471,8 +556,31 @@ func (o *Opts) GetSubCmd(name string) Builder {
 	return sub
 }
 
+// Parent returns the parent opts
 func (o *Opts) Parent() Builder {
 	return o.parent
+}
+
+// Complete add --install and --uninstall to manage shell completions
+// The name in the exec name this is completing, should only be used on a root opts
+func (o *Opts) Complete(name string) Builder {
+	Log("Complete '%s'\n", name)
+	o.completeExec = name
+	in := reflect.ValueOf(&o.internalOpts).Elem()
+	// un/install
+	itm1 := o.addOptArg(in.Type().Field(2), in.Field(2))
+	itm2 := o.addOptArg(in.Type().Field(3), in.Field(3))
+	if !o.optnames["i"] {
+		o.optnames["i"] = true
+		itm1.shortName = "i"
+		o.completeCmd.Flags["-i"] = complete.PredictNothing
+	}
+	if !o.optnames["u"] {
+		o.optnames["u"] = true
+		itm2.shortName = "u"
+		o.completeCmd.Flags["-u"] = complete.PredictNothing
+	}
+	return o
 }
 
 //Name sets the name of the program
@@ -486,8 +594,13 @@ func (o *Opts) Name(name string) Builder {
 func (o *Opts) Version(version string) Builder {
 	//add version option
 	g := reflect.ValueOf(&o.internalOpts).Elem()
-	o.addOptArg(g.Type().Field(1), g.Field(1))
+	itm := o.addOptArg(g.Type().Field(1), g.Field(1))
 	o.version = version
+	if !o.optnames["v"] {
+		o.optnames["v"] = true
+		itm.shortName = "v"
+		o.completeCmd.Flags["-v"] = complete.PredictNothing
+	}
 	return o
 }
 
@@ -612,14 +725,20 @@ func (o *Opts) Parse() Configured {
 
 //ParseArgs with the provided arguments
 func (o *Opts) ParseArgs(args []string) Configured {
-	if sub, cmdname, err := o.process(args); err != nil {
-		fmt.Fprintf(os.Stderr, "cmd: '%s', err: %s\n", cmdname, err.Error())
+	secondPass(o)
+	Log("completeCom '%v'\n", o.completeCom)
+	if o.completeCom != nil && o.completeCom.Complete() {
+		Log("completion called \n")
+		os.Exit(0)
+	}
+	var sub *Opts
+	var err error
+	if sub, _, err = o.process(args); err != nil {
+		fmt.Fprintf(os.Stderr, err.Error())
 		_ = sub
 		os.Exit(1)
-	} else {
-		return sub
 	}
-	return nil
+	return sub
 }
 
 //Process is the same as ParseArgs except
@@ -646,17 +765,11 @@ func (o *Opts) process(args []string) (*Opts, []string, error) {
 	//pre-loop through the options and
 	//add shortnames and env names where possible
 	for _, opt := range o.opts {
-		//should generate shortname?
-		if len(opt.name) >= 3 && opt.shortName == "" {
-			//not already taken?
-			if s := opt.name[0:1]; !o.optnames[s] {
-				opt.shortName = s
-				o.optnames[s] = true
-			}
-		}
 		env := camel2const(opt.name)
-		if o.useEnv && (opt.envName == "" || opt.envName == "!") &&
+		if o.useEnv &&
+			(opt.envName == "" || opt.envName == "!") &&
 			opt.name != "help" && opt.name != "version" &&
+			opt.name != "install-completetion" && opt.name != "uninstall-completetion" &&
 			!o.envnames[env] {
 			opt.envName = env
 		}
@@ -729,8 +842,27 @@ func (o *Opts) process(args []string) (*Opts, []string, error) {
 	if o.internalOpts.Help {
 		fmt.Println(o.Help())
 		os.Exit(0)
-	} else if o.internalOpts.Version {
+	}
+	if o.internalOpts.Version {
 		fmt.Println(o.version)
+		os.Exit(0)
+	}
+	if o.internalOpts.InstallCompletetion {
+		err := install.Install(o.completeExec)
+		if err != nil {
+			fmt.Println("error installing " + err.Error())
+			os.Exit(1)
+		}
+		fmt.Println("installed")
+		os.Exit(0)
+	}
+	if o.internalOpts.UninstallCompletetion {
+		err := install.Uninstall(o.completeExec)
+		if err != nil {
+			fmt.Println("error uninstalling " + err.Error())
+			os.Exit(1)
+		}
+		fmt.Println("uninstalled")
 		os.Exit(0)
 	}
 	//fill each individual arg

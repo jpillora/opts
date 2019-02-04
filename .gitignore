@@ -1,1 +1,8 @@
 example/separation/tmp
+example/arg/arg
+example/args/args
+example/cmds/cmds
+example/completiontest/completiontest
+example/dyncmds/dyncmds
+example/runner/runner
+optscli/gencli
