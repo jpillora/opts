@@ -306,7 +306,8 @@ func (o *Opts) addFields(c reflect.Value) *Opts {
 			o.errorf("Struct field '%s' interface type must implement flag.Value", sf.Name)
 			return o
 		default:
-			o.errorf("Struct field '%s' has unsupported type: %s", sf.Name, k)
+			o.errorf("Struct field '%s' has unsupported type: %s - '%T'\n", sf.Name, k, val)
+			panic(o.erred)
 			return o
 		}
 	}
@@ -782,52 +783,63 @@ func (o *Opts) process(args []string) (*Opts, []string, error) {
 		if opt.useEnv || o.useEnv {
 			envVal = os.Getenv(opt.envName)
 		}
-		//3. set config via Go's pkg/flags
-		addr := opt.val.Addr().Interface()
-		switch addr := addr.(type) {
-		case flag.Value:
-			flagset.Var(addr, opt.name, "")
+		if valset, ok := opt.val.Interface().(flag.Value); ok {
+			// valset.Set(&valset, opt.name, "")
+			// if opt.shortName != "" {
+			// 	flagset.Var(&valset, opt.shortName, "")
+			// }
+			flagset.Var(valset, opt.name, "")
 			if opt.shortName != "" {
-				flagset.Var(addr, opt.shortName, "")
+				flagset.Var(valset, opt.shortName, "")
 			}
-		case *[]string:
-			sep := ""
-			switch opt.typeName {
-			case "commalist":
-				sep = ","
-			case "spacelist":
-				sep = " "
+		} else {
+			//3. set config via Go's pkg/flags
+			addr := opt.val.Addr().Interface()
+			switch addr := addr.(type) {
+			case flag.Value:
+				flagset.Var(addr, opt.name, "")
+				if opt.shortName != "" {
+					flagset.Var(addr, opt.shortName, "")
+				}
+			case *[]string:
+				sep := ""
+				switch opt.typeName {
+				case "commalist":
+					sep = ","
+				case "spacelist":
+					sep = " "
+				}
+				fv := &sepList{sep: sep, strs: addr}
+				flagset.Var(fv, opt.name, "")
+				if opt.shortName != "" {
+					flagset.Var(fv, opt.shortName, "")
+				}
+			case *bool:
+				str2bool(envVal, addr)
+				flagset.BoolVar(addr, opt.name, *addr, "")
+				if opt.shortName != "" {
+					flagset.BoolVar(addr, opt.shortName, *addr, "")
+				}
+			case *string:
+				str2str(envVal, addr)
+				flagset.StringVar(addr, opt.name, *addr, "")
+				if opt.shortName != "" {
+					flagset.StringVar(addr, opt.shortName, *addr, "")
+				}
+			case *int:
+				str2int(envVal, addr)
+				flagset.IntVar(addr, opt.name, *addr, "")
+				if opt.shortName != "" {
+					flagset.IntVar(addr, opt.shortName, *addr, "")
+				}
+			case *time.Duration:
+				flagset.DurationVar(addr, opt.name, *addr, "")
+				if opt.shortName != "" {
+					flagset.DurationVar(addr, opt.shortName, *addr, "")
+				}
+			default:
+				return o, []string{}, fmt.Errorf("[opts] Option '%s' has unsupported type - '%T'\n", opt.name, addr)
 			}
-			fv := &sepList{sep: sep, strs: addr}
-			flagset.Var(fv, opt.name, "")
-			if opt.shortName != "" {
-				flagset.Var(fv, opt.shortName, "")
-			}
-		case *bool:
-			str2bool(envVal, addr)
-			flagset.BoolVar(addr, opt.name, *addr, "")
-			if opt.shortName != "" {
-				flagset.BoolVar(addr, opt.shortName, *addr, "")
-			}
-		case *string:
-			str2str(envVal, addr)
-			flagset.StringVar(addr, opt.name, *addr, "")
-			if opt.shortName != "" {
-				flagset.StringVar(addr, opt.shortName, *addr, "")
-			}
-		case *int:
-			str2int(envVal, addr)
-			flagset.IntVar(addr, opt.name, *addr, "")
-			if opt.shortName != "" {
-				flagset.IntVar(addr, opt.shortName, *addr, "")
-			}
-		case *time.Duration:
-			flagset.DurationVar(addr, opt.name, *addr, "")
-			if opt.shortName != "" {
-				flagset.DurationVar(addr, opt.shortName, *addr, "")
-			}
-		default:
-			return o, []string{}, fmt.Errorf("[opts] Option '%s' has unsupported type", opt.name)
 		}
 	}
 	// log.Printf("parse %+v", args)
