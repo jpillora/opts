@@ -17,7 +17,8 @@ import (
 	"github.com/posener/complete"
 )
 
-var flagValueType = reflect.TypeOf((*flag.Value)(nil)).Elem()
+// var flagValuePtrType = reflect.TypeOf((*flag.Value)(nil)).Elem()
+// var flagValueValType = reflect.TypeOf((flag.Value)(nil)).Elem()
 
 type Config interface{}
 
@@ -268,11 +269,19 @@ func (o *Opts) addFields(c reflect.Value) *Opts {
 			continue
 		}
 		k := sf.Type.Kind()
-
-		if sf.Type.Implements(flagValueType) {
+		if _, ok := val.Interface().(flag.Value); ok {
 			o.addOptArg(sf, val)
 			continue
 		}
+		if _, ok := val.Addr().Interface().(flag.Value); ok {
+			o.addOptArg(sf, val)
+			continue
+		}
+
+		// if sf.Type.Implements(flagValuePtrType) || sf.Type.Implements(flagValueValType) {
+		// 	o.addOptArg(sf, val)
+		// 	continue
+		// }
 		switch k {
 		case reflect.Ptr, reflect.Struct:
 			if sf.Tag.Get("type") == "embedded" {
@@ -426,14 +435,26 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) *item {
 	i.help = sf.Tag.Get("help")
 	//the **displayed** default, use 'default' tag, otherwise infer
 	defstr := sf.Tag.Get("default")
-	if defstr != "" {
+	switch {
+	case defstr != "":
 		i.defstr = defstr
-	} else if val.Kind() == reflect.Slice {
+	case val.Kind() == reflect.Slice:
 		i.defstr = ""
-	} else if def := val.Interface(); def != reflect.Zero(sf.Type).Interface() {
-		//not the zero-value, stringify!
-		i.defstr = fmt.Sprintf("%v", def)
+	case val.Kind() != reflect.Ptr && val.CanAddr():
+		if val.Addr().Interface() != reflect.Zero(val.Type()).Interface() {
+			i.defstr = fmt.Sprintf("%v", val.Interface())
+		}
+	case val.Interface() != reflect.Zero(sf.Type).Interface():
+		i.defstr = fmt.Sprintf("%v", val.Interface())
 	}
+	// if defstr != "" {
+	// 	i.defstr = defstr
+	// } else if val.Kind() == reflect.Slice {
+	// 	i.defstr = ""
+	// } else if def := val.Interface(); def != reflect.Zero(sf.Type).Interface() {
+	// 	//not the zero-value, stringify!
+	// 	i.defstr = fmt.Sprintf("%v", def)
+	// }
 	//
 	switch t {
 	case "opt", "commalist", "spacelist":

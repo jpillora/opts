@@ -6,34 +6,18 @@ import (
 	"github.com/jpillora/opts"
 )
 
-type multiOpt struct {
-	vals []string
-}
-
-func (mo *multiOpt) Set(val string) error {
-	mo.vals = append(mo.vals, val)
-	return nil
-}
-
-func (mo *multiOpt) String() string {
-	return fmt.Sprintf("%v", mo.vals)
-}
-
 type Config struct {
-	Bazzes *multiOpt //`type:"opt"`
+	Bazzes opts.RepeatedStringOpt //`type:"opt"`
+	Inizga []string               `type:"commalist"`
 }
 
 func main() {
-
-	c := Config{
-		Bazzes: &multiOpt{},
+	c := Config{}
+	opts.New(&c).Parse()
+	for i, foo := range c.Bazzes.GetSlice() {
+		fmt.Println(i, foo)
 	}
-
-	opt := opts.New(&c)
-	// fmt.Printf("%+v\n", opt)
-	opt.Parse()
-
-	for i, foo := range c.Bazzes.vals {
+	for i, foo := range c.Inizga {
 		fmt.Println(i, foo)
 	}
 }
