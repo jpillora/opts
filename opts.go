@@ -399,6 +399,7 @@ func (o *Opts) addArgList(sf reflect.StructField, val reflect.Value) {
 var durationType = reflect.TypeOf(time.Second)
 
 func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) *item {
+	Log("addOptArg %T\n", val.Interface())
 	//assume opt, unless arg tag is present
 	t := sf.Tag.Get("type")
 	if t == "" {
@@ -464,12 +465,23 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) *item {
 		// 	predictor = p
 		// }
 		predict := sf.Tag.Get("predict")
-		if pable, ok := val.Interface().(Predictable); ok {
+		if pable, ok := val.Interface().(complete.Predictor); ok {
+			Log("impls predictable %T\n", pable)
 			if predict != "" {
 				panic("predict tag set on Predictable field " + i.name)
 			}
 			predictor = pable
-		} else {
+		} else if val.CanAddr() {
+			if pable, ok := val.Addr().Interface().(complete.Predictor); ok {
+				Log("impls predictable %T\n", pable)
+				if predict != "" {
+					panic("predict tag set on Predictable field " + i.name)
+				}
+				predictor = pable
+			}
+		}
+		if predictor == nil {
+			Log("default predictable %T\n", val.Interface())
 			switch {
 			case predict == "":
 				predictor = complete.PredictAnything
