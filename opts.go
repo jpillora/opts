@@ -398,6 +398,47 @@ func (o *Opts) addArgList(sf reflect.StructField, val reflect.Value) {
 
 var durationType = reflect.TypeOf(time.Second)
 
+func constructPredictor(sf reflect.StructField, val reflect.Value, i *item) (predictor complete.Predictor) {
+	predict := sf.Tag.Get("predict")
+	if pable, ok := val.Interface().(complete.Predictor); ok {
+		Log("impls predictable %T\n", pable)
+		if predict != "" {
+			panic("predict tag set on Predictable field " + i.name)
+		}
+		predictor = pable
+	} else if val.CanAddr() {
+		if pable, ok := val.Addr().Interface().(complete.Predictor); ok {
+			Log("impls predictable %T\n", pable)
+			if predict != "" {
+				panic("predict tag set on Predictable field " + i.name)
+			}
+			predictor = pable
+		}
+	}
+	if predictor == nil {
+		Log("default predictable %T\n", val.Interface())
+		switch {
+		case predict == "":
+			predictor = complete.PredictAnything
+		case predict == "any":
+			predictor = complete.PredictAnything
+		case predict == "none":
+			predictor = complete.PredictNothing
+		case predict == "dirs":
+			predictor = complete.PredictDirs("*")
+		case predict == "files":
+			predictor = complete.PredictFiles("*")
+		case strings.HasPrefix(predict, "dirs:"):
+			predictor = complete.PredictDirs(predict[len("dirs:"):])
+		case strings.HasPrefix(predict, "files:"):
+			predictor = complete.PredictFiles(predict[len("files:"):])
+		default:
+			panic("bad predict '" + predict + "'")
+		}
+	}
+	return
+}
+
 func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) *item {
 	Log("addOptArg %T\n", val.Interface())
 	//assume opt, unless arg tag is present
@@ -460,47 +501,7 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) *item {
 	switch t {
 	case "opt", "commalist", "spacelist":
 		//options can also set short names
-		var predictor complete.Predictor
-		// if p, ok := o.val.Interface().(complete.Predictor); ok {
-		// 	predictor = p
-		// }
-		predict := sf.Tag.Get("predict")
-		if pable, ok := val.Interface().(complete.Predictor); ok {
-			Log("impls predictable %T\n", pable)
-			if predict != "" {
-				panic("predict tag set on Predictable field " + i.name)
-			}
-			predictor = pable
-		} else if val.CanAddr() {
-			if pable, ok := val.Addr().Interface().(complete.Predictor); ok {
-				Log("impls predictable %T\n", pable)
-				if predict != "" {
-					panic("predict tag set on Predictable field " + i.name)
-				}
-				predictor = pable
-			}
-		}
-		if predictor == nil {
-			Log("default predictable %T\n", val.Interface())
-			switch {
-			case predict == "":
-				predictor = complete.PredictAnything
-			case predict == "any":
-				predictor = complete.PredictAnything
-			case predict == "none":
-				predictor = complete.PredictNothing
-			case predict == "dirs":
-				predictor = complete.PredictDirs("*")
-			case predict == "files":
-				predictor = complete.PredictFiles("*")
-			case strings.HasPrefix(predict, "dirs:"):
-				predictor = complete.PredictDirs(predict[len("dirs:"):])
-			case strings.HasPrefix(predict, "files:"):
-				predictor = complete.PredictFiles(predict[len("files:"):])
-			default:
-				panic("bad predict '" + predict + "'")
-			}
-		}
+		predictor := constructPredictor(sf, val, i)
 		o.completeCmd.Flags["--"+i.name] = predictor
 		if short := sf.Tag.Get("short"); short != "" && short != "-" {
 			if o.optnames[short] {
@@ -516,6 +517,7 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) *item {
 		o.opts = append(o.opts, i)
 	case "arg":
 		//TODO allow other types in 'arg' fields
+		o.completeCmd.Args = constructPredictor(sf, val, i)
 		if sf.Type.Kind() != reflect.String {
 			o.errorf("arg '%s' type must be a string", i.name)
 			return nil
@@ -761,6 +763,10 @@ func (o *Opts) Parse() Configured {
 func (o *Opts) ParseArgs(args []string) Configured {
 	secondPass(o)
 	Log("completeCom '%v'\n", o.completeCom)
+	if o.completeCom != nil && os.Getenv("COMP_LINE") != "" {
+		clargs := strings.Split(os.Getenv("COMP_LINE"), " ")
+		o.process(clargs[1:])
+	}
 	if o.completeCom != nil && o.completeCom.Complete() {
 		Log("completion called \n")
 		os.Exit(0)
