@@ -29,7 +29,7 @@ func camel2const(s string) string {
 
 func nletters(r rune, n int) string {
 	str := make([]rune, n)
-	for i, _ := range str {
+	for i := range str {
 		str[i] = r
 	}
 	return string(str)
