@@ -16,7 +16,7 @@ import (
 type data struct {
 	datum        //data is also a datum
 	ArgList      *datum
-	Opts         []*datum
+	Flags        []*datum
 	Args         []*datum
 	Cmds         []*datum
 	Order        []string
@@ -56,7 +56,7 @@ var DefaultTemplates = map[string]string{
 		`{{template "usageargs" .}}` +
 		`{{template "usagearglist" .}}` +
 		`{{template "usagecmd" .}}` + "\n",
-	"usageoptions": `{{if .Opts}} [options]{{end}}`,
+	"usageoptions": `{{if .Flags}} [options]{{end}}`,
 	"usageargs":    `{{range .Args}} {{.Name}}{{end}}`,
 	"usagearglist": `{{if .ArgList}} {{.ArgList.Name}}{{end}}`,
 	"usagecmd":     `{{if .Cmds}} <command>{{end}}`,
@@ -69,8 +69,8 @@ var DefaultTemplates = map[string]string{
 	"arg":     "{{if .Help}}\n{{.Help}}\n{{end}}",
 	"arglist": "{{if .ArgList}}{{ if .ArgList.Help}}\n{{.ArgList.Help}}\n{{end}}{{end}}",
 	//options
-	"options": `{{if .Opts}}` + "\nOptions:\n" +
-		`{{ range $opt := .Opts}}{{template "option" $opt}}{{end}}{{end}}`,
+	"options": `{{if .Flags}}` + "\nOptions:\n" +
+		`{{ range $opt := .Flags}}{{template "option" $opt}}{{end}}{{end}}`,
 	"option": `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
 	//cmds
 	"cmds": "{{if .Cmds}}\nCommands:\n" +
@@ -86,7 +86,7 @@ var DefaultTemplates = map[string]string{
 var trailingSpaces = regexp.MustCompile(`(?m)\ +$`)
 
 //Help renders the help text as a string
-func (o *Opts) Help() string {
+func (o *node) Help() string {
 	var err error
 
 	//final attempt at finding the program name
@@ -132,7 +132,7 @@ func (o *Opts) Help() string {
 		}
 	}
 
-	//convert Opts into template data
+	//convert node into template data
 	tf := convert(o)
 
 	//execute all templates
@@ -168,7 +168,7 @@ func (o *Opts) Help() string {
 
 var anyspace = regexp.MustCompile(`[\s]+`)
 
-func convert(o *Opts) *data {
+func convert(o *node) *data {
 
 	names := []string{}
 	curr := o
@@ -220,13 +220,13 @@ func convert(o *Opts) *data {
 		}
 	}
 
-	opts := make([]*datum, len(o.opts))
+	flags := make([]*datum, len(o.flags))
 
 	//calculate padding etc.
 	max := 0
 	pad := nletters(' ', o.PadWidth)
 
-	for i, opt := range o.opts {
+	for i, opt := range o.flags {
 		to := &datum{Pad: pad}
 		to.Name = "--" + opt.name
 		if opt.shortName != "" {
@@ -236,7 +236,7 @@ func convert(o *Opts) *data {
 		if l > max {
 			max = l
 		}
-		opts[i] = to
+		flags[i] = to
 	}
 
 	padsInOption := o.PadWidth
@@ -245,11 +245,11 @@ func convert(o *Opts) *data {
 	helpWidth := o.LineWidth - optionNameWidth
 
 	//render each option
-	for i, to := range opts {
+	for i, to := range flags {
 		//pad all option names to be the same length
 		to.Name += spaces[:max-len(to.Name)]
 		//constrain help text
-		help := itemHelp(o.opts[i], helpWidth)
+		help := itemHelp(o.flags[i], helpWidth)
 		//add a margin
 		lines := strings.Split(help, "\n")
 		for i, l := range lines {
@@ -286,7 +286,7 @@ func convert(o *Opts) *data {
 		},
 		Args:    args,
 		ArgList: arglist,
-		Opts:    opts,
+		Flags:   flags,
 		Cmds:    subs,
 		Order:   o.order,
 		Version: o.version,
