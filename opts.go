@@ -15,15 +15,15 @@ import (
 
 var flagValueType = reflect.TypeOf((*flag.Value)(nil)).Elem()
 
-//Opts is the main class, it contains
+//node is the main class, it contains
 //all parsing state for a single set of
 //arguments
-type Opts struct {
-	//embed item since an Opts can also be an item
+type node struct {
+	//embed item since an node can also be an item
 	item
-	parent       *Opts
-	cmds         map[string]*Opts
-	opts         []*item
+	parent       *node
+	cmds         map[string]*node
+	flags        []*item
 	args         []*item
 	arglist      *argumentlist
 	optnames     map[string]bool
@@ -71,8 +71,8 @@ type item struct {
 	defstr    string
 }
 
-//New creates a new Opts instance
-func New(config interface{}) *Opts {
+//New creates a new node instance
+func New(config interface{}) *node {
 	v := reflect.ValueOf(config)
 	//nil parent -> root command
 	o := fork(nil, v)
@@ -97,11 +97,11 @@ func New(config interface{}) *Opts {
 }
 
 //Parse(&config) is shorthand for New(&config).Parse()
-func Parse(config interface{}) *Opts {
+func Parse(config interface{}) *node {
 	return New(config).Parse()
 }
 
-func fork(parent *Opts, val reflect.Value) *Opts {
+func fork(parent *node, val reflect.Value) *node {
 	//TODO allow order and template per cmd
 	//for now, there is only the root
 	var order []string = nil
@@ -116,7 +116,7 @@ func fork(parent *Opts, val reflect.Value) *Opts {
 	}
 
 	//instantiate
-	o := &Opts{
+	o := &node{
 		item: item{
 			val: val,
 		},
@@ -124,8 +124,8 @@ func fork(parent *Opts, val reflect.Value) *Opts {
 		//each cmd/cmd has its own set of names
 		optnames: map[string]bool{},
 		envnames: map[string]bool{},
-		cmds:     map[string]*Opts{},
-		opts:     []*item{},
+		cmds:     map[string]*node{},
+		flags:    []*item{},
 		//these are only set at the root
 		order:     order,
 		templates: tmpls,
@@ -149,7 +149,7 @@ func fork(parent *Opts, val reflect.Value) *Opts {
 	return o
 }
 
-func (o *Opts) addFields(c reflect.Value) *Opts {
+func (o *node) addFields(c reflect.Value) *node {
 	t := c.Type()
 	k := t.Kind()
 	//deref pointer
@@ -223,7 +223,7 @@ func (o *Opts) addFields(c reflect.Value) *Opts {
 	return o
 }
 
-func (o *Opts) errorf(format string, args ...interface{}) *Opts {
+func (o *node) errorf(format string, args ...interface{}) *node {
 	//only store the first error
 	if o.erred == nil {
 		o.erred = fmt.Errorf(format, args...)
@@ -231,7 +231,7 @@ func (o *Opts) errorf(format string, args ...interface{}) *Opts {
 	return o
 }
 
-func (o *Opts) addCmd(sf reflect.StructField, val reflect.Value) {
+func (o *node) addCmd(sf reflect.StructField, val reflect.Value) {
 
 	if o.arglist != nil {
 		o.errorf("argslists and commands cannot be used together")
@@ -261,7 +261,7 @@ func (o *Opts) addCmd(sf reflect.StructField, val reflect.Value) {
 	o.cmds[name] = sub
 }
 
-func (o *Opts) addArgList(sf reflect.StructField, val reflect.Value) {
+func (o *node) addArgList(sf reflect.StructField, val reflect.Value) {
 
 	if len(o.cmds) > 0 {
 		o.errorf("argslists and commands cannot be used together")
@@ -298,7 +298,7 @@ func (o *Opts) addArgList(sf reflect.StructField, val reflect.Value) {
 
 var durationType = reflect.TypeOf(time.Second)
 
-func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
+func (o *node) addOptArg(sf reflect.StructField, val reflect.Value) {
 
 	//assume opt, unless arg tag is present
 	t := sf.Tag.Get("type")
@@ -362,7 +362,7 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 			}
 		}
 		// log.Printf("define option: %s %s", name, sf.Type)
-		o.opts = append(o.opts, i)
+		o.flags = append(o.flags, i)
 	case "arg":
 		//TODO allow other types in 'arg' fields
 		if sf.Type.Kind() != reflect.String {
@@ -376,14 +376,14 @@ func (o *Opts) addOptArg(sf reflect.StructField, val reflect.Value) {
 }
 
 //Name sets the name of the program
-func (o *Opts) Name(name string) *Opts {
+func (o *node) Name(name string) *node {
 	o.name = name
 	return o
 }
 
 //Version sets the version of the program
 //and renders the 'version' template in the help text
-func (o *Opts) Version(version string) *Opts {
+func (o *node) Version(version string) *node {
 	//add version option
 	g := reflect.ValueOf(&o.internalOpts).Elem()
 	o.addOptArg(g.Type().Field(1), g.Field(1))
@@ -393,7 +393,7 @@ func (o *Opts) Version(version string) *Opts {
 
 //Repo sets the repository link of the program
 //and renders the 'repo' template in the help text
-func (o *Opts) Repo(repo string) *Opts {
+func (o *node) Repo(repo string) *node {
 	o.repo = repo
 	return o
 }
@@ -401,7 +401,7 @@ func (o *Opts) Repo(repo string) *Opts {
 //PkgRepo infers the repository link of the program
 //from the package import path of the struct (So note,
 //this will not work for 'main' packages)
-func (o *Opts) PkgRepo() *Opts {
+func (o *node) PkgRepo() *node {
 	if o.pkgrepo == "" {
 		return o.errorf("Package repository could not be infered")
 	}
@@ -411,7 +411,7 @@ func (o *Opts) PkgRepo() *Opts {
 
 //Author sets the author of the program
 //and renders the 'author' template in the help text
-func (o *Opts) Author(author string) *Opts {
+func (o *node) Author(author string) *node {
 	o.author = author
 	return o
 }
@@ -419,7 +419,7 @@ func (o *Opts) Author(author string) *Opts {
 //PkgRepo infers the repository link of the program
 //from the package import path of the struct (So note,
 //this will not work for 'main' packages)
-func (o *Opts) PkgAuthor() *Opts {
+func (o *node) PkgAuthor() *node {
 	if o.pkgrepo == "" {
 		return o.errorf("Package author could not be infered")
 	}
@@ -428,34 +428,34 @@ func (o *Opts) PkgAuthor() *Opts {
 }
 
 //Set the padding width
-func (o *Opts) SetPadWidth(p int) *Opts {
+func (o *node) SetPadWidth(p int) *node {
 	o.PadWidth = p
 	return o
 }
 
 //Disable auto-padding
-func (o *Opts) DisablePadAll() *Opts {
+func (o *node) DisablePadAll() *node {
 	o.PadAll = false
 	return o
 }
 
 //Set the line width (defaults to 72)
-func (o *Opts) SetLineWidth(l int) *Opts {
+func (o *node) SetLineWidth(l int) *node {
 	o.LineWidth = l
 	return o
 }
 
 //DocBefore inserts a text block before the specified template
-func (o *Opts) DocBefore(target, newid, template string) *Opts {
+func (o *node) DocBefore(target, newid, template string) *node {
 	return o.docOffset(0, target, newid, template)
 }
 
 //DocAfter inserts a text block after the specified template
-func (o *Opts) DocAfter(target, newid, template string) *Opts {
+func (o *node) DocAfter(target, newid, template string) *node {
 	return o.docOffset(1, target, newid, template)
 }
 
-func (o *Opts) docOffset(offset int, target, newid, template string) *Opts {
+func (o *node) docOffset(offset int, target, newid, template string) *node {
 	if _, ok := o.templates[newid]; ok {
 		o.errorf("new template already exists: %s", newid)
 		return o
@@ -477,7 +477,7 @@ func (o *Opts) docOffset(offset int, target, newid, template string) *Opts {
 }
 
 //DecSet replaces the specified template
-func (o *Opts) DocSet(id, template string) *Opts {
+func (o *node) DocSet(id, template string) *node {
 	if _, ok := DefaultTemplates[id]; !ok {
 		if _, ok := o.templates[id]; !ok {
 			o.errorf("template does not exist: %s", id)
@@ -491,7 +491,7 @@ func (o *Opts) DocSet(id, template string) *Opts {
 //ConfigPath defines a path to a JSON file which matches
 //the structure of the provided config. Environment variables
 //override JSON Config variables.
-func (o *Opts) ConfigPath(path string) *Opts {
+func (o *node) ConfigPath(path string) *node {
 	o.cfgPath = path
 	return o
 }
@@ -500,18 +500,18 @@ func (o *Opts) ConfigPath(path string) *Opts {
 //all struct fields, the name of the field is converted
 //into an environment variable with the transform
 //`FooBar` -> `FOO_BAR`.
-func (o *Opts) UseEnv() *Opts {
+func (o *node) UseEnv() *node {
 	o.useEnv = true
 	return o
 }
 
 //Parse with os.Args
-func (o *Opts) Parse() *Opts {
+func (o *node) Parse() *node {
 	return o.ParseArgs(os.Args[1:])
 }
 
 //ParseArgs with the provided arguments
-func (o *Opts) ParseArgs(args []string) *Opts {
+func (o *node) ParseArgs(args []string) *node {
 	if err := o.Process(args); err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
 		os.Exit(1)
@@ -521,7 +521,7 @@ func (o *Opts) ParseArgs(args []string) *Opts {
 
 //Process is the same as ParseArgs except
 //it returns an error on failure
-func (o *Opts) Process(args []string) error {
+func (o *node) Process(args []string) error {
 
 	//cannot be processed - already encountered error - programmer error
 	if o.erred != nil {
@@ -546,7 +546,7 @@ func (o *Opts) Process(args []string) error {
 
 	//pre-loop through the options and
 	//add shortnames and env names where possible
-	for _, opt := range o.opts {
+	for _, opt := range o.flags {
 		//should generate shortname?
 		if len(opt.name) >= 3 && opt.shortName == "" {
 			//not already taken?
@@ -563,7 +563,7 @@ func (o *Opts) Process(args []string) error {
 		}
 	}
 
-	for _, opt := range o.opts {
+	for _, opt := range o.flags {
 		// TODO remove debug
 		// log.Printf("parse prepare option: %s", opt.name)
 
