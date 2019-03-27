@@ -12,13 +12,10 @@ type Config struct {
 }
 
 func main() {
-
 	c := Config{}
-
 	opts.New(&c).
 		ConfigPath("config.json").
 		Parse()
-
 	fmt.Println(c.Foo)
 	fmt.Println(c.Bar)
 }

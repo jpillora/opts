@@ -72,12 +72,9 @@ func TestSimple(t *testing.T) {
 		Foo string
 		Bar string
 	}
-
 	c := &Config{}
-
 	//flag example parse
 	New(c).ParseArgs([]string{"--foo", "hello", "--bar", "world"})
-
 	//check config is filled
 	check(t, c.Foo, "hello")
 	check(t, c.Bar, "world")
@@ -139,7 +136,7 @@ func TestUnsupportedType(t *testing.T) {
 	}
 	c := Config{}
 	//flag example parse
-	err := New(&c).Process([]string{"--foo", "hello", "--bar", "world"})
+	err := New(&c).process([]string{"--foo", "hello", "--bar", "world"})
 	if err == nil {
 		t.Fatal("Expected error")
 	}
@@ -154,7 +151,7 @@ func TestUnsupportedInterfaceType(t *testing.T) {
 	}
 	c := Config{}
 	//flag example parse
-	err := New(&c).Process([]string{"--foo", "hello", "--bar", "world"})
+	err := New(&c).process([]string{"--foo", "hello", "--bar", "world"})
 	if err == nil {
 		t.Fatal("Expected error")
 	}
@@ -177,7 +174,7 @@ func TestEnv(t *testing.T) {
 	c := &Config{}
 
 	//flag example parse
-	if err := New(c).UseEnv().Process([]string{}); err != nil {
+	if err := New(c).UseEnv().process([]string{}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -222,7 +219,7 @@ func TestIgnoreUnexported(t *testing.T) {
 	c := &Config{}
 
 	//flag example parse
-	err := New(c).Process([]string{"-f", "1", "-b", "2"})
+	err := New(c).process([]string{"-f", "1", "-b", "2"})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -240,10 +237,10 @@ func TestDocBefore(t *testing.T) {
 
 	//flag example parse
 	o := New(c)
-
-	l := len(o.order)
+	n := o.(*node)
+	l := len(n.order)
 	o.DocBefore("usage", "mypara", "hello world this some text\n\n")
-	check(t, len(o.order), l+1)
+	check(t, len(n.order), l+1)
 	check(t, o.Help(), `
   hello world this some text
 
@@ -267,10 +264,11 @@ func TestDocAfter(t *testing.T) {
 
 	//flag example parse
 	o := New(c)
+	n := o.(*node)
 
-	l := len(o.order)
+	l := len(n.order)
 	o.DocAfter("usage", "mypara", "\nhello world this some text\n")
-	check(t, len(o.order), l+1)
+	check(t, len(n.order), l+1)
 	check(t, o.Help(), `
   Usage: opts [options]
 

@@ -88,7 +88,6 @@ var trailingSpaces = regexp.MustCompile(`(?m)\ +$`)
 //Help renders the help text as a string
 func (o *node) Help() string {
 	var err error
-
 	//final attempt at finding the program name
 	root := o
 	for root.parent != nil {
@@ -101,17 +100,14 @@ func (o *node) Help() string {
 			root.name = "main"
 		}
 	}
-
 	//add default templates
 	for name, str := range DefaultTemplates {
 		if _, ok := o.templates[name]; !ok {
 			o.templates[name] = str
 		}
 	}
-
 	//prepare templates
 	t := template.New(o.name)
-
 	t = t.Funcs(map[string]interface{}{
 		//reimplementation of "template" except with dynamic name
 		"templ": func(name string, data interface{}) (string, error) {
@@ -123,7 +119,6 @@ func (o *node) Help() string {
 			return b.String(), nil
 		},
 	})
-
 	//verify all templates
 	for name, str := range o.templates {
 		t, err = t.Parse(fmt.Sprintf(`{{define "%s"}}%s{{end}}`, name, str))
@@ -131,19 +126,15 @@ func (o *node) Help() string {
 			log.Fatalf("Template error: %s: %s", name, err)
 		}
 	}
-
 	//convert node into template data
 	tf := convert(o)
-
 	//execute all templates
 	b := &bytes.Buffer{}
 	err = t.ExecuteTemplate(b, "help", tf)
 	if err != nil {
 		log.Fatalf("Template execute: %s", err)
 	}
-
 	out := b.String()
-
 	if o.PadAll {
 		/*
 			"foo
@@ -160,16 +151,13 @@ func (o *node) Help() string {
 		}
 		out = "\n" + strings.Join(lines, "\n")
 	}
-
 	out = trailingSpaces.ReplaceAllString(out, "")
-
 	return out
 }
 
 var anyspace = regexp.MustCompile(`[\s]+`)
 
 func convert(o *node) *data {
-
 	names := []string{}
 	curr := o
 	for curr != nil {
@@ -177,7 +165,6 @@ func convert(o *node) *data {
 		curr = curr.parent
 	}
 	name := strings.Join(names, " ")
-
 	//get item help, with optional default values and env names and
 	//constrain to a specific line width
 	extratmpl, _ := template.New("").Parse(o.templates["helpextra"])
@@ -193,7 +180,6 @@ func convert(o *node) *data {
 		}
 		return constrain(help, width)
 	}
-
 	args := make([]*datum, len(o.args))
 	for i, arg := range o.args {
 		//mark argument as required
@@ -201,14 +187,12 @@ func convert(o *node) *data {
 		if arg.defstr != "" { //or optional
 			n = "[" + arg.name + "]"
 		}
-
 		args[i] = &datum{
 			Name: n,
 			Help: itemHelp(arg, o.LineWidth),
 		}
 	}
-
-	var arglist *datum = nil
+	var arglist *datum
 	if o.arglist != nil {
 		n := o.arglist.name + "..."
 		if o.arglist.min == 0 { //optional
@@ -219,13 +203,10 @@ func convert(o *node) *data {
 			Help: itemHelp(&o.arglist.item, o.LineWidth),
 		}
 	}
-
 	flags := make([]*datum, len(o.flags))
-
 	//calculate padding etc.
 	max := 0
 	pad := nletters(' ', o.PadWidth)
-
 	for i, opt := range o.flags {
 		to := &datum{Pad: pad}
 		to.Name = "--" + opt.name
@@ -238,12 +219,10 @@ func convert(o *node) *data {
 		}
 		flags[i] = to
 	}
-
 	padsInOption := o.PadWidth
 	optionNameWidth := max + padsInOption
 	spaces := nletters(' ', optionNameWidth)
 	helpWidth := o.LineWidth - optionNameWidth
-
 	//render each option
 	for i, to := range flags {
 		//pad all option names to be the same length
@@ -259,7 +238,6 @@ func convert(o *node) *data {
 		}
 		to.Help = strings.Join(lines, "\n")
 	}
-
 	//commands
 	subs := make([]*datum, len(o.cmds))
 	i := 0
@@ -271,13 +249,11 @@ func convert(o *node) *data {
 		}
 		i++
 	}
-
 	//convert error to string
 	err := ""
 	if o.erred != nil {
 		err = o.erred.Error()
 	}
-
 	return &data{
 		datum: datum{
 			Name: name,
