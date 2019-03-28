@@ -24,8 +24,6 @@ type Opts interface {
 	DocBefore(target, newID, template string) Opts
 	DocAfter(target, newID, template string) Opts
 	DocSet(id, template string) Opts
-	//display this node in the help-output form
-	Help() string
 	//parse this opts node and its children
 	Parse() ParsedOpts
 	ParseArgs(args []string) ParsedOpts

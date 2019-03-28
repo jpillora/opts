@@ -236,19 +236,23 @@ func TestDocBefore(t *testing.T) {
 	c := &Config{}
 
 	//flag example parse
+
 	o := New(c)
+
 	n := o.(*node)
 	l := len(n.order)
 	o.DocBefore("usage", "mypara", "hello world this some text\n\n")
+	op := o.ParseArgs(nil)
+
 	check(t, len(n.order), l+1)
-	check(t, o.Help(), `
+	check(t, op.Help(), `
   hello world this some text
 
   Usage: opts [options]
 
   Options:
-  --foo
-  --help
+  --foo, -f
+  --help, -h
 `)
 }
 
@@ -265,17 +269,17 @@ func TestDocAfter(t *testing.T) {
 	//flag example parse
 	o := New(c)
 	n := o.(*node)
-
 	l := len(n.order)
 	o.DocAfter("usage", "mypara", "\nhello world this some text\n")
+	op := o.ParseArgs(nil)
 	check(t, len(n.order), l+1)
-	check(t, o.Help(), `
+	check(t, op.Help(), `
   Usage: opts [options]
 
   hello world this some text
 
   Options:
-  --foo
-  --help
+  --foo, -f
+  --help, -h
 `)
 }

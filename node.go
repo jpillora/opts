@@ -26,16 +26,9 @@ type node struct {
 	cmdname               *reflect.Value
 	repo, author, version string
 	pkgrepo, pkgauthor    string
-	//LineWidth defines where new-lines
-	//are inserted into the help text
-	//(defaults to 42)
-	LineWidth int
-	//PadAll enables padding around the
-	//help text (defaults to true)
-	PadAll bool
-	//PadWidth defines the amount padding
-	//when rendering help text (defaults to 2)
-	PadWidth int
+	lineWidth             int
+	padAll                bool
+	padWidth              int
 }
 
 //item is the structure representing a
@@ -77,9 +70,9 @@ func fork(parent *node, val reflect.Value) *node {
 		order:     order,
 		templates: tmpls,
 		//public defaults
-		LineWidth: 72,
-		PadAll:    true,
-		PadWidth:  2,
+		lineWidth: 72,
+		padAll:    true,
+		padWidth:  2,
 	}
 	//all fields from val
 	if val.Type().Kind() != reflect.Ptr {
