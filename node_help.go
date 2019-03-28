@@ -4,12 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"path"
 	"regexp"
 	"strings"
 	"text/template"
-
-	"github.com/kardianos/osext"
 )
 
 //data is only used for templating below
@@ -26,7 +25,7 @@ type data struct {
 }
 
 type datum struct {
-	Name, Help, Pad string //Pad is Opt.PadWidth many spaces
+	Name, Help, Pad string //Pad is Opt.padWidth many spaces
 }
 
 type text struct {
@@ -94,7 +93,7 @@ func (o *node) Help() string {
 		root = root.parent
 	}
 	if root.name == "" {
-		if exe, err := osext.Executable(); err == nil {
+		if exe, err := os.Executable(); err == nil {
 			_, root.name = path.Split(exe)
 		} else {
 			root.name = "main"
@@ -135,7 +134,7 @@ func (o *node) Help() string {
 		log.Fatalf("Template execute: %s", err)
 	}
 	out := b.String()
-	if o.PadAll {
+	if o.padAll {
 		/*
 			"foo
 			bar"
@@ -189,7 +188,7 @@ func convert(o *node) *data {
 		}
 		args[i] = &datum{
 			Name: n,
-			Help: itemHelp(arg, o.LineWidth),
+			Help: itemHelp(arg, o.lineWidth),
 		}
 	}
 	var arglist *datum
@@ -200,13 +199,13 @@ func convert(o *node) *data {
 		}
 		arglist = &datum{
 			Name: n,
-			Help: itemHelp(&o.arglist.item, o.LineWidth),
+			Help: itemHelp(&o.arglist.item, o.lineWidth),
 		}
 	}
 	flags := make([]*datum, len(o.flags))
 	//calculate padding etc.
 	max := 0
-	pad := nletters(' ', o.PadWidth)
+	pad := nletters(' ', o.padWidth)
 	for i, opt := range o.flags {
 		to := &datum{Pad: pad}
 		to.Name = "--" + opt.name
@@ -219,10 +218,10 @@ func convert(o *node) *data {
 		}
 		flags[i] = to
 	}
-	padsInOption := o.PadWidth
+	padsInOption := o.padWidth
 	optionNameWidth := max + padsInOption
 	spaces := nletters(' ', optionNameWidth)
-	helpWidth := o.LineWidth - optionNameWidth
+	helpWidth := o.lineWidth - optionNameWidth
 	//render each option
 	for i, to := range flags {
 		//pad all option names to be the same length

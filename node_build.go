@@ -59,21 +59,26 @@ func (n *node) PkgAuthor() Opts {
 	return n
 }
 
-//Set the padding width
+//Set the padding width, which defines the amount padding
+//when rendering help text (defaults to 72)
 func (n *node) SetPadWidth(p int) Opts {
-	n.PadWidth = p
+	n.padWidth = p
 	return n
 }
 
-//Disable auto-padding
+//Disable auto-padding, which enables padding around the
+//help text (defaults to true)
 func (n *node) DisablePadAll() Opts {
-	n.PadAll = false
+	n.padAll = false
 	return n
 }
 
-//Set the line width (defaults to 72)
+//Set the line width (defaults to 72),
+//which defines where new-lines
+//are inserted into the help text
+//(defaults to 42)
 func (n *node) SetLineWidth(l int) Opts {
-	n.LineWidth = l
+	n.lineWidth = l
 	return n
 }
 
