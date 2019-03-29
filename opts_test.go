@@ -2,7 +2,6 @@ package opts
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"reflect"
 	"regexp"
@@ -25,13 +24,11 @@ func check(t *testing.T, a, b interface{}) {
 		strb := readable(fmt.Sprintf("%v", b))
 		typea := reflect.ValueOf(a)
 		typeb := reflect.ValueOf(b)
-
 		extra := ""
 		if out, ok := diffstr(stra, strb); ok {
 			extra = "\n\n" + out
 		}
 		t.Fatalf("got '%v' (%s), expected '%v' (%s)%s", stra, typea.Kind(), strb, typeb.Kind(), extra)
-
 	}
 }
 
@@ -58,7 +55,7 @@ func diffstr(a, b interface{}) (string, bool) {
 			b = rb[i]
 		}
 		if a != b {
-			log.Printf("%d:%d - %s (%x) %s (%x)", line, char, string(a), a, string(b), b)
+			// log.Printf("%d:%d - %s (%x) %s (%x)", line, char, string(a), a, string(b), b)
 			a = diff
 			break
 		}
@@ -86,24 +83,20 @@ func TestList(t *testing.T) {
 		Foo []string `type:"commalist"`
 		Bar []string `type:"spacelist"`
 	}
-
 	c := &Config{}
-
 	//flag example parse
 	New(c).ParseArgs([]string{"--foo", "hello,world", "--bar", "ping pong"})
-
 	//check config is filled
 	check(t, c.Foo, []string{"hello", "world"})
 	check(t, c.Bar, []string{"ping", "pong"})
 }
 
 func TestSubCommand(t *testing.T) {
-
+	//subconfig
 	type FooConfig struct {
 		Ping string
 		Pong string
 	}
-
 	//config
 	type Config struct {
 		Cmd string `type:"cmdname"`
@@ -115,11 +108,8 @@ func TestSubCommand(t *testing.T) {
 			Zap string
 		}
 	}
-
 	c := &Config{}
-
 	New(c).ParseArgs([]string{"bar", "--zip", "hello", "--zap", "world"})
-
 	//check config is filled
 	check(t, c.Cmd, "bar")
 	check(t, c.Foo.Ping, "")
@@ -136,11 +126,13 @@ func TestUnsupportedType(t *testing.T) {
 	}
 	c := Config{}
 	//flag example parse
-	err := New(&c).process([]string{"--foo", "hello", "--bar", "world"})
+	err := New(&c).parse([]string{"--foo", "hello", "--bar", "world"})
 	if err == nil {
 		t.Fatal("Expected error")
 	}
-	check(t, strings.Contains(err.Error(), "has unsupported type: map"), true)
+	if !strings.Contains(err.Error(), "has unsupported type: map") {
+		t.Fatalf("Expected unsupported map, got: %s", err)
+	}
 }
 
 func TestUnsupportedInterfaceType(t *testing.T) {
@@ -151,7 +143,7 @@ func TestUnsupportedInterfaceType(t *testing.T) {
 	}
 	c := Config{}
 	//flag example parse
-	err := New(&c).process([]string{"--foo", "hello", "--bar", "world"})
+	err := New(&c).parse([]string{"--foo", "hello", "--bar", "world"})
 	if err == nil {
 		t.Fatal("Expected error")
 	}
@@ -159,29 +151,23 @@ func TestUnsupportedInterfaceType(t *testing.T) {
 }
 
 func TestEnv(t *testing.T) {
-
 	os.Setenv("STR", "helloworld")
 	os.Setenv("NUM", "42")
 	os.Setenv("BOOL", "true")
-
 	//config
 	type Config struct {
 		Str  string
 		Num  int
 		Bool bool
 	}
-
 	c := &Config{}
-
 	//flag example parse
-	if err := New(c).UseEnv().process([]string{}); err != nil {
+	if err := New(c).UseEnv().parse([]string{}); err != nil {
 		t.Fatal(err)
 	}
-
 	os.Unsetenv("STR")
 	os.Unsetenv("NUM")
 	os.Unsetenv("BOOL")
-
 	//check config is filled
 	check(t, c.Str, `helloworld`)
 	check(t, c.Num, 42)
@@ -189,19 +175,15 @@ func TestEnv(t *testing.T) {
 }
 
 func TestArg(t *testing.T) {
-
 	//config
 	type Config struct {
 		Foo string `type:"arg"`
 		Zip string `type:"arg"`
 		Bar string
 	}
-
 	c := &Config{}
-
 	//flag example parse
 	New(c).ParseArgs([]string{"-b", "wld", "hel", "lo"})
-
 	//check config is filled
 	check(t, c.Foo, `hel`)
 	check(t, c.Zip, `lo`)
@@ -209,41 +191,32 @@ func TestArg(t *testing.T) {
 }
 
 func TestIgnoreUnexported(t *testing.T) {
-
 	//config
 	type Config struct {
 		Foo string
 		bar string
 	}
-
 	c := &Config{}
-
 	//flag example parse
-	err := New(c).process([]string{"-f", "1", "-b", "2"})
+	err := New(c).parse([]string{"-f", "1", "-b", "2"})
 	if err == nil {
 		t.Fatal("expected error")
 	}
 }
 
 func TestDocBefore(t *testing.T) {
-
 	//config
 	type Config struct {
 		Foo string
 		bar string
 	}
-
 	c := &Config{}
-
 	//flag example parse
-
 	o := New(c)
-
 	n := o.(*node)
 	l := len(n.order)
 	o.DocBefore("usage", "mypara", "hello world this some text\n\n")
 	op := o.ParseArgs(nil)
-
 	check(t, len(n.order), l+1)
 	check(t, op.Help(), `
   hello world this some text
@@ -257,15 +230,12 @@ func TestDocBefore(t *testing.T) {
 }
 
 func TestDocAfter(t *testing.T) {
-
 	//config
 	type Config struct {
 		Foo string
 		bar string
 	}
-
 	c := &Config{}
-
 	//flag example parse
 	o := New(c)
 	n := o.(*node)
@@ -282,4 +252,18 @@ func TestDocAfter(t *testing.T) {
   --foo, -f
   --help, -h
 `)
+}
+
+func TestSubCommandMap(t *testing.T) {
+	//config
+	type Config struct {
+		Foo string
+		bar string
+	}
+
+	c := Config{
+		Foo: "foo",
+	}
+
+	New(&c)
 }
