@@ -44,6 +44,12 @@ var DefaultOrder = []string{
 	"errmsg",
 }
 
+func defaultOrder() []string {
+	order := make([]string, len(DefaultOrder))
+	copy(order, DefaultOrder)
+	return order
+}
+
 var DefaultTemplates = map[string]string{
 	//the root template simply loops through
 	//the 'order' and renders each template by name
@@ -250,8 +256,8 @@ func convert(o *node) *data {
 	}
 	//convert error to string
 	err := ""
-	if o.erred != nil {
-		err = o.erred.Error()
+	if o.err != nil {
+		err = o.err.Error()
 	}
 	return &data{
 		datum: datum{

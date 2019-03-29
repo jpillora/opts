@@ -6,29 +6,35 @@ import "reflect"
 //all parsing state for a single set of
 //arguments
 type node struct {
+	err error
 	//embed item since an node can also be an item
 	item
-	parent       *node
-	cmds         map[string]*node
-	flags        []*item
-	args         []*item
-	arglist      *argumentlist
-	optnames     map[string]bool
-	envnames     map[string]bool
-	order        []string
-	templates    map[string]string
-	internalOpts struct {
-		//pretend these are in the user struct :)
-		Help, Version bool
-	}
-	cfgPath               string
-	erred                 error
-	cmdname               *reflect.Value
+	parent   *node
+	flags    []*item
+	args     []*item
+	arglist  *argumentlist
+	optnames map[string]bool
+	envnames map[string]bool
+	cfgPath  string
+	//subcommands
+	cmdname *reflect.Value
+	cmds    map[string]*node
+	//help
+	order                 []string
+	templates             map[string]string
 	repo, author, version string
 	pkgrepo, pkgauthor    string
 	lineWidth             int
 	padAll                bool
 	padWidth              int
+	internalOpts          struct {
+		//pretend these are in the user struct :)
+		Help    bool
+		Version bool
+	}
+	complete struct {
+		enabled bool
+	}
 }
 
 //item is the structure representing a
@@ -51,38 +57,23 @@ type argumentlist struct {
 	min int
 }
 
-func fork(parent *node, val reflect.Value) *node {
-	order := make([]string, len(DefaultOrder))
-	copy(order, DefaultOrder)
-	tmpls := map[string]string{}
-	//instantiate
-	n := &node{
+func newNode(val reflect.Value) *node {
+	return &node{
 		item: item{
 			val: val,
 		},
-		parent: parent,
+		parent: nil,
 		//each cmd/cmd has its own set of names
 		optnames: map[string]bool{},
 		envnames: map[string]bool{},
 		cmds:     map[string]*node{},
 		flags:    []*item{},
 		//these are only set at the root
-		order:     order,
-		templates: tmpls,
+		order:     defaultOrder(),
+		templates: map[string]string{},
 		//public defaults
 		lineWidth: 72,
 		padAll:    true,
 		padWidth:  2,
 	}
-	//all fields from val
-	if val.Type().Kind() != reflect.Ptr {
-		n.errorf("opts: %s should be a pointer to a struct", val.Type().Name())
-		return n
-	}
-	n.addFields(val.Elem())
-	//add help option
-	g := reflect.ValueOf(&n.internalOpts).Elem()
-	n.addOptArg(g.Type().Field(0), g.Field(0))
-	//
-	return n
 }
