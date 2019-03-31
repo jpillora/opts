@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"os"
-	"path"
 	"regexp"
 	"strings"
 	"text/template"
@@ -19,6 +17,7 @@ type data struct {
 	Args         []*datum
 	Cmds         []*datum
 	Order        []string
+	Parents      string
 	Version      string
 	Repo, Author string
 	ErrMsg       string
@@ -93,18 +92,6 @@ var trailingSpaces = regexp.MustCompile(`(?m)\ +$`)
 //Help renders the help text as a string
 func (o *node) Help() string {
 	var err error
-	//final attempt at finding the program name
-	root := o
-	for root.parent != nil {
-		root = root.parent
-	}
-	if root.name == "" {
-		if exe, err := os.Executable(); err == nil {
-			_, root.name = path.Split(exe)
-		} else {
-			root.name = "main"
-		}
-	}
 	//add default templates
 	for name, str := range DefaultTemplates {
 		if _, ok := o.templates[name]; !ok {
@@ -154,7 +141,7 @@ func (o *node) Help() string {
 		for i, l := range lines {
 			lines[i] = tf.Pad + l
 		}
-		out = "\n" + strings.Join(lines, "\n")
+		out = "\n" + strings.Join(lines, "\n") + "\n"
 	}
 	out = trailingSpaces.ReplaceAllString(out, "")
 	return out
