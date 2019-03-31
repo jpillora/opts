@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
+	"path"
 	"reflect"
 	"strconv"
 	"strings"
@@ -52,7 +54,15 @@ func (n *node) parse(args []string) error {
 		return err
 	}
 	//add help flag
-	n.setHelpFlag()
+	n.setHelpVersionFlags()
+	//find name (root node only)
+	if n.parent == nil && n.name == "" {
+		if exe, err := os.Executable(); err == nil {
+			_, n.name = path.Split(exe)
+		} else {
+			n.name = "main"
+		}
+	}
 	//find defaults from config's package
 	n.setPkgDefaults()
 	//1. set config via JSON file, unmarshal it into the struct
@@ -82,7 +92,7 @@ func (n *node) parse(args []string) error {
 		if n.useEnv {
 			opt.useEnv = true
 		}
-		if n.useEnv && (opt.envName == "" || opt.envName == "!") &&
+		if n.useEnv && opt.envName == "" &&
 			opt.name != "help" && opt.name != "version" &&
 			!n.envnames[env] {
 			opt.envName = env
@@ -122,6 +132,8 @@ func (n *node) parse(args []string) error {
 		a := args[0]
 		//matching command, use it
 		if sub, exists := n.cmds[a]; exists {
+			//store matched command
+			n.cmd = sub
 			//user wants command name to be set on their struct?
 			if n.cmdname != nil {
 				n.cmdname.SetString(a)
@@ -237,7 +249,7 @@ func (n *node) addCmd(sf reflect.StructField, val reflect.Value) error {
 		val = val.Addr()
 	}
 	name := sf.Tag.Get("name")
-	if name == "" || name == "!" {
+	if name == "" {
 		name = camel2dash(sf.Name) //default to struct field name
 	}
 	// log.Printf("define cmd: %s =====", subname)
@@ -257,7 +269,7 @@ func (n *node) addArgList(sf reflect.StructField, val reflect.Value) error {
 		return n.errorf("only 1 arglist field is allowed ('%s' already defined)", n.arglist.name)
 	}
 	name := sf.Tag.Get("name")
-	if name == "" || name == "!" {
+	if name == "" {
 		name = camel2dash(sf.Name) //default to struct field name
 	}
 	if val.Len() != 0 {
@@ -319,7 +331,7 @@ func (n *node) addOptArg(sf reflect.StructField, val reflect.Value) error {
 		i.defstr = fmt.Sprintf("%v", def)
 	}
 	switch t {
-	case "opt", "commalist", "spacelist":
+	case "opt", "flag", "commalist", "spacelist":
 		//options can also set short names
 		if short := sf.Tag.Get("short"); short != "" {
 			if n.optnames[short] {
@@ -343,12 +355,19 @@ func (n *node) addOptArg(sf reflect.StructField, val reflect.Value) error {
 	return nil
 }
 
-func (n *node) setHelpFlag() error {
+func (n *node) setHelpVersionFlags() error {
 	g := reflect.ValueOf(&n.internalOpts).Elem()
+	//add help flag
 	t, _ := g.Type().FieldByName("Help")
 	v := g.FieldByName("Help")
 	if err := n.addOptArg(t, v); err != nil {
 		return n.errorf("error adding internal --help flag: %s - please report issue", err)
+	}
+	//add version flag
+	t, _ = g.Type().FieldByName("Version")
+	v = g.FieldByName("Version")
+	if err := n.addOptArg(t, v); err != nil {
+		return n.errorf("error adding internal --version flag: %s - please report issue", err)
 	}
 	return nil
 }
@@ -356,19 +375,21 @@ func (n *node) setHelpFlag() error {
 func (n *node) setPkgDefaults() {
 	//attempt to infer package name, repo, author
 	configStruct := n.item.val.Elem().Type()
+	log.Printf("struct %s", configStruct.Name())
+
 	pkgPath := configStruct.PkgPath()
 	parts := strings.Split(pkgPath, "/")
 	if len(parts) >= 3 {
-		if n.pkgauthor == "" {
-			n.pkgauthor = parts[1]
+		if n.authorInfer && n.author == "" {
+			n.author = parts[1]
 		}
 		if n.name == "" {
 			n.Name(parts[2])
 		}
-		if n.pkgrepo == "" {
+		if n.repoInfer && n.repo == "" {
 			switch parts[0] {
 			case "github.com", "bitbucket.org":
-				n.pkgrepo = "https://" + strings.Join(parts[0:3], "/")
+				n.repo = "https://" + strings.Join(parts[0:3], "/")
 			}
 		}
 	}

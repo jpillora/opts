@@ -2,7 +2,6 @@ package opts
 
 import (
 	"fmt"
-	"reflect"
 )
 
 //errorf to be stored until parse-time
@@ -24,13 +23,6 @@ func (n *node) Name(name string) Opts {
 //Version sets the version of the program
 //and renders the 'version' template in the help text
 func (n *node) Version(version string) Opts {
-	//add version option
-	g := reflect.ValueOf(&n.internalOpts).Elem()
-	t, _ := g.Type().FieldByName("Version")
-	v := g.FieldByName("Version")
-	if err := n.addOptArg(t, v); err != nil {
-		panic(err)
-	}
 	n.version = version
 	return n
 }
@@ -43,14 +35,10 @@ func (n *node) Repo(repo string) Opts {
 }
 
 //PkgRepo infers the repository link of the program
-//from the package import path of the struct (So note,
+//from the package import path of the struct (Note:
 //this will not work for 'main' packages)
 func (n *node) PkgRepo() Opts {
-	if n.pkgrepo == "" {
-		n.errorf("Package repository could not be infered")
-	} else {
-		n.Repo(n.pkgrepo)
-	}
+	n.repoInfer = true
 	return n
 }
 
@@ -65,11 +53,7 @@ func (n *node) Author(author string) Opts {
 //from the package import path of the struct (So note,
 //this will not work for 'main' packages)
 func (n *node) PkgAuthor() Opts {
-	if n.pkgrepo == "" {
-		n.errorf("Package author could not be infered")
-	} else {
-		n.Author(n.pkgauthor)
-	}
+	n.authorInfer = true
 	return n
 }
 

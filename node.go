@@ -30,18 +30,19 @@ type node struct {
 	envnames map[string]bool
 	cfgPath  string
 	//subcommands
+	cmd     *node
 	cmdname *reflect.Value
 	cmds    map[string]*node
 	//help
-	order                 []string
-	templates             map[string]string
-	repo, author, version string
-	pkgrepo, pkgauthor    string
-	lineWidth             int
-	padAll                bool
-	padWidth              int
-	internalOpts          struct {
-		//pretend these are in the user struct :)
+	order                  []string
+	templates              map[string]string
+	repo, author, version  string
+	repoInfer, authorInfer bool
+	lineWidth              int
+	padAll                 bool
+	padWidth               int
+	//pretend these are in the user struct :)
+	internalOpts struct {
 		Help    bool
 		Version bool
 	}
