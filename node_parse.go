@@ -5,12 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 )
 
 //Parse with os.Args
@@ -21,35 +19,21 @@ func (n *node) Parse() ParsedOpts {
 //ParseArgs with the provided arguments
 func (n *node) ParseArgs(args []string) ParsedOpts {
 	if err := n.parse(args); err != nil {
-		msg := ""
-		if oe, ok := err.(*optsError); ok {
-			log.Printf("OPTS-ERR: %s", err)
-			msg = oe.Error() + "\n"
-		} else {
-			log.Printf("USER-ERR: %s", err)
-			msg = n.Help()
+		//expected exit (0)
+		if ee, ok := err.(*exitError); ok {
+			fmt.Fprintf(os.Stderr, ee.msg)
+			os.Exit(0)
 		}
-		fmt.Fprintf(os.Stderr, msg)
+		//unexpected exit (1)
+		if ae, ok := err.(*authorError); ok {
+			fmt.Fprintf(os.Stderr, "opts usage error: %s\n", ae.err)
+		} else {
+			//message should be embedded in help
+			fmt.Fprintf(os.Stderr, n.Help())
+		}
 		os.Exit(1)
 	}
 	return n
-}
-
-//IsRunnable
-func (n *node) IsRunnable() bool {
-	//TODO
-	return false
-}
-
-//Run the parsed configuration
-func (n *node) Run() error {
-	//TODO
-	return nil
-}
-
-//Run the parsed configuration
-func (n *node) RunFatal() {
-	//TODO
 }
 
 //parse is the same as ParseArgs except
@@ -93,7 +77,11 @@ func (n *node) parse(args []string) error {
 				n.optnames[s] = true
 			}
 		}
+		//should generate env name?
 		env := camel2const(opt.name)
+		if n.useEnv {
+			opt.useEnv = true
+		}
 		if n.useEnv && (opt.envName == "" || opt.envName == "!") &&
 			opt.name != "help" && opt.name != "version" &&
 			!n.envnames[env] {
@@ -103,74 +91,19 @@ func (n *node) parse(args []string) error {
 	//link each flag to fields in the underlying struct
 	flagset := flag.NewFlagSet(n.name, flag.ContinueOnError)
 	flagset.SetOutput(ioutil.Discard)
-	for _, opt := range n.flags {
-		//2. set config via environment
-		envVal := ""
-		if opt.useEnv || n.useEnv {
-			envVal = os.Getenv(opt.envName)
-		}
-		//3. set config via Go's pkg/flags
-		addr := opt.val.Addr().Interface()
-		switch addr := addr.(type) {
-		case flag.Value:
-			flagset.Var(addr, opt.name, "")
-			if opt.shortName != "" {
-				flagset.Var(addr, opt.shortName, "")
-			}
-		case *[]string:
-			sep := ""
-			switch opt.typeName {
-			case "commalist":
-				sep = ","
-			case "spacelist":
-				sep = " "
-			}
-			fv := &sepList{sep: sep, strs: addr}
-			flagset.Var(fv, opt.name, "")
-			if opt.shortName != "" {
-				flagset.Var(fv, opt.shortName, "")
-			}
-		case *bool:
-			str2bool(envVal, addr)
-			flagset.BoolVar(addr, opt.name, *addr, "")
-			if opt.shortName != "" {
-				flagset.BoolVar(addr, opt.shortName, *addr, "")
-			}
-		case *string:
-			str2str(envVal, addr)
-			flagset.StringVar(addr, opt.name, *addr, "")
-			if opt.shortName != "" {
-				flagset.StringVar(addr, opt.shortName, *addr, "")
-			}
-		case *int:
-			str2int(envVal, addr)
-			flagset.IntVar(addr, opt.name, *addr, "")
-			if opt.shortName != "" {
-				flagset.IntVar(addr, opt.shortName, *addr, "")
-			}
-		case *time.Duration:
-			flagset.DurationVar(addr, opt.name, *addr, "")
-			if opt.shortName != "" {
-				flagset.DurationVar(addr, opt.shortName, *addr, "")
-			}
-		default:
-			return fmt.Errorf("[opts] Option '%s' has unsupported type", opt.name)
-		}
+	if err := linkFlagset(n.flags, flagset); err != nil {
+		return n.errorf("Flagset error: %s", err)
 	}
-	//set user config
-	err := flagset.Parse(args)
-	if err != nil {
+	if err := flagset.Parse(args); err != nil {
 		//insert flag errors into help text
 		n.err = err
 		n.internalOpts.Help = true
 	}
 	//internal opts (--help and --version)
 	if n.internalOpts.Help {
-		fmt.Println(n.Help())
-		os.Exit(0)
+		return &exitError{n.Help()}
 	} else if n.internalOpts.Version {
-		fmt.Println(n.version)
-		os.Exit(0)
+		return &exitError{n.version}
 	}
 	//fill each individual arg
 	args = flagset.Args()
@@ -422,8 +355,9 @@ func (n *node) setHelpFlag() error {
 
 func (n *node) setPkgDefaults() {
 	//attempt to infer package name, repo, author
-	pkgpath := n.item.val.Elem().Type().PkgPath()
-	parts := strings.Split(pkgpath, "/")
+	configStruct := n.item.val.Elem().Type()
+	pkgPath := configStruct.PkgPath()
+	parts := strings.Split(pkgPath, "/")
 	if len(parts) >= 3 {
 		if n.pkgauthor == "" {
 			n.pkgauthor = parts[1]

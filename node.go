@@ -2,6 +2,19 @@ package opts
 
 import "reflect"
 
+//item is the structure representing a
+//an opt item
+type item struct {
+	val       reflect.Value
+	name      string
+	shortName string
+	envName   string
+	useEnv    bool
+	typeName  string
+	help      string
+	defstr    string
+}
+
 //node is the main class, it contains
 //all parsing state for a single set of
 //arguments
@@ -37,26 +50,6 @@ type node struct {
 	}
 }
 
-//item is the structure representing a
-//an opt item
-type item struct {
-	val       reflect.Value
-	name      string
-	shortName string
-	envName   string
-	useEnv    bool
-	typeName  string
-	help      string
-	defstr    string
-}
-
-//argumentlist represends a
-//named string slice
-type argumentlist struct {
-	item
-	min int
-}
-
 func newNode(val reflect.Value) *node {
 	return &node{
 		item: item{
@@ -76,4 +69,11 @@ func newNode(val reflect.Value) *node {
 		padAll:    true,
 		padWidth:  2,
 	}
+}
+
+//argumentlist represends a
+//named string slice
+type argumentlist struct {
+	item
+	min int
 }
