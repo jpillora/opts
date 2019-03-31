@@ -7,7 +7,7 @@ import (
 
 //errorf to be stored until parse-time
 func (n *node) errorf(format string, args ...interface{}) error {
-	err := &optsError{fmt.Sprintf(format, args...)}
+	err := &authorError{fmt.Sprintf(format, args...)}
 	//only store the first error
 	if n.err == nil {
 		n.err = err
@@ -163,10 +163,18 @@ func (n *node) docOffset(offset int, target, newID, template string) *node {
 	return n
 }
 
-type optsError struct {
+type authorError struct {
 	err string
 }
 
-func (o *optsError) Error() string {
+func (o *authorError) Error() string {
 	return o.err
+}
+
+type exitError struct {
+	msg string
+}
+
+func (o *exitError) Error() string {
+	return o.msg
 }
