@@ -15,6 +15,11 @@ var newlines = regexp.MustCompile(`\n`)
 func readable(s string) string {
 	s = spaces.ReplaceAllString(s, "•")
 	s = newlines.ReplaceAllString(s, "⏎\n")
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		lines[i] = fmt.Sprintf("%5d: %s", i+1, l)
+	}
+	s = strings.Join(lines, "\n")
 	return s
 }
 
@@ -27,8 +32,13 @@ func check(t *testing.T, a, b interface{}) {
 		extra := ""
 		if out, ok := diffstr(stra, strb); ok {
 			extra = "\n\n" + out
+			stra = "\n" + stra + "\n"
+			strb = "\n" + strb + "\n"
+		} else {
+			stra = "'" + stra + "'"
+			strb = "'" + strb + "'"
 		}
-		t.Fatalf("got '%v' (%s), expected '%v' (%s)%s", stra, typea.Kind(), strb, typeb.Kind(), extra)
+		t.Fatalf("got %s (%s), expected %s (%s)%s", stra, typea.Kind(), strb, typeb.Kind(), extra)
 	}
 }
 
@@ -38,11 +48,11 @@ func diffstr(a, b interface{}) (string, bool) {
 	if !oka || !okb {
 		return "", false
 	}
+	ra := []rune(stra)
+	rb := []rune(strb)
 	line := 1
 	char := 1
 	var diff rune
-	ra := []rune(stra)
-	rb := []rune(strb)
 	for i, a := range ra {
 		if a == '\n' {
 			line++
@@ -51,7 +61,8 @@ func diffstr(a, b interface{}) (string, bool) {
 			char++
 		}
 		var b rune
-		if i < len(strb) {
+		if i < len(rb) {
+			// log.Printf("%d < %d, %d", i, len(strb), len(rb))
 			b = rb[i]
 		}
 		if a != b {
@@ -226,6 +237,7 @@ func TestDocBefore(t *testing.T) {
   Options:
   --foo, -f
   --help, -h
+
 `)
 }
 
@@ -251,6 +263,7 @@ func TestDocAfter(t *testing.T) {
   Options:
   --foo, -f
   --help, -h
+
 `)
 }
 

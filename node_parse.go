@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"reflect"
@@ -54,7 +53,9 @@ func (n *node) parse(args []string) error {
 		return err
 	}
 	//add help flag
-	n.setHelpVersionFlags()
+	n.addInternalFlags()
+	//find defaults from config's package
+	n.setPkgDefaults()
 	//find name (root node only)
 	if n.parent == nil && n.name == "" {
 		if exe, err := os.Executable(); err == nil {
@@ -63,8 +64,6 @@ func (n *node) parse(args []string) error {
 			n.name = "main"
 		}
 	}
-	//find defaults from config's package
-	n.setPkgDefaults()
 	//1. set config via JSON file, unmarshal it into the struct
 	if n.cfgPath != "" {
 		b, err := ioutil.ReadFile(n.cfgPath)
@@ -186,7 +185,7 @@ func (n *node) addStructFields(c reflect.Value) error {
 		//is a pkg/flag type
 		k := sf.Type.Kind()
 		if sf.Type.Implements(flagValueType) {
-			err := n.addOptArg(sf, val)
+			err := n.addFlagArg(sf, val)
 			if err != nil {
 				return err
 			}
@@ -205,9 +204,9 @@ func (n *node) addStructFields(c reflect.Value) error {
 			if sf.Type.Elem().Kind() != reflect.String {
 				err = n.errorf("slice (list) types must be []string")
 			} else if sf.Tag.Get("type") == "commalist" {
-				err = n.addOptArg(sf, val)
+				err = n.addFlagArg(sf, val)
 			} else if sf.Tag.Get("type") == "spacelist" {
-				err = n.addOptArg(sf, val)
+				err = n.addFlagArg(sf, val)
 			} else {
 				err = n.addArgList(sf, val)
 			}
@@ -219,7 +218,7 @@ func (n *node) addStructFields(c reflect.Value) error {
 					n.cmdname = &val
 				}
 			} else {
-				err = n.addOptArg(sf, val)
+				err = n.addFlagArg(sf, val)
 			}
 		case reflect.Interface:
 			err = n.errorf("Struct field '%s' interface type must implement flag.Value", sf.Name)
@@ -289,7 +288,7 @@ func (n *node) addArgList(sf reflect.StructField, val reflect.Value) error {
 	return nil
 }
 
-func (n *node) addOptArg(sf reflect.StructField, val reflect.Value) error {
+func (n *node) addFlagArg(sf reflect.StructField, val reflect.Value) error {
 	//assume opt, unless arg tag is present
 	t := sf.Tag.Get("type")
 	if t == "" {
@@ -355,19 +354,21 @@ func (n *node) addOptArg(sf reflect.StructField, val reflect.Value) error {
 	return nil
 }
 
-func (n *node) setHelpVersionFlags() error {
+func (n *node) addInternalFlags() error {
 	g := reflect.ValueOf(&n.internalOpts).Elem()
 	//add help flag
 	t, _ := g.Type().FieldByName("Help")
 	v := g.FieldByName("Help")
-	if err := n.addOptArg(t, v); err != nil {
+	if err := n.addFlagArg(t, v); err != nil {
 		return n.errorf("error adding internal --help flag: %s - please report issue", err)
 	}
-	//add version flag
-	t, _ = g.Type().FieldByName("Version")
-	v = g.FieldByName("Version")
-	if err := n.addOptArg(t, v); err != nil {
-		return n.errorf("error adding internal --version flag: %s - please report issue", err)
+	if n.version != "" {
+		//add version flag if provided
+		t, _ = g.Type().FieldByName("Version")
+		v = g.FieldByName("Version")
+		if err := n.addFlagArg(t, v); err != nil {
+			return n.errorf("error adding internal --version flag: %s - please report issue", err)
+		}
 	}
 	return nil
 }
@@ -375,8 +376,6 @@ func (n *node) setHelpVersionFlags() error {
 func (n *node) setPkgDefaults() {
 	//attempt to infer package name, repo, author
 	configStruct := n.item.val.Elem().Type()
-	log.Printf("struct %s", configStruct.Name())
-
 	pkgPath := configStruct.PkgPath()
 	parts := strings.Split(pkgPath, "/")
 	if len(parts) >= 3 {
@@ -384,7 +383,7 @@ func (n *node) setPkgDefaults() {
 			n.author = parts[1]
 		}
 		if n.name == "" {
-			n.Name(parts[2])
+			n.name = parts[len(parts)-1]
 		}
 		if n.repoInfer && n.repo == "" {
 			switch parts[0] {
