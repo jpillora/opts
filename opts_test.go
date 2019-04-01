@@ -62,11 +62,9 @@ func diffstr(a, b interface{}) (string, bool) {
 		}
 		var b rune
 		if i < len(rb) {
-			// log.Printf("%d < %d, %d", i, len(strb), len(rb))
 			b = rb[i]
 		}
 		if a != b {
-			// log.Printf("%d:%d - %s (%x) %s (%x)", line, char, string(a), a, string(b), b)
 			a = diff
 			break
 		}

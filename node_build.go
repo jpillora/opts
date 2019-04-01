@@ -97,13 +97,6 @@ func (n *node) UseEnv() Opts {
 	return n
 }
 
-//Complete enables auto-completion for this command and
-//its subcommands
-func (n *node) Complete() Opts {
-	n.complete.enabled = true
-	return n
-}
-
 //DocBefore inserts a text block before the specified template
 func (n *node) DocBefore(target, newID, template string) Opts {
 	return n.docOffset(0, target, newID, template)

@@ -1,6 +1,9 @@
 package opts
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 //AddCommand to this opts instance
 func (n *node) AddCommand(cmd Opts) Opts {
@@ -28,27 +31,37 @@ func (n *node) matchedCommand() *node {
 	return n
 }
 
-type runner interface {
+type runner1 interface {
 	Run() error
+}
+
+type runner2 interface {
+	Run()
 }
 
 //IsRunnable
 func (n *node) IsRunnable() bool {
 	m := n.matchedCommand()
 	v := m.val.Interface()
-	_, ok := v.(runner)
-	return ok
+	_, ok1 := v.(runner1)
+	_, ok2 := v.(runner2)
+	return ok1 || ok2
 }
 
 //Run the parsed configuration
 func (n *node) Run() error {
 	m := n.matchedCommand()
 	v := m.val.Interface()
-	r, ok := v.(runner)
-	if !ok {
-		log.Fatalf("command '%s' is not runnable", m.name)
+	r1, ok1 := v.(runner1)
+	if ok1 {
+		return r1.Run()
 	}
-	return r.Run()
+	r2, ok2 := v.(runner2)
+	if ok2 {
+		r2.Run()
+		return nil
+	}
+	return fmt.Errorf("command '%s' is not runnable", m.name)
 }
 
 //Run the parsed configuration
