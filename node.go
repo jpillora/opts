@@ -43,19 +43,17 @@ type node struct {
 	padWidth               int
 	//pretend these are in the user struct :)
 	internalOpts struct {
-		Help    bool
-		Version bool
+		Help      bool
+		Version   bool
+		Install   bool `help:"install shell-completion"`
+		Uninstall bool `help:"uninstall shell-completion"`
 	}
-	complete struct {
-		enabled bool
-	}
+	complete bool
 }
 
 func newNode(val reflect.Value) *node {
 	return &node{
-		item: item{
-			val: val,
-		},
+		item:   item{val: val},
 		parent: nil,
 		//each cmd/cmd has its own set of names
 		optnames: map[string]bool{},

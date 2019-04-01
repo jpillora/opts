@@ -19,7 +19,14 @@ func (n *node) Parse() ParsedOpts {
 
 //ParseArgs with the provided arguments
 func (n *node) ParseArgs(args []string) ParsedOpts {
+	//shell-completion?
+	completing := n.complete && os.Getenv("COMP_LINE") != ""
+	//ultimate parse
 	if err := n.parse(args); err != nil {
+		//parse failed for shell-completion, just exit
+		if completing {
+			os.Exit(1)
+		}
 		//expected exit (0)
 		if ee, ok := err.(*exitError); ok {
 			fmt.Fprintf(os.Stderr, ee.msg)
@@ -28,12 +35,22 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 		//unexpected exit (1)
 		if ae, ok := err.(*authorError); ok {
 			fmt.Fprintf(os.Stderr, "opts usage error: %s\n", ae.err)
-		} else {
-			//message should be embedded in help
-			fmt.Fprintf(os.Stderr, n.Help())
+			os.Exit(1)
 		}
+		//embed message in help
+		n.err = err
+		fmt.Fprintf(os.Stderr, n.Help())
 		os.Exit(1)
 	}
+	//parse complete, shell-completion requested
+	if completing {
+		ok := n.doCompletion()
+		if !ok {
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+	//success
 	return n
 }
 
@@ -48,22 +65,22 @@ func (n *node) parse(args []string) error {
 	if v.Type().Kind() != reflect.Ptr && v.Type().Elem().Kind() != reflect.Struct {
 		return n.errorf("%s should be a pointer to a struct", v.Type().Name())
 	}
-	//add struct
+	//add this node and its fields
 	if err := n.addStructFields(v.Elem()); err != nil {
 		return err
+	}
+	//find name (root-node non-main only)
+	if n.parent == nil && n.name == "" {
+		if exe, err := os.Executable(); err == nil {
+			if _, name := path.Split(exe); name != "main" {
+				n.name = name
+			}
+		}
 	}
 	//add help flag
 	n.addInternalFlags()
 	//find defaults from config's package
 	n.setPkgDefaults()
-	//find name (root node only)
-	if n.parent == nil && n.name == "" {
-		if exe, err := os.Executable(); err == nil {
-			_, n.name = path.Split(exe)
-		} else {
-			n.name = "main"
-		}
-	}
 	//1. set config via JSON file, unmarshal it into the struct
 	if n.cfgPath != "" {
 		b, err := ioutil.ReadFile(n.cfgPath)
@@ -108,11 +125,15 @@ func (n *node) parse(args []string) error {
 		n.err = err
 		n.internalOpts.Help = true
 	}
-	//internal opts (--help and --version)
+	//internal opts
 	if n.internalOpts.Help {
 		return &exitError{n.Help()}
 	} else if n.internalOpts.Version {
 		return &exitError{n.version}
+	} else if n.internalOpts.Install {
+		return n.manageCompletion(false)
+	} else if n.internalOpts.Uninstall {
+		return n.manageCompletion(true)
 	}
 	//fill each individual arg
 	args = flagset.Args()
@@ -251,7 +272,6 @@ func (n *node) addCmd(sf reflect.StructField, val reflect.Value) error {
 	if name == "" {
 		name = camel2dash(sf.Name) //default to struct field name
 	}
-	// log.Printf("define cmd: %s =====", subname)
 	sub := newNode(val)
 	sub.name = name
 	sub.help = sf.Tag.Get("help")
@@ -339,7 +359,6 @@ func (n *node) addFlagArg(sf reflect.StructField, val reflect.Value) error {
 			n.optnames[i.shortName] = true
 			i.shortName = short
 		}
-		// log.Printf("define option: %s %s", name, sf.Type)
 		n.flags = append(n.flags, i)
 	case "arg":
 		//TODO allow other types in 'arg' fields
@@ -350,24 +369,23 @@ func (n *node) addFlagArg(sf reflect.StructField, val reflect.Value) error {
 	default:
 		return n.errorf("Invalid optype: %s", t)
 	}
-	// log.Printf("add '%s' (%s)", i.name, sf.Type)
 	return nil
 }
 
 func (n *node) addInternalFlags() error {
-	g := reflect.ValueOf(&n.internalOpts).Elem()
-	//add help flag
-	t, _ := g.Type().FieldByName("Help")
-	v := g.FieldByName("Help")
-	if err := n.addFlagArg(t, v); err != nil {
-		return n.errorf("error adding internal --help flag: %s - please report issue", err)
-	}
+	flags := []string{"Help"}
 	if n.version != "" {
-		//add version flag if provided
-		t, _ = g.Type().FieldByName("Version")
-		v = g.FieldByName("Version")
+		flags = append(flags, "Version")
+	}
+	if n.complete {
+		flags = append(flags, "Install", "Uninstall")
+	}
+	g := reflect.ValueOf(&n.internalOpts).Elem()
+	for _, flag := range flags {
+		t, _ := g.Type().FieldByName(flag)
+		v := g.FieldByName(flag)
 		if err := n.addFlagArg(t, v); err != nil {
-			return n.errorf("error adding internal --version flag: %s - please report issue", err)
+			return n.errorf("error adding internal %s flag: %s - please report issue", flag, err)
 		}
 	}
 	return nil
