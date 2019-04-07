@@ -201,8 +201,14 @@ func (n *node) addStructFields(c reflect.Value) error {
 			continue
 		}
 		//is a pkg/flag type
-		k := sf.Type.Kind()
-		if sf.Type.Implements(flagValueType) {
+		if _, ok := val.Interface().(flag.Value); ok {
+			err := n.addFlagArg(sf, val)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+		if _, ok := val.Addr().Interface().(flag.Value); ok {
 			err := n.addFlagArg(sf, val)
 			if err != nil {
 				return err
@@ -210,6 +216,7 @@ func (n *node) addStructFields(c reflect.Value) error {
 			continue
 		}
 		//reflect to find flag type
+		k := sf.Type.Kind()
 		var err error
 		switch k {
 		case reflect.Ptr, reflect.Struct:
@@ -296,9 +303,10 @@ func (n *node) addArgList(sf reflect.StructField, val reflect.Value) error {
 	//insert (there can only be one)
 	n.arglist = &argumentlist{
 		item: item{
-			val:  val,
-			name: name,
-			help: sf.Tag.Get("help"),
+			val:     val,
+			name:    name,
+			help:    sf.Tag.Get("help"),
+			predict: sf.Tag.Get("predict"),
 		},
 		min: min,
 	}
@@ -314,6 +322,7 @@ func (n *node) addFlagArg(sf reflect.StructField, val reflect.Value) error {
 	i := &item{
 		val:      val,
 		typeName: t,
+		predict:  sf.Tag.Get("predict"),
 	}
 	//find name
 	i.name = sf.Tag.Get("name")
@@ -342,6 +351,10 @@ func (n *node) addFlagArg(sf reflect.StructField, val reflect.Value) error {
 		i.defstr = defstr
 	} else if val.Kind() == reflect.Slice {
 		i.defstr = ""
+	} else if val.Kind() != reflect.Ptr && val.CanAddr() {
+		if val.Addr().Interface() != reflect.Zero(val.Type()).Interface() {
+			i.defstr = fmt.Sprintf("%v", val.Interface())
+		}
 	} else if def := val.Interface(); def != reflect.Zero(sf.Type).Interface() {
 		//not the zero-value, stringify!
 		i.defstr = fmt.Sprintf("%v", def)

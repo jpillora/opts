@@ -13,8 +13,6 @@ import (
 	"unicode/utf8"
 )
 
-var flagValueType = reflect.TypeOf((*flag.Value)(nil)).Elem()
-
 var durationType = reflect.TypeOf(time.Second)
 
 func camel2const(s string) string {

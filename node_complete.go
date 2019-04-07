@@ -1,6 +1,8 @@
 package opts
 
 import (
+	"strings"
+
 	"github.com/posener/complete"
 	"github.com/posener/complete/cmd/install"
 )
@@ -43,26 +45,63 @@ func (n *node) nodeCompletion() complete.Command {
 	//prepare flags
 	for _, flag := range n.flags {
 		//pick a predictor
-		p := complete.Predictor(complete.PredictAnything)
-		v := flag.val.Interface()
-		if pv, ok := v.(complete.Predictor); ok {
-			p = pv
-		} else if _, ok := v.(bool); ok {
-			p = complete.PredictNothing
-		}
+		p := predictorFromItem(flag)
+		// v := flag.val.Interface()
 		//apply to flags
+		complete.Log("flag completion %s %#+v\n", flag.name, p)
 		c.Flags["--"+flag.name] = p
 		if flag.shortName != "" {
 			c.Flags["-"+flag.shortName] = p
 		}
 	}
 	//prepare args
-	if len(n.args) > 0 {
-		c.Args = complete.PredictAnything
+	var p complete.Predictor
+	for _, arg := range n.args {
+		if p == nil {
+			c.Args = predictorFromItem(arg)
+		} else {
+			c.Args = complete.PredictOr(c.Args, predictorFromItem(arg))
+		}
 	}
 	//prepare sub-commands
 	for name, subn := range n.cmds {
 		c.Sub[name] = subn.nodeCompletion() //recurse
 	}
 	return c
+}
+
+func predictorFromItem(i *item) (p complete.Predictor) {
+	if pv, ok := i.val.Interface().(complete.Predictor); ok {
+		p = pv
+	} else if i.val.CanAddr() {
+		if pv, ok := i.val.Addr().Interface().(complete.Predictor); ok {
+			p = pv
+		}
+	} else if _, ok := i.val.Interface().(bool); ok {
+		p = complete.PredictNothing
+	}
+	if p != nil && i.predict != "" {
+		panic("predict tag set on Predictable or bool field " + i.name)
+	}
+	if p == nil {
+		switch {
+		case i.predict == "":
+			p = complete.PredictAnything
+		case i.predict == "any":
+			p = complete.PredictAnything
+		case i.predict == "none":
+			p = complete.PredictNothing
+		case i.predict == "dirs":
+			p = complete.PredictDirs("*")
+		case i.predict == "files":
+			p = complete.PredictFiles("*")
+		case strings.HasPrefix(i.predict, "dirs:"):
+			p = complete.PredictDirs(i.predict[len("dirs:"):])
+		case strings.HasPrefix(i.predict, "files:"):
+			p = complete.PredictFiles(i.predict[len("files:"):])
+		default:
+			panic("bad predict tag '" + i.predict + "' on field " + i.name)
+		}
+	}
+	return
 }

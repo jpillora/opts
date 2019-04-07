@@ -1,17 +1,40 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/jpillora/opts"
+	"github.com/posener/complete"
 )
 
 type Config struct {
-	Ping string
-	Pong string
-	Zip  string
-	Zop  string
+	Ping string `predict:"files:*.go"`
+	Pong string `predict:"dirs"`
+	Zip  string `predict:"none"`
+	Zop  pstring
+	Zing opts.RepeatedStringOpt
 }
 
-type foo struct{}
+// ./eg-complete --zing a --zing b --zing c
+// &{Ping: Pong: Zip: Zop:{val:} Zing:[a b c]}
+
+type pstring struct {
+	val string
+}
+
+func (*pstring) Predict(args complete.Args) []string {
+	return []string{"a", "b", "c"}
+}
+func (p *pstring) Set(val string) (err error) {
+	p.val = val
+	return
+}
+func (p *pstring) String() string {
+	return p.val
+}
+
+type foo struct {
+}
 type man struct{}
 type chew struct{}
 
@@ -24,4 +47,8 @@ func main() {
 				opts.New(&chew{}).Name("chew")))).
 		Parse().
 		RunFatal()
+}
+
+func (obj *Config) Run() {
+	fmt.Printf("%+v\n", obj)
 }

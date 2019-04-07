@@ -16,6 +16,7 @@ type item struct {
 	typeName  string
 	help      string
 	defstr    string
+	predict   string
 }
 
 //node is the main class, it contains
