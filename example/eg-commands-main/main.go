@@ -9,7 +9,7 @@ import (
 type Config struct{}
 
 func main() {
-	opts.NewNamed(&Config{}, "root").
+	opts.New(&Config{}).
 		AddCommand(
 			opts.NewNamed(&Foo{}, "foo").
 				AddCommand(

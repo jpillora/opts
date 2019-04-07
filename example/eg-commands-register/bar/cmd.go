@@ -8,6 +8,7 @@ import (
 
 func Register(parent opts.Opts) {
 	c := cmd{}
+	//NOTE: default name for all subcommands is the package name ("bar")
 	o := opts.New(&c)
 	parent.AddCommand(o)
 }

@@ -28,6 +28,13 @@ func (n *node) Version(version string) Opts {
 	return n
 }
 
+//Description sets the text description of the program,
+//which, by default, is inserted below the usage text
+func (n *node) Description(desc string) Opts {
+	n.desc = desc
+	return n
+}
+
 //Repo sets the repository link of the program
 //and renders the 'repo' template in the help text
 func (n *node) Repo(repo string) Opts {
@@ -141,14 +148,13 @@ func (n *node) docOffset(offset int, target, newID, template string) *node {
 	return n
 }
 
-func (n *node) AddFlagSet(fs *flag.FlagSet) Opts {
+func (n *node) ImportFlagSet(fs *flag.FlagSet) Opts {
 	n.flagsets = append(n.flagsets, fs)
 	return n
 }
 
-func (n *node) AddGlobalFlagSet() Opts {
-	n.flagsets = append(n.flagsets, flag.CommandLine)
-	return n
+func (n *node) ImportGlobalFlagSet() Opts {
+	return n.ImportFlagSet(flag.CommandLine)
 }
 
 type authorError struct {

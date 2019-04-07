@@ -43,10 +43,10 @@ world
 $ eg-env --help
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --help -->
+<!--tmpl,chomp,code=plain:go build -o eg-env && ./eg-env --help && rm eg-env -->
 ``` plain 
 
-  Usage:  [options]
+  Usage: eg-env [options]
 
   Options:
   --foo, -f   env FOO

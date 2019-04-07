@@ -3,6 +3,7 @@ package opts
 import (
 	"fmt"
 	"log"
+	"strings"
 )
 
 //AddCommand to this opts instance
@@ -11,6 +12,13 @@ func (n *node) AddCommand(cmd Opts) Opts {
 	if !ok {
 		panic("another implementation of opts???")
 	}
+	//for subcommands, default name is package name
+	pkgPath := sub.item.val.Elem().Type().PkgPath()
+	if sub.name == "" && pkgPath != "" {
+		parts := strings.Split(pkgPath, "/")
+		sub.name = parts[len(parts)-1]
+	}
+	//if still no name, needs to be manually set
 	if sub.name == "" {
 		n.errorf("cannot add command, please set a Name()")
 		return n

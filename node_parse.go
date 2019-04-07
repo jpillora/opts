@@ -69,8 +69,8 @@ func (n *node) parse(args []string) error {
 	if err := n.addStructFields(v.Elem()); err != nil {
 		return err
 	}
-	//find name (root-node non-main only)
-	if n.parent == nil && n.name == "" {
+	//find default name for root-node
+	if n.name == "" && n.parent == nil {
 		if exe, err := os.Executable(); err == nil {
 			if _, name := path.Split(exe); name != "main" {
 				n.name = name
@@ -422,9 +422,6 @@ func (n *node) setPkgDefaults() {
 	if len(parts) >= 3 {
 		if n.authorInfer && n.author == "" {
 			n.author = parts[1]
-		}
-		if n.name == "" {
-			n.name = parts[len(parts)-1]
 		}
 		if n.repoInfer && n.repo == "" {
 			switch parts[0] {
