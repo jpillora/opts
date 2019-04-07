@@ -17,32 +17,8 @@ func (n *node) Parse() ParsedOpts {
 	return n.ParseArgs(os.Args[1:])
 }
 
-func (n *node) AddFlagSet(fs *flag.FlagSet) Opts {
-	n.external_flagsets = append(n.external_flagsets, fs)
-	return n
-}
-func (n *node) AddGoCommandLineFlagSet() Opts {
-	n.external_flagsets = append(n.external_flagsets, flag.CommandLine)
-	return n
-}
-
 //ParseArgs with the provided arguments
 func (n *node) ParseArgs(args []string) ParsedOpts {
-	for _, efs := range n.external_flagsets {
-		efs.VisitAll(func(f *flag.Flag) {
-			it := &item{
-				val:    reflect.ValueOf(f.Value).Elem(),
-				name:   f.Name,
-				defstr: f.DefValue,
-				help:   f.Usage,
-			}
-			n.flags = append(n.flags, it)
-			n.optnames[f.Name] = true
-		})
-		efs.Init(efs.Name(), flag.ContinueOnError)
-		efs.SetOutput(ioutil.Discard)
-		efs.Parse(args)
-	}
 	//shell-completion?
 	completing := n.complete && os.Getenv("COMP_LINE") != ""
 	//ultimate parse
@@ -103,6 +79,8 @@ func (n *node) parse(args []string) error {
 	}
 	//add help flag
 	n.addInternalFlags()
+	//add user provided flagsets, will error if there is a naming collision
+	n.addFlagsets(args)
 	//find defaults from config's package
 	n.setPkgDefaults()
 	//1. set config via JSON file, unmarshal it into the struct
@@ -413,6 +391,27 @@ func (n *node) addInternalFlags() error {
 		}
 	}
 	return nil
+}
+
+func (n *node) addFlagsets(args []string) {
+	//add provided flag sets
+	for _, fs := range n.flagsets {
+		fs.VisitAll(func(f *flag.Flag) {
+			//TODO: fail if naming collision
+			it := &item{
+				val:    reflect.ValueOf(f.Value).Elem(),
+				name:   f.Name,
+				defstr: f.DefValue,
+				help:   f.Usage,
+			}
+			n.flags = append(n.flags, it)
+			n.optnames[f.Name] = true
+		})
+		fs.Init(fs.Name(), flag.ContinueOnError)
+		fs.SetOutput(ioutil.Discard)
+		//TODO: return error?
+		fs.Parse(args)
+	}
 }
 
 func (n *node) setPkgDefaults() {

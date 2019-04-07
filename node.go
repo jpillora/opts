@@ -32,8 +32,8 @@ type node struct {
 	optnames map[string]bool
 	envnames map[string]bool
 	cfgPath  string
-	//external flagset
-	external_flagsets []*flag.FlagSet
+	//external flagsets
+	flagsets []*flag.FlagSet
 	//subcommands
 	cmd     *node
 	cmdname *reflect.Value
