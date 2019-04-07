@@ -17,8 +17,32 @@ func (n *node) Parse() ParsedOpts {
 	return n.ParseArgs(os.Args[1:])
 }
 
+func (n *node) AddFlagSet(fs *flag.FlagSet) Opts {
+	n.external_flagsets = append(n.external_flagsets, fs)
+	return n
+}
+func (n *node) AddGoCommandLineFlagSet() Opts {
+	n.external_flagsets = append(n.external_flagsets, flag.CommandLine)
+	return n
+}
+
 //ParseArgs with the provided arguments
 func (n *node) ParseArgs(args []string) ParsedOpts {
+	for _, efs := range n.external_flagsets {
+		efs.VisitAll(func(f *flag.Flag) {
+			it := &item{
+				val:    reflect.ValueOf(f.Value).Elem(),
+				name:   f.Name,
+				defstr: f.DefValue,
+				help:   f.Usage,
+			}
+			n.flags = append(n.flags, it)
+			n.optnames[f.Name] = true
+		})
+		efs.Init(efs.Name(), flag.ContinueOnError)
+		efs.SetOutput(ioutil.Discard)
+		efs.Parse(args)
+	}
 	//shell-completion?
 	completing := n.complete && os.Getenv("COMP_LINE") != ""
 	//ultimate parse
