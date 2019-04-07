@@ -19,9 +19,7 @@ type chew struct {
 
 func main() {
 	ro := opts.New(&root{}).
-		// AddFlagSet(flag.CommandLine).
-		AddGoCommandLineFlagSet().
-		Version("asdf").
+		AddGlobalFlagSet().
 		Complete().
 		SetLineWidth(132).
 		AddCommand(opts.New(&foo{}).Name("foo").AddCommand(

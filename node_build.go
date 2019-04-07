@@ -1,6 +1,7 @@
 package opts
 
 import (
+	"flag"
 	"fmt"
 )
 
@@ -137,6 +138,16 @@ func (n *node) docOffset(offset int, target, newID, template string) *node {
 		}
 	}
 	n.errorf("target template not found: %s", target)
+	return n
+}
+
+func (n *node) AddFlagSet(fs *flag.FlagSet) Opts {
+	n.flagsets = append(n.flagsets, fs)
+	return n
+}
+
+func (n *node) AddGlobalFlagSet() Opts {
+	n.flagsets = append(n.flagsets, flag.CommandLine)
 	return n
 }
 

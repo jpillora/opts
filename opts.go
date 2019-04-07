@@ -16,7 +16,7 @@ type Opts interface {
 	UseEnv() Opts
 	Complete() Opts
 	AddFlagSet(*flag.FlagSet) Opts
-	AddGoCommandLineFlagSet() Opts
+	AddGlobalFlagSet() Opts
 	//documentation
 	Repo(repo string) Opts
 	Author(author string) Opts
