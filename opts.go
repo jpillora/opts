@@ -1,6 +1,7 @@
 package opts
 
 import (
+	"flag"
 	"reflect"
 )
 
@@ -14,6 +15,8 @@ type Opts interface {
 	ConfigPath(path string) Opts
 	UseEnv() Opts
 	Complete() Opts
+	AddFlagSet(*flag.FlagSet) Opts
+	AddGoCommandLineFlagSet() Opts
 	//documentation
 	Repo(repo string) Opts
 	Author(author string) Opts
