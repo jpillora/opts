@@ -1,8 +1,6 @@
 package opts
 
 import (
-	"reflect"
-
 	"github.com/posener/complete"
 	"github.com/posener/complete/cmd/install"
 )
@@ -35,7 +33,7 @@ func (n *node) doCompletion() bool {
 }
 
 func (n *node) nodeCompletion() complete.Command {
-	//make a command for this node
+	//make a completion command for this node
 	c := complete.Command{
 		Sub:         complete.Commands{},
 		Flags:       complete.Flags{},
@@ -44,12 +42,16 @@ func (n *node) nodeCompletion() complete.Command {
 	}
 	//prepare flags
 	for _, flag := range n.flags {
+		//pick a predictor
 		p := complete.Predictor(complete.PredictAnything)
-		if flag.val.Kind() == reflect.Bool {
+		v := flag.val.Interface()
+		if pv, ok := v.(complete.Predictor); ok {
+			p = pv
+		} else if _, ok := v.(bool); ok {
 			p = complete.PredictNothing
 		}
+		//apply to flags
 		c.Flags["--"+flag.name] = p
-		c.Flags["-"+flag.name] = p
 		if flag.shortName != "" {
 			c.Flags["-"+flag.shortName] = p
 		}
