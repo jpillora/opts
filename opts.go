@@ -15,9 +15,8 @@ type Opts interface {
 	ConfigPath(path string) Opts
 	UseEnv() Opts
 	Complete() Opts
-	AddFlagSet(*flag.FlagSet) Opts
-	AddGlobalFlagSet() Opts
 	//documentation
+	Description(desc string) Opts
 	Repo(repo string) Opts
 	Author(author string) Opts
 	PkgRepo() Opts
@@ -28,6 +27,9 @@ type Opts interface {
 	DisablePadAll() Opts
 	SetPadWidth(padding int) Opts
 	SetLineWidth(width int) Opts
+	//import standard library flags
+	ImportFlagSet(*flag.FlagSet) Opts
+	ImportGlobalFlagSet() Opts
 	//subcommands
 	AddCommand(Opts) Opts
 	//parse this opts node and its children
