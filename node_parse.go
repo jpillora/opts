@@ -20,13 +20,16 @@ func (n *node) Parse() ParsedOpts {
 //ParseArgs with the provided arguments
 func (n *node) ParseArgs(args []string) ParsedOpts {
 	//shell-completion?
-	completing := n.complete && os.Getenv("COMP_LINE") != ""
-	//ultimate parse
-	if err := n.parse(args); err != nil {
-		//parse failed for shell-completion, just exit
-		if completing {
+	if n.complete && os.Getenv("COMP_LINE") != "" {
+		completing_args := strings.Split(os.Getenv("COMP_LINE"), " ")
+		n.parse(completing_args[1:])
+		if ok := n.doCompletion(); !ok {
 			os.Exit(1)
 		}
+		os.Exit(0)
+	}
+	//ultimate parse
+	if err := n.parse(args); err != nil {
 		//expected exit (0)
 		if ee, ok := err.(*exitError); ok {
 			fmt.Fprintf(os.Stderr, ee.msg)
@@ -41,14 +44,6 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 		n.err = err
 		fmt.Fprintf(os.Stderr, n.Help())
 		os.Exit(1)
-	}
-	//parse complete, shell-completion requested
-	if completing {
-		ok := n.doCompletion()
-		if !ok {
-			os.Exit(1)
-		}
-		os.Exit(0)
 	}
 	//success
 	return n
