@@ -1,5 +1,9 @@
 # opts
 
+The **v1** release is coming soon!
+
+---
+
 **A low friction command-line interface library for Go (Golang)**
 
 [![GoDoc](https://godoc.org/github.com/jpillora/opts?status.svg)](https://godoc.org/github.com/jpillora/opts)  [![CircleCI](https://circleci.com/gh/jpillora/opts.svg?style=shield&circle-token=69ef9c6ac0d8cebcb354bb85c377eceff77bfb1b)](https://circleci.com/gh/jpillora/opts)
@@ -123,15 +127,15 @@ These tags are usable across all `type`s:
 
 All fields will have a **opts** `type`. By default a struct field will be assigned a `type` depending on its field type:
 
-| Field Type    | Default `type` | Valid `type`s      |
-| ------------- |:-------------:|:-------------------:|
-| int           | opt           | opt, arg            |
-| string        | opt           | opt, arg, cmdname   |
-| bool          | opt           | opt, arg            |
-| flag.Value    | opt           | opt, arg            |
-| time.Duration | opt           | opt, arg            |
-| []string      | arglist       | arglist             |
-| struct        | cmd           | cmd, embedded       |
+| Field Type    | Default `type` |   Valid `type`s   |
+| ------------- | :------------: | :---------------: |
+| int           |      opt       |     opt, arg      |
+| string        |      opt       | opt, arg, cmdname |
+| bool          |      opt       |     opt, arg      |
+| flag.Value    |      opt       |     opt, arg      |
+| time.Duration |      opt       |     opt, arg      |
+| []string      |    arglist     |      arglist      |
+| struct        |      cmd       |   cmd, embedded   |
 
 This default assignment can be overridden with a `type` struct tag. For example you could set a string struct field to be an `arg` field with `type:"arg"`.
 
@@ -192,13 +196,11 @@ when the only thing around was `jessevdk/go-flags` and I wanted more customizati
 ### Todo
 
 * More tests
-* Option groups (Separate sets of options in `--help`)
-* Bash completion
 * Multiple short options `-aux` (Requires a non-`pkg/flag` parser)
 
 #### MIT License
 
-Copyright © 2015 &lt;dev@jpillora.com&gt;
+Copyright © 2019 &lt;dev@jpillora.com&gt;
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the

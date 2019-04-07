@@ -4,6 +4,9 @@ import (
 	"reflect"
 )
 
+//Opts is configuration command. It represents a node
+//in a tree of commands and subcommands. Use the AddCommand
+//method to add subcommands (child nodes) to this command.
 type Opts interface {
 	//configure this opts node
 	Name(name string) Opts
@@ -31,22 +34,32 @@ type Opts interface {
 }
 
 type ParsedOpts interface {
-	//display this node in the help-output form
+	//Display this node in the help-output form
 	Help() string
-	//whether the Run method of the parsed command exists
+	//Whether the Run method of the parsed command exists
 	IsRunnable() bool
-	//execute the Run method of the parsed command
+	//Execute the Run method of the parsed command.
+	//The target Run method must be one of:
+	//- Run() error
+	//- Run()
 	Run() error
-	//execute the Run method of the parsed command
+	//Execute the Run method of the parsed command and
+	//exit(1) with the returned error.
 	RunFatal()
 }
 
-//New creates a new node instance
+//New creates a new Opts instance
 func New(config interface{}) Opts {
 	return newNode(reflect.ValueOf(config))
 }
 
-//Parse is shorthand for New(config).Parse()
+//NewNamed creates a new Opts instance with the given name.
+//It is shorthand for `New().Name(name)`
+func NewNamed(config interface{}, name string) Opts {
+	return New(config).Name(name)
+}
+
+//Parse is shorthand for `New(config).Parse()`
 func Parse(config interface{}) ParsedOpts {
 	return New(config).Parse()
 }
