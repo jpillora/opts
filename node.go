@@ -1,6 +1,9 @@
 package opts
 
-import "reflect"
+import (
+	"flag"
+	"reflect"
+)
 
 //item is the structure representing a
 //an opt item
@@ -29,6 +32,8 @@ type node struct {
 	optnames map[string]bool
 	envnames map[string]bool
 	cfgPath  string
+	//external flagset
+	external_flagsets []*flag.FlagSet
 	//subcommands
 	cmd     *node
 	cmdname *reflect.Value
