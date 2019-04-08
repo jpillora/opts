@@ -8,11 +8,13 @@ import (
 )
 
 type Config struct {
-	Ping string `predict:"files:*.go"`
-	Pong string `predict:"dirs"`
-	Zip  string `predict:"none"`
+	Ping string   `predict:"files:*.go"`
+	Pong string   `predict:"dirs"`
+	Zip  []string `predict:"none" type:"commalist"`
 	Zop  pstring
-	Zing opts.RepeatedStringOpt
+	Zing *opts.RepeatedStringOpt
+	Zang *opts.RepeatedStringOpt
+	Zong opts.RepeatedStringOpt
 }
 
 // ./eg-complete --zing a --zing b --zing c
@@ -39,7 +41,9 @@ type man struct{}
 type chew struct{}
 
 func main() {
-	config := Config{}
+	zang := &opts.RepeatedStringOpt{}
+	zang.Set("abc")
+	config := Config{Zang: zang}
 	opts.New(&config).
 		Complete().
 		AddCommand(opts.New(&foo{}).Name("foo").AddCommand(

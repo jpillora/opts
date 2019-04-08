@@ -72,6 +72,15 @@ func linkFlagset(flags []*item, flagset *flag.FlagSet) error {
 		}
 		//3. set config via Go's pkg/flags
 		addr := opt.val.Addr().Interface()
+		//  handle case where field is a *customer_type of type flag.Value
+		if opt.val.Kind() == reflect.Ptr {
+			addr = opt.val.Interface()
+			// if field of *customer_type is nil then create one.
+			if opt.val.IsNil() {
+				opt.val.Set(reflect.New(opt.val.Type().Elem()))
+				addr = opt.val.Interface()
+			}
+		}
 		switch addr := addr.(type) {
 		case flag.Value:
 			flagset.Var(addr, opt.name, "")
@@ -115,7 +124,7 @@ func linkFlagset(flags []*item, flagset *flag.FlagSet) error {
 				flagset.DurationVar(addr, opt.shortName, *addr, "")
 			}
 		default:
-			return fmt.Errorf("[opts] Option '%s' has unsupported type", opt.name)
+			return fmt.Errorf("[opts] Option has unsupported type. name:'%s' type:%T", opt.name, opt.val.Interface())
 		}
 	}
 	return nil
