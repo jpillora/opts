@@ -20,13 +20,18 @@ func (n *node) Parse() ParsedOpts {
 //ParseArgs with the provided arguments
 func (n *node) ParseArgs(args []string) ParsedOpts {
 	//shell-completion?
-	completing := n.complete && os.Getenv("COMP_LINE") != ""
+	if n.complete {
+		if cl := os.Getenv("COMP_LINE"); cl != "" {
+			args := strings.Split(cl, " ")
+			n.parse(args[1:]) //ignore errors
+			if ok := n.doCompletion(); !ok {
+				os.Exit(1)
+			}
+			os.Exit(0)
+		}
+	}
 	//ultimate parse
 	if err := n.parse(args); err != nil {
-		//parse failed for shell-completion, just exit
-		if completing {
-			os.Exit(1)
-		}
 		//expected exit (0)
 		if ee, ok := err.(*exitError); ok {
 			fmt.Fprintf(os.Stderr, ee.msg)
@@ -41,14 +46,6 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 		n.err = err
 		fmt.Fprintf(os.Stderr, n.Help())
 		os.Exit(1)
-	}
-	//parse complete, shell-completion requested
-	if completing {
-		ok := n.doCompletion()
-		if !ok {
-			os.Exit(1)
-		}
-		os.Exit(0)
 	}
 	//success
 	return n
@@ -274,9 +271,14 @@ func (n *node) addCmd(sf reflect.StructField, val reflect.Value) error {
 	if name == "" {
 		name = camel2dash(sf.Name) //default to struct field name
 	}
+	if _, ok := n.cmds[name]; ok {
+		return n.errorf("command already exists: %s", name)
+	}
 	sub := newNode(val)
-	sub.name = name
-	sub.help = sf.Tag.Get("help")
+	sub.Name(name)
+	help := sf.Tag.Get("help")
+	sub.help = help
+	sub.Description(help)
 	sub.parent = n
 	n.cmds[name] = sub
 	return nil
