@@ -5,10 +5,19 @@ import (
 )
 
 type Config struct {
+	Alpha string
+	Bar
+	Foo
+}
+
+type Foo struct {
 	Ping string
 	Pong string
-	Zip  string
-	Zop  string
+}
+
+type Bar struct {
+	Zip string
+	Zop string
 }
 
 type foo struct{}

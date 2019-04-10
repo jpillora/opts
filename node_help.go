@@ -19,6 +19,7 @@ type data struct {
 	Order        []string
 	Parents      string
 	Version      string
+	Desc         string
 	Repo, Author string
 	ErrMsg       string
 }
@@ -33,6 +34,7 @@ type text struct {
 
 var DefaultOrder = []string{
 	"usage",
+	"desc",
 	"args",
 	"arglist",
 	"options",
@@ -68,6 +70,10 @@ var DefaultTemplates = map[string]string{
 	"helpextra": `{{if .Def}}default {{.Def}}{{end}}` +
 		`{{if and .Def .Env}}, {{end}}` +
 		`{{if .Env}}env {{.Env}}{{end}}`,
+	//description
+	"desc": `{{if .Desc}}` + "\n" +
+		"{{ .Desc }}\n" +
+		`{{end}}`,
 	//args and arg section
 	"args":    `{{range .Args}}{{template "arg" .}}{{end}}`,
 	"arg":     "{{if .Help}}\n{{.Help}}\n{{end}}",
@@ -258,6 +264,7 @@ func convert(o *node) *data {
 		Cmds:    subs,
 		Order:   o.order,
 		Version: o.version,
+		Desc:    o.desc,
 		Repo:    o.repo,
 		Author:  o.author,
 		ErrMsg:  err,

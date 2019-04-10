@@ -12,9 +12,7 @@ type Config struct {
 }
 
 func main() {
-
 	c := Config{}
-
 	//see default templates and the default template order
 	//in the opts/help.go file
 	o := opts.New(&c).

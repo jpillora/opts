@@ -9,8 +9,9 @@ type cmd struct{}
 
 func main() {
 	c := cmd{}
+	//NOTE: since no name is set, the file name will
+	//be used to call .Name("eg-commands-register")
 	o := opts.New(&c)
-	//NOTE: Name() will be set to the binary name 'eg-commands-register'
 	foo.Register(o)
 	o.Parse().RunFatal()
 }
