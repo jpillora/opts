@@ -1,8 +1,9 @@
 package main
 
 import (
+	"gen-readme/eg-app/foo"
+
 	"github.com/jpillora/opts"
-	"github.com/jpillora/opts/example/eg-app/foo"
 )
 
 //set this via ldflags

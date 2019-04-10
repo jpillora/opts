@@ -32,6 +32,7 @@ type Opts interface {
 	ImportGlobalFlagSet() Opts
 	//subcommands
 	AddCommand(Opts) Opts
+	EmbedStruct(interface{}) Opts
 	//parse this opts node and its children
 	Parse() ParsedOpts
 	ParseArgs(args []string) ParsedOpts

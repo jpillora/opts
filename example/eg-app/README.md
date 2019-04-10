@@ -7,8 +7,9 @@ _`main.go`_
 package main
 
 import (
+	"gen-readme/eg-app/foo"
+
 	"github.com/jpillora/opts"
-	"github.com/jpillora/opts/example/eg-app/foo"
 )
 
 //set this via ldflags
@@ -76,9 +77,6 @@ $ ./foo --help
 
   Version:
     0.2.6
-
-  Read more:
-    https://github.com/jpillora/opts
 
 ```
 <!--/tmpl-->

@@ -3,6 +3,7 @@ package opts
 import (
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 )
 
@@ -29,6 +30,15 @@ func (n *node) AddCommand(cmd Opts) Opts {
 	}
 	n.cmds[sub.name] = sub
 	sub.parent = n
+	return n
+}
+
+func (n *node) EmbedStruct(str interface{}) Opts {
+	val := reflect.ValueOf(str)
+	err := n.addStructFields(val)
+	if err != nil {
+		panic(err)
+	}
 	return n
 }
 

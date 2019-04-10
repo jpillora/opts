@@ -1,0 +1,10 @@
+github.com/hashicorp/errwrap v1.0.0 h1:hLrqtEDnRye3+sgx6z4qVLNuviH3MR5aQ0ykNJa/UYA=
+github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
+github.com/hashicorp/go-multierror v1.0.0 h1:iVjPR7a6H0tWELX5NxNe7bYopibicUzc7uPribsnS6o=
+github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
+github.com/millergarym/md-tmpl v0.0.0-20190410053018-cd862c122223 h1:SOE22AYGmg5cWqsmyJwnbNhkVgSDZ669or2FaiKjAtY=
+github.com/millergarym/md-tmpl v0.0.0-20190410053018-cd862c122223/go.mod h1:bwYbvGdUP3AkrDL78usbJ8kJis8xrY8+6EM4O+gCCLM=
+github.com/millergarym/md-tmpl v1.2.0 h1:SvdPRWbCSCp6QDggyms0ZVKESyY62JUoyNJVmqprd7I=
+github.com/millergarym/md-tmpl v1.2.0/go.mod h1:bwYbvGdUP3AkrDL78usbJ8kJis8xrY8+6EM4O+gCCLM=
+github.com/posener/complete v1.2.1 h1:LrvDIY//XNo65Lq84G/akBuMGlawHvGBABv8f/ZN6DI=
+github.com/posener/complete v1.2.1/go.mod h1:6gapUrK/U1TAN7ciCoNRIdVC5sbdBTUh1DKN0g6uH7E=

@@ -6,14 +6,18 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
+	"sync"
+
+	"github.com/jpillora/md-tmpl/modtmpl"
 )
 
 func main() {
 	egs, err := ioutil.ReadDir(".")
 	check(err)
+	wg := sync.WaitGroup{}
 	for _, s := range egs {
 		eg := s.Name()
 		if !s.IsDir() || !strings.HasPrefix(eg, "eg-") {
@@ -27,9 +31,15 @@ func main() {
 			continue
 		}
 		check(err)
-		processGo(eg)
-		processReadme(eg)
+
+		wg.Add(1)
+		go func(f string) {
+			defer wg.Done()
+			processGo(f)
+			processReadme(f)
+		}(eg)
 	}
+	wg.Wait()
 }
 
 func processGo(eg string) {
@@ -58,11 +68,9 @@ func processReadme(eg string) {
 		check(ioutil.WriteFile(fp, b2, 0655))
 		log.Printf("edited %s", fp)
 	}
-	c := exec.Command("md-tmpl", "-w", "README.md")
-	c.Dir = eg
-	out, err := c.CombinedOutput()
-	log.Printf("executed templates found in example '%s': %s", eg, out)
-	check(err)
+	proc := modtmpl.NewProcessor()
+	proc.Write = true
+	proc.ProcessFile(eg, path.Join(eg, "README.md"))
 }
 
 func check(err error) {
@@ -70,11 +78,3 @@ func check(err error) {
 		log.Fatal(err)
 	}
 }
-
-// for _, s := range files {
-// 	log.Printf("%s/%s", n, s.Name())
-
-// 	//TODO, replace
-// 	// go run main.go --help
-// 	// go build -o <name> && ./name && rm name
-// }

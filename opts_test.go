@@ -230,7 +230,7 @@ func TestDocBefore(t *testing.T) {
 	check(t, op.Help(), `
   hello world this some text
 
-  Usage: opts [options]
+  Usage: opts.test [options]
 
   Options:
   --foo, -f
@@ -254,7 +254,7 @@ func TestDocAfter(t *testing.T) {
 	op := o.ParseArgs(nil)
 	check(t, len(n.order), l+1)
 	check(t, op.Help(), `
-  Usage: opts [options]
+  Usage: opts.test [options]
 
   hello world this some text
 

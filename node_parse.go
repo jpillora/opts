@@ -20,15 +20,6 @@ func (n *node) Parse() ParsedOpts {
 //ParseArgs with the provided arguments
 func (n *node) ParseArgs(args []string) ParsedOpts {
 	//shell-completion?
-<<<<<<< HEAD
-	if n.complete && os.Getenv("COMP_LINE") != "" {
-		completing_args := strings.Split(os.Getenv("COMP_LINE"), " ")
-		n.parse(completing_args[1:])
-		if ok := n.doCompletion(); !ok {
-			os.Exit(1)
-		}
-		os.Exit(0)
-=======
 	if n.complete {
 		if cl := os.Getenv("COMP_LINE"); cl != "" {
 			args := strings.Split(cl, " ")
@@ -38,7 +29,6 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 			}
 			os.Exit(0)
 		}
->>>>>>> jp/subcommands
 	}
 	//ultimate parse
 	if err := n.parse(args); err != nil {
