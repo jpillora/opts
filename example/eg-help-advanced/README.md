@@ -1,8 +1,7 @@
 ## custom help example
 
 <!--tmpl,chomp,code=go:cat main.go -->
-
-```go
+``` go 
 package main
 
 import (
@@ -17,9 +16,7 @@ type Config struct {
 }
 
 func main() {
-
 	c := Config{}
-
 	//see default templates and the default template order
 	//in the opts/help.go file
 	o := opts.New(&c).
@@ -31,18 +28,16 @@ func main() {
 	fmt.Println(o.Help())
 }
 ```
-
 <!--/tmpl-->
 
 ```
 $ eg-help-advanced --help
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --help -->
+<!--tmpl,chomp,code=plain:go build -o eg-help-advanced && ./eg-help-advanced --help && rm eg-help-advanced -->
+``` plain 
 
-```plain
-
-  Usage:  [options]
+  Usage: eg-help-advanced [options]
 
   this is a some text!
 
@@ -54,5 +49,4 @@ $ eg-help-advanced --help
   My awesome repo:
     myfoo.com/bar
 ```
-
 <!--/tmpl-->

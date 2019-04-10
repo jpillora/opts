@@ -59,10 +59,10 @@ $ go build -ldflags "-X main.version=0.2.6" -o foo
 $ ./foo --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -ldflags "-X main.version=0.2.6" -o tmp && ./tmp --help && rm tmp -->
+<!--tmpl,chomp,code=plain:go build -ldflags "-X main.version=0.2.6" -o eg-app && ./eg-app --help && rm eg-app -->
 ``` plain 
 
-  Usage: tmp [options]
+  Usage: eg-app [options]
 
   Options:
   --ping, -p       default hello

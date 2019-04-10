@@ -1,4 +1,4 @@
-## cmds example
+## eg-commands-inline example
 
 <!--tmpl,chomp,code=go:cat main.go -->
 ``` go 
@@ -10,16 +10,16 @@ import (
 	"github.com/jpillora/opts"
 )
 
-type Config struct {
-	//register commands by including them
-	//in the parent struct
-	Foo `help:"command one of two"`
-	Bar `help:"command two of two"`
-}
+type Config struct{}
 
 func main() {
-	c := Config{}
-	opts.NewNamed(&c, "eg-commands-inline").
+	opts.New(&Config{}).
+		AddCommand(
+			opts.NewNamed(&Foo{}, "foo").
+				AddCommand(
+					opts.NewNamed(&Bar{}, "bar"),
+				),
+		).
 		Parse().
 		RunFatal()
 }
@@ -35,8 +35,8 @@ func (f *Foo) Run() error {
 }
 
 type Bar struct {
-	Ping string
-	Pong string
+	Zip string
+	Zop string
 }
 
 func (b *Bar) Run() error {
@@ -47,27 +47,17 @@ func (b *Bar) Run() error {
 <!--/tmpl-->
 
 ```
-$ cmds bar --zip hello --zap world
+$ eg-commands-inline foo bar --zip 2
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go bar --zip hello --zap world -->
+<!--tmpl,chomp,code=plain:go run main.go foo bar --zip 2 -->
 ``` plain 
-
-  Usage: eg-commands-inline bar [options]
-
-  Options:
-  --ping, -p
-  --pong
-  --help, -h
-
-  Error:
-    flag provided but not defined: -zip
-
+2019/04/07 20:48:53 bar: &{Zip:2 Zop:}
 ```
 <!--/tmpl-->
 
 ```
-$ cmds --help
+$ eg-commands-inline --help
 ```
 
 <!--tmpl,chomp,code=plain:go build -o eg-commands-inline && ./eg-commands-inline --help && rm eg-commands-inline -->
@@ -79,8 +69,7 @@ $ cmds --help
   --help, -h
 
   Commands:
-  • foo - command one of two
-  • bar - command two of two
+  • foo
 
 ```
 <!--/tmpl-->

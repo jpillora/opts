@@ -42,10 +42,10 @@ $ args --foo hello --bar world
 $ args --help
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --help -->
+<!--tmpl,chomp,code=plain:go build -o eg-args && ./eg-args --help && rm eg-args -->
 ``` plain 
 
-  Usage:  [options] bazzes...
+  Usage: eg-args [options] bazzes...
 
   Options:
   --help, -h

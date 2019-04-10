@@ -40,13 +40,13 @@ type node struct {
 	cmdname *reflect.Value
 	cmds    map[string]*node
 	//help
-	order                  []string
-	templates              map[string]string
-	repo, author, version  string
-	repoInfer, authorInfer bool
-	lineWidth              int
-	padAll                 bool
-	padWidth               int
+	order                       []string
+	templates                   map[string]string
+	repo, author, version, desc string
+	repoInfer, authorInfer      bool
+	lineWidth                   int
+	padAll                      bool
+	padWidth                    int
 	//pretend these are in the user struct :)
 	internalOpts struct {
 		Help      bool

@@ -1,8 +1,7 @@
 ## simple example
 
 <!--tmpl,chomp,code=go:cat main.go -->
-
-```go
+``` go 
 package main
 
 import (
@@ -23,7 +22,6 @@ func main() {
 	fmt.Println(c.Bar)
 }
 ```
-
 <!--/tmpl-->
 
 ```
@@ -31,23 +29,20 @@ $ eg-simple --foo hello --bar world
 ```
 
 <!--tmpl,chomp,code=plain:go run main.go --foo hello --bar world -->
-
-```plain
+``` plain 
 hello
 world
 ```
-
 <!--/tmpl-->
 
 ```
 $ eg-simple --help
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --help -->
+<!--tmpl,chomp,code=plain:go build -o eg-simple && ./eg-simple --help && rm eg-simple -->
+``` plain 
 
-```plain
-
-  Usage:  [options]
+  Usage: eg-simple [options]
 
   Options:
   --foo, -f
@@ -55,5 +50,4 @@ $ eg-simple --help
   --help, -h
 
 ```
-
 <!--/tmpl-->

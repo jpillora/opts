@@ -50,10 +50,10 @@ moon
 $ config --help
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --help -->
+<!--tmpl,chomp,code=plain:go build -o eg-config && ./eg-config --help && rm eg-config -->
 ``` plain 
 
-  Usage:  [options]
+  Usage: eg-config [options]
 
   Options:
   --foo, -f

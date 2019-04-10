@@ -8,15 +8,21 @@ import (
 )
 
 type Config struct {
-	Ping string `predict:"files:*.go"`
-	Pong string `predict:"dirs"`
-	Zip  string `predict:"none"`
-	Zop  pstring
-	Zing opts.RepeatedStringOpt
+	// pstring is a custom type with a Predict function
+	Alpha pstring
+	Bar
+	Foo
 }
 
-// ./eg-complete --zing a --zing b --zing c
-// &{Ping: Pong: Zip: Zop:{val:} Zing:[a b c]}
+type Foo struct {
+	Ping string
+	Pong string
+}
+
+type Bar struct {
+	Zip string
+	Zop string
+}
 
 type pstring struct {
 	val string
@@ -40,9 +46,10 @@ type chew struct{}
 
 func main() {
 	config := Config{}
-	opts.New(&config).
+	// The Name must match the exec's name for self completion to work
+	opts.New(&config).Name("eg-complete").
 		Complete().
-		AddCommand(opts.New(&foo{}).Name("foo").AddCommand(
+		AddCommand(opts.New(&foo{}).Name("fooie").AddCommand(
 			opts.New(&man{}).Name("man").AddCommand(
 				opts.New(&chew{}).Name("chew")))).
 		Parse().

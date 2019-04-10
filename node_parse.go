@@ -20,13 +20,15 @@ func (n *node) Parse() ParsedOpts {
 //ParseArgs with the provided arguments
 func (n *node) ParseArgs(args []string) ParsedOpts {
 	//shell-completion?
-	if n.complete && os.Getenv("COMP_LINE") != "" {
-		completing_args := strings.Split(os.Getenv("COMP_LINE"), " ")
-		n.parse(completing_args[1:])
-		if ok := n.doCompletion(); !ok {
-			os.Exit(1)
+	if n.complete {
+		if cl := os.Getenv("COMP_LINE"); cl != "" {
+			args := strings.Split(cl, " ")
+			n.parse(args[1:]) //ignore errors
+			if ok := n.doCompletion(); !ok {
+				os.Exit(1)
+			}
+			os.Exit(0)
 		}
-		os.Exit(0)
 	}
 	//ultimate parse
 	if err := n.parse(args); err != nil {
@@ -64,8 +66,8 @@ func (n *node) parse(args []string) error {
 	if err := n.addStructFields(v.Elem()); err != nil {
 		return err
 	}
-	//find name (root-node non-main only)
-	if n.parent == nil && n.name == "" {
+	//find default name for root-node
+	if n.name == "" && n.parent == nil {
 		if exe, err := os.Executable(); err == nil {
 			if _, name := path.Split(exe); name != "main" {
 				n.name = name
@@ -276,9 +278,14 @@ func (n *node) addCmd(sf reflect.StructField, val reflect.Value) error {
 	if name == "" {
 		name = camel2dash(sf.Name) //default to struct field name
 	}
+	if _, ok := n.cmds[name]; ok {
+		return n.errorf("command already exists: %s", name)
+	}
 	sub := newNode(val)
-	sub.name = name
-	sub.help = sf.Tag.Get("help")
+	sub.Name(name)
+	help := sf.Tag.Get("help")
+	sub.help = help
+	sub.Description(help)
 	sub.parent = n
 	n.cmds[name] = sub
 	return nil
@@ -430,9 +437,6 @@ func (n *node) setPkgDefaults() {
 	if len(parts) >= 3 {
 		if n.authorInfer && n.author == "" {
 			n.author = parts[1]
-		}
-		if n.name == "" {
-			n.name = parts[len(parts)-1]
 		}
 		if n.repoInfer && n.repo == "" {
 			switch parts[0] {
