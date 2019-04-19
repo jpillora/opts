@@ -52,7 +52,7 @@ $ eg-commands-inline foo bar --zip 2
 
 <!--tmpl,chomp,code=plain:go run main.go foo bar --zip 2 -->
 ``` plain 
-2019/04/07 20:48:53 bar: &{Zip:2 Zop:}
+2019/04/19 21:49:41 bar: &{Zip:2 Zop:}
 ```
 <!--/tmpl-->
 

@@ -10,28 +10,24 @@ import (
 	"github.com/jpillora/opts"
 )
 
-type Config struct {
-	Foo string
-	Bar string
-}
-
 func main() {
-	c := Config{}
-	opts.Parse(&c)
-	fmt.Println(c.Foo)
-	fmt.Println(c.Bar)
+	config := struct {
+		File  string `help:"file to load"`
+		Lines int    `help:"number of lines to show"`
+	}{}
+	opts.Parse(&config)
+	fmt.Println(config)
 }
 ```
 <!--/tmpl-->
 
 ```
-$ eg-simple --foo hello --bar world
+$ eg-simple --file zip.txt --lines 42
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --foo hello --bar world -->
+<!--tmpl,chomp,code=plain:go run main.go --file zip.txt --lines 42 -->
 ``` plain 
-hello
-world
+{zip.txt 42}
 ```
 <!--/tmpl-->
 
@@ -45,8 +41,8 @@ $ eg-simple --help
   Usage: eg-simple [options]
 
   Options:
-  --foo, -f
-  --bar, -b
+  --file, -f   file to load
+  --lines, -l  number of lines to show
   --help, -h
 
 ```

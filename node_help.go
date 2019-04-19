@@ -153,8 +153,6 @@ func (o *node) Help() string {
 	return out
 }
 
-var anyspace = regexp.MustCompile(`[\s]+`)
-
 func convert(o *node) *data {
 	names := []string{}
 	curr := o
@@ -264,7 +262,7 @@ func convert(o *node) *data {
 		Cmds:    subs,
 		Order:   o.order,
 		Version: o.version,
-		Desc:    o.desc,
+		Desc:    constrain(o.desc, o.lineWidth),
 		Repo:    o.repo,
 		Author:  o.author,
 		ErrMsg:  err,

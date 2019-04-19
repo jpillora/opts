@@ -6,9 +6,10 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/jpillora/md-tmpl/mdtmpl"
 )
 
 func main() {
@@ -50,19 +51,13 @@ func processReadme(eg string) {
 		log.Printf("example '%s' has no README.md file", eg)
 		return
 	}
-	b2 := bytes.ReplaceAll(b,
+	b = bytes.ReplaceAll(b,
 		[]byte("go run main.go --help"),
 		[]byte(fmt.Sprintf("go build -o %s && ./%s --help && rm %s", eg, eg, eg)),
 	)
-	if !bytes.Equal(b, b2) {
-		check(ioutil.WriteFile(fp, b2, 0655))
-		log.Printf("edited %s", fp)
-	}
-	c := exec.Command("md-tmpl", "-w", "README.md")
-	c.Dir = eg
-	out, err := c.CombinedOutput()
-	log.Printf("executed templates found in example '%s': %s", eg, out)
-	check(err)
+	b = mdtmpl.ExecuteIn(b, eg)
+	check(ioutil.WriteFile(fp, b, 0655))
+	log.Printf("executed templates and rewrote '%s'", eg)
 }
 
 func check(err error) {
@@ -70,11 +65,3 @@ func check(err error) {
 		log.Fatal(err)
 	}
 }
-
-// for _, s := range files {
-// 	log.Printf("%s/%s", n, s.Name())
-
-// 	//TODO, replace
-// 	// go run main.go --help
-// 	// go build -o <name> && ./name && rm name
-// }

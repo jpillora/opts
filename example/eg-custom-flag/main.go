@@ -3,12 +3,11 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/jpillora/opts"
 )
 
-//custom types are allowed if they implement the flag.Value interface
+//MagicInt is a valid custom type since it implements the flag.Value interface
 type MagicInt int
 
 func (b MagicInt) String() string {
@@ -25,16 +24,12 @@ func (b *MagicInt) Set(s string) error {
 }
 
 type Config struct {
-	Foo  time.Duration
 	Bar  MagicInt
 	Bazz int
 }
 
 func main() {
-
 	c := Config{}
-
 	opts.Parse(&c)
-
-	fmt.Printf("%3.0f %s %d\n", c.Foo.Seconds(), c.Bar, c.Bazz)
+	fmt.Printf("%s %d\n", c.Bar, c.Bazz)
 }

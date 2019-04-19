@@ -123,20 +123,26 @@ func linkFlagset(flags []*item, flagset *flag.FlagSet) error {
 	return nil
 }
 
-func constrain(str string, width int) string {
-	words := anyspace.Split(str, -1)
-	n := 0
-	for i, w := range words {
-		d := width - n
-		wn := len(w) + 1 //+space
-		n += wn
-		if n > width && n-width > d {
-			n = wn
-			w = "\n" + w
+func constrain(str string, maxWidth int) string {
+	lines := strings.Split(str, "\n")
+	for i, line := range lines {
+		words := strings.Split(line, " ")
+		width := 0
+		for i, w := range words {
+			remain := maxWidth - width
+			wordWidth := len(w) + 1 //+space
+			width += wordWidth
+			overflow := width > maxWidth
+			fits := width-maxWidth > remain
+			if overflow && fits {
+				width = wordWidth
+				w = "\n" + w
+			}
+			words[i] = w
 		}
-		words[i] = w
+		lines[i] = strings.Join(words, " ")
 	}
-	return strings.Join(words, " ")
+	return strings.Join(lines, "\n")
 }
 
 //borrowed from https://github.com/huandu/xstrings/blob/master/convert.go#L77

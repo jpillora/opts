@@ -13,7 +13,7 @@ import (
 type Config struct {
 	//register commands by including them
 	//in the parent struct
-	Foo `help:"command one of two"`
+	Foo `help:"This text also becomes commands Description() text"`
 	Bar `help:"command two of two"`
 }
 
@@ -55,6 +55,8 @@ $ cmds bar --zip hello --zap world
 
   Usage: eg-commands-inline bar [options]
 
+  command two of two
+
   Options:
   --ping, -p
   --pong
@@ -79,7 +81,7 @@ $ cmds --help
   --help, -h
 
   Commands:
-  • foo - command one of two
+  • foo - This text also becomes commands Description() text
   • bar - command two of two
 
 ```
