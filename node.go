@@ -16,6 +16,9 @@ type item struct {
 	typeName  string
 	help      string
 	defstr    string
+	slice     bool
+	min       int        //valid if slice
+	fval      flag.Value //get and set by string
 }
 
 //node is the main class, it contains
@@ -25,18 +28,17 @@ type node struct {
 	err error
 	//embed item since an node can also be an item
 	item
-	parent   *node
-	flags    []*item
-	args     []*item
-	arglist  *argumentlist
-	optnames map[string]bool
-	envnames map[string]bool
-	cfgPath  string
+	parent    *node
+	flags     []*item
+	flagNames map[string]bool
+	args      []*item
+	envNames  map[string]bool
+	cfgPath   string
 	//external flagsets
 	flagsets []*flag.FlagSet
 	//subcommands
 	cmd     *node
-	cmdname *reflect.Value
+	cmdname *string
 	cmds    map[string]*node
 	//help
 	order                       []string
@@ -61,10 +63,10 @@ func newNode(val reflect.Value) *node {
 		item:   item{val: val},
 		parent: nil,
 		//each cmd/cmd has its own set of names
-		optnames: map[string]bool{},
-		envnames: map[string]bool{},
-		cmds:     map[string]*node{},
-		flags:    []*item{},
+		flagNames: map[string]bool{},
+		envNames:  map[string]bool{},
+		cmds:      map[string]*node{},
+		flags:     []*item{},
 		//these are only set at the root
 		order:     defaultOrder(),
 		templates: map[string]string{},
@@ -73,11 +75,4 @@ func newNode(val reflect.Value) *node {
 		padAll:    true,
 		padWidth:  2,
 	}
-}
-
-//argumentlist represends a
-//named string slice
-type argumentlist struct {
-	item
-	min int
 }

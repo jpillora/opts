@@ -7,13 +7,13 @@ import (
 )
 
 type Config struct {
-	Bazzes []string `min:"2"`
+	Bazzes []string `opts:"type=arg,min=2"`
 }
 
 func main() {
 
 	c := Config{}
-
+	panic("TODO")
 	opts.New(&c).Parse()
 
 	for i, foo := range c.Bazzes {

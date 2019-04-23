@@ -188,17 +188,17 @@ func convert(o *node) *data {
 			Help: itemHelp(arg, o.lineWidth),
 		}
 	}
-	var arglist *datum
-	if o.arglist != nil {
-		n := o.arglist.name + "..."
-		if o.arglist.min == 0 { //optional
-			n = "[" + n + "]"
-		}
-		arglist = &datum{
-			Name: n,
-			Help: itemHelp(&o.arglist.item, o.lineWidth),
-		}
-	}
+	// var arglist *datum
+	// if o.arglist != nil {
+	// 	n := o.arglist.name + "..."
+	// 	if o.arglist.min == 0 { //optional
+	// 		n = "[" + n + "]"
+	// 	}
+	// 	arglist = &datum{
+	// 		Name: n,
+	// 		Help: itemHelp(&o.arglist.item, o.lineWidth),
+	// 	}
+	// }
 	flags := make([]*datum, len(o.flags))
 	//calculate padding etc.
 	max := 0
@@ -257,7 +257,6 @@ func convert(o *node) *data {
 			Pad:  pad,
 		},
 		Args:    args,
-		ArgList: arglist,
 		Flags:   flags,
 		Cmds:    subs,
 		Order:   o.order,
