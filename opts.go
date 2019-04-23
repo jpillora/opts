@@ -49,7 +49,7 @@ type ParsedOpts interface {
 	//- Run()
 	Run() error
 	//Execute the Run method of the parsed command and
-	//exit(1) with the returned error.
+	//exit(1) if an error is returned.
 	RunFatal()
 }
 

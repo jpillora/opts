@@ -5,22 +5,6 @@ import (
 	"reflect"
 )
 
-//item is the structure representing a
-//an opt item
-type item struct {
-	val       reflect.Value
-	name      string
-	shortName string
-	envName   string
-	useEnv    bool
-	typeName  string
-	help      string
-	defstr    string
-	slice     bool
-	min       int        //valid if slice
-	fval      flag.Value //get and set by string
-}
-
 //node is the main class, it contains
 //all parsing state for a single set of
 //arguments

@@ -112,10 +112,10 @@ func (n *node) parse(args []string) error {
 			}
 			continue
 		}
-		//all other types
-		flagset.Var(flag.fval, flag.name, "")
+		//all other types can use flag itself
+		flagset.Var(flag, flag.name, "")
 		if sn := flag.shortName; sn != "" {
-			flagset.Var(flag.fval, sn, "")
+			flagset.Var(flag, sn, "")
 		}
 	}
 	if err := flagset.Parse(args); err != nil {
@@ -144,7 +144,7 @@ func (n *node) parse(args []string) error {
 		if s == "" {
 			return fmt.Errorf("Argument '%s' (#%d) is missing", argument.name, i+1)
 		}
-		if err := argument.fval.Set(s); err != nil {
+		if err := argument.Set(s); err != nil {
 			return fmt.Errorf("Argument '%s' (#%d) is invalid: %s", argument.name, i+1, err)
 		}
 	}
@@ -249,20 +249,18 @@ func (n *node) addStructField(sf reflect.StructField, val reflect.Value) error {
 		}
 		return n.addInlineCmd(name, help, val)
 	}
-	//check if slice?
-	slice := val.Kind() == reflect.Slice
 	//from this point, we must have a flag or an arg
-	i := &item{
-		val:      val,
-		typeName: typeName,
-		name:     name,
-		help:     help,
-		slice:    slice,
+	i, err := newItem(val)
+	if err != nil {
+		return err
 	}
+	i.typeName = typeName
+	i.name = name
+	i.help = help
 	//set default text
 	if d, ok := kv.take("default"); ok {
 		i.defstr = d
-	} else if !slice {
+	} else if !i.slice {
 		v := val.Interface()
 		zero := v == reflect.Zero(sf.Type).Interface()
 		if !zero {
@@ -287,7 +285,7 @@ func (n *node) addStructField(sf reflect.StructField, val reflect.Value) error {
 		}
 	}
 	//minimum number of items
-	if slice {
+	if i.slice {
 		if m, ok := kv.take("min"); ok {
 			min, err := strconv.Atoi(m)
 			if err != nil {
@@ -296,12 +294,6 @@ func (n *node) addStructField(sf reflect.StructField, val reflect.Value) error {
 			i.min = min
 		}
 	}
-	//create a reflection based flag.Value
-	fv, err := newReflectFlagVal(val)
-	if err != nil {
-		return n.errorf("Flag value error: %s", err)
-	}
-	i.fval = fv
 	//insert either as flag or as argument
 	switch typeName {
 	case "flag":
@@ -418,6 +410,7 @@ func (n *node) addInternalFlags() error {
 func (n *node) addFlagsets(args []string) {
 	//add provided flag sets
 	for _, fs := range n.flagsets {
+		//add all flags in each set
 		fs.VisitAll(func(f *flag.Flag) {
 			//TODO: fail if naming collision
 			it := &item{
