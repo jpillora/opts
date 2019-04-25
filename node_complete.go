@@ -41,19 +41,21 @@ func (n *node) nodeCompletion() complete.Command {
 		Args:        nil,
 	}
 	//prepare flags
-	for _, flag := range n.flags {
-		//pick a predictor
-		p := complete.Predictor(complete.PredictAnything)
-		v := flag.val.Interface()
-		if pv, ok := v.(complete.Predictor); ok {
-			p = pv
-		} else if _, ok := v.(bool); ok {
-			p = complete.PredictNothing
+	for _, item := range n.flags {
+		//item's predictor
+		p := item.predictor
+		//default predictor
+		if p == nil {
+			if item.noarg {
+				p = complete.PredictNothing
+			} else {
+				p = complete.Predictor(complete.PredictAnything)
+			}
 		}
-		//apply to flags
-		c.Flags["--"+flag.name] = p
-		if flag.shortName != "" {
-			c.Flags["-"+flag.shortName] = p
+		//add to completion flags set
+		c.Flags["--"+item.name] = p
+		if item.shortName != "" {
+			c.Flags["-"+item.shortName] = p
 		}
 	}
 	//prepare args

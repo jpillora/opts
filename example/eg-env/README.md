@@ -1,6 +1,6 @@
 ## env example
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -32,7 +32,7 @@ $ export BAR=world
 $ go run env.go
 ```
 
-<!--tmpl,chomp,code=plain:(export FOO=hello && export BAR=world && go run main.go) -->
+<!--tmpl,code=plain:(export FOO=hello && export BAR=world && go run main.go) -->
 ``` plain 
 hello
 world
@@ -43,7 +43,7 @@ world
 $ eg-env --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-env && ./eg-env --help && rm eg-env -->
+<!--tmpl,code=plain:go build -o eg-env && ./eg-env --help && rm eg-env -->
 ``` plain 
 
   Usage: eg-env [options]

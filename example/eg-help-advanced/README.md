@@ -1,6 +1,6 @@
 ## custom help example
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -34,7 +34,7 @@ func main() {
 $ eg-help-advanced --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-help-advanced && ./eg-help-advanced --help && rm eg-help-advanced -->
+<!--tmpl,code=plain:go build -o eg-help-advanced && ./eg-help-advanced --help && rm eg-help-advanced -->
 ``` plain 
 
   Usage: eg-help-advanced [options]

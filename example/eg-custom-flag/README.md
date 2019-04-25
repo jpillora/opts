@@ -1,6 +1,6 @@
 ## customtypes example
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -50,7 +50,7 @@ func main() {
 $ eg-custom-flag --foo 2m --bar 5 --bazz 5
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --foo 2m --bar 5 --bazz 5 -->
+<!--tmpl,code=plain:go run main.go --foo 2m --bar 5 --bazz 5 -->
 ``` plain 
 120 {47} 5
 ```
@@ -60,7 +60,7 @@ $ eg-custom-flag --foo 2m --bar 5 --bazz 5
 $ eg-custom-flag --help
 ```
 
-<!--tmpl,chomp,code=plain:go install && eg-custom-flag --help && rm $(which eg-custom-flag) -->
+<!--tmpl,code=plain:go install && eg-custom-flag --help && rm $(which eg-custom-flag) -->
 ``` plain 
 
   Usage: eg-custom-flag [options]

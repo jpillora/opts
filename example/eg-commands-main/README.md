@@ -1,6 +1,6 @@
 ## eg-commands-inline example
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -50,7 +50,7 @@ func (b *Bar) Run() error {
 $ eg-commands-inline foo bar --zip 2
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go foo bar --zip 2 -->
+<!--tmpl,code=plain:go run main.go foo bar --zip 2 -->
 ``` plain 
 2019/04/19 21:49:41 bar: &{Zip:2 Zop:}
 ```
@@ -60,7 +60,7 @@ $ eg-commands-inline foo bar --zip 2
 $ eg-commands-inline --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-commands-inline && ./eg-commands-inline --help && rm eg-commands-inline -->
+<!--tmpl,code=plain:go build -o eg-commands-inline && ./eg-commands-inline --help && rm eg-commands-inline -->
 ``` plain 
 
   Usage: eg-commands-inline [options] <command>

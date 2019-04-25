@@ -101,17 +101,17 @@ Where **`key`** must be:
 
 	All fields will be given a **opts** `type`. By default a struct field will be assigned a `type` depending on its field type:
 
-  | Go Type             | Default opts `type` |      Valid `type`s       |
-  | ------------------- | :-----------------: | :----------------------: |
-  | flag-value type     |       `flag`        |      `flag`, `arg`       |
-  | `[]`flag-value type |       `flag`        |      `flag`, `arg`       |
-  | `string`            |       `flag`        | `flag`, `arg`, `cmdname` |
-  | `struct`            |     `embedded`      |    `cmd`, `embedded`     |
+  | Go Type        | Default opts `type` |      Valid `type`s       |
+  | -------------- | :-----------------: | :----------------------: |
+  | flag-value     |       `flag`        |      `flag`, `arg`       |
+  | `[]`flag-value |       `flag`        |      `flag`, `arg`       |
+  | `string`       |       `flag`        | `flag`, `arg`, `cmdname` |
+  | `struct`       |     `embedded`      |    `cmd`, `embedded`     |
 
 	Notes:
 
-	* A flag-value type is any of: `string`, `bool`, `int{8-64}`, `uint{8-64}`, `float{32-64}`, `time.Duration`, `flag.Value`
-	* All flag-value types can also be a slice, which enables multiple flag parsing. For example, `--foo 1 --foo 2` could result in `[]int{1,2}`.
+	* A flag-value is any of: `string`, `bool`, `int{8-64}`, `uint{8-64}`, `float{32-64}`, `time.Duration`, `flag.Value`, `encoding.TextMarshaler+Unmarshaler` (includes `time.Time`), `encoding.BinaryMarshaler+Unmarshaler` (includes `url.URL`)
+	* All flag-value can also be a slice, which enables multiple flags. For example, `--foo 1 --foo 2` could result in `[]int{1,2}`.
 
 	Where **`value`** must be one of:
 

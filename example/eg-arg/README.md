@@ -1,6 +1,6 @@
 ## arg example
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -31,7 +31,7 @@ func main() {
 $ eg-arg --foo hello --bar world
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --foo hello --bar world -->
+<!--tmpl,code=plain:go run main.go --foo hello --bar world -->
 ``` plain 
 
   Usage:  [options] <foo>
@@ -52,7 +52,7 @@ $ eg-arg --foo hello --bar world
 $ eg-arg --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-arg && ./eg-arg --help && rm eg-arg -->
+<!--tmpl,code=plain:go build -o eg-arg && ./eg-arg --help && rm eg-arg -->
 ``` plain 
 
   Usage: eg-arg [options] <foo>

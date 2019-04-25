@@ -151,14 +151,14 @@ func (kv *kv) take(k string) (string, bool) {
 func newKV(s string) *kv {
 	m := map[string]string{}
 	key := ""
-	mode := true
+	keying := true
 	sb := strings.Builder{}
 	for _, r := range s {
 		//key done
-		if mode && r == '=' {
+		if keying && r == '=' {
 			key = sb.String()
 			sb.Reset()
-			mode = false
+			keying = false
 			continue
 		}
 		//value done
@@ -168,16 +168,19 @@ func newKV(s string) *kv {
 			m[key] = val
 			key = ""
 			val = ""
-			mode = true
+			keying = true
 			continue
 		}
 		//write to builder
 		sb.WriteRune(r)
 	}
-	//write last key=value
-	if key != "" {
-		val := sb.String()
-		m[key] = val
+	if sb.Len() > 0 {
+		//write last key=value
+		if key == "" {
+			m[sb.String()] = ""
+		} else {
+			m[key] = sb.String()
+		}
 	}
 	return &kv{m: m}
 }

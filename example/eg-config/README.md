@@ -1,6 +1,6 @@
 ## config example
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -26,7 +26,7 @@ func main() {
 ```
 <!--/tmpl-->
 
-<!--tmpl,chomp,code=json:cat config.json -->
+<!--tmpl,code=json:cat config.json -->
 ``` json 
 {
 	"foo": "hello",
@@ -39,7 +39,7 @@ func main() {
 $ config --bar moon
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --bar moon -->
+<!--tmpl,code=plain:go run main.go --bar moon -->
 ``` plain 
 hello
 moon
@@ -50,7 +50,7 @@ moon
 $ config --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-config && ./eg-config --help && rm eg-config -->
+<!--tmpl,code=plain:go build -o eg-config && ./eg-config --help && rm eg-config -->
 ``` plain 
 
   Usage: eg-config [options]

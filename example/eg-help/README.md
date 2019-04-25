@@ -1,6 +1,6 @@
 ## help example
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -34,7 +34,7 @@ func main() {
 $ eg-help --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-help && ./eg-help --help && rm eg-help -->
+<!--tmpl,code=plain:go build -o eg-help && ./eg-help --help && rm eg-help -->
 ``` plain 
 
   Usage: help [options] <zip>

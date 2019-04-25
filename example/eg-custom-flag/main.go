@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/jpillora/opts"
 )
@@ -24,12 +25,15 @@ func (b *MagicInt) Set(s string) error {
 }
 
 type Config struct {
-	Bar  MagicInt
-	Bazz int
+	Mmm   []MagicInt
+	Bar   time.Duration
+	Zee   bool
+	Files []opts.File
+	Dir   opts.Dir
 }
 
 func main() {
 	c := Config{}
 	opts.Parse(&c)
-	fmt.Printf("%s %d\n", c.Bar, c.Bazz)
+	fmt.Printf("%+v\n", c)
 }

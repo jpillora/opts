@@ -1,9 +1,14 @@
 package opts
 
 import (
+	"encoding"
 	"errors"
+	"flag"
 	"fmt"
 	"reflect"
+	"time"
+
+	"github.com/posener/complete"
 )
 
 //item is the structure representing a
@@ -20,23 +25,62 @@ type item struct {
 	defstr    string
 	slice     bool
 	min       int //valid if slice
+	noarg     bool
+	predictor complete.Predictor
 }
 
 func newItem(val reflect.Value) (*item, error) {
-	if !val.CanAddr() {
-		return nil, fmt.Errorf("[rfv] cannot address value")
-	} else if !val.IsValid() {
-		return nil, fmt.Errorf("[rfv] invalid value")
+	if !val.IsValid() {
+		return nil, fmt.Errorf("invalid value")
 	}
-	i := &item{
-		val:   val,
-		slice: val.Kind() == reflect.Slice,
+	i := &item{}
+	supported := false
+	//take interface value, and attempt to
+	//make it (or pointer to it) a flag.Value
+	v := val.Interface()
+	pv := interface{}(nil)
+	if val.CanAddr() {
+		pv = val.Addr().Interface()
 	}
-	t := i.ElemType()
+	//convert other types into a flag value:
+	if t, ok := v.(texter); ok {
+		v = &textValue{t}
+	} else if t, ok := pv.(texter); ok {
+		v = &textValue{t}
+	} else if t, ok := v.(binaryer); ok {
+		v = &binaryValue{t}
+	} else if t, ok := pv.(binaryer); ok {
+		v = &binaryValue{t}
+	} else if d, ok := pv.(*time.Duration); ok {
+		v = newDurationValue(d)
+	} else if fv, ok := pv.(flag.Value); ok {
+		v = fv
+	}
+	//implements flag value?
+	if fv, ok := v.(flag.Value); ok {
+		supported = true
+		//NOTE: replacing val removes our ability to set
+		//the value, resolved by flag.Value handling all Set calls.
+		val = reflect.ValueOf(fv)
+	}
+	//implements predictor?
+	if p, ok := v.(complete.Predictor); ok {
+		i.predictor = p
+	}
+	//val must be concrete at this point
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+	//lock in val
+	i.val = val
+	i.slice = val.Kind() == reflect.Slice
+	//type checks
+	t := i.elemType()
 	if t.Kind() == reflect.Ptr {
 		return nil, fmt.Errorf("slice elem (%s) cannot be a pointer", t.Kind())
+	} else if i.slice && t.Kind() == reflect.Bool {
+		return nil, fmt.Errorf("slice of bools not supported")
 	}
-	supported := false
 	switch t.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
@@ -44,20 +88,19 @@ func newItem(val reflect.Value) (*item, error) {
 		reflect.String, reflect.Bool:
 		supported = true
 	}
-	//TODO
-	//Text Unmarsal
-	//time.Duration
-	//time.Time (hardcoded RFC3339Nano)
-	//inner flag.Value
-	// var flagValueType = reflect.TypeOf((*flag.Value)(nil)).Elem()
-	//opts.File (string, with auto os.Stat, possibly add file predict -> how filter?)
+	//use the inner bool flag, if defined, otherwise if bool
+	if bf, ok := v.(interface{ IsBoolFlag() bool }); ok {
+		i.noarg = bf.IsBoolFlag()
+	} else if t.Kind() == reflect.Bool {
+		i.noarg = true
+	}
 	if !supported {
 		return nil, fmt.Errorf("field type not supported: %s", t.Kind())
 	}
 	return i, nil
 }
 
-func (i *item) ElemType() reflect.Type {
+func (i *item) elemType() reflect.Type {
 	t := i.val.Type()
 	if i.slice {
 		t = t.Elem()
@@ -76,24 +119,128 @@ func (i *item) Set(s string) error {
 	//set has two modes, slice and inplace.
 	// when slice, create a new zero value, scan into it, append to slice
 	// when inplace, take pointer, scan into it
-	var ptr reflect.Value
+	var elem reflect.Value
 	if i.slice {
-		ptr = reflect.New(i.ElemType())
+		elem = reflect.New(i.elemType())
+	} else if i.val.CanAddr() {
+		elem = i.val.Addr()
 	} else {
-		ptr = i.val.Addr()
+		elem = i.val
 	}
-	addr := ptr.Interface()
-	//scan into this address
-	n, err := fmt.Sscanf(s, "%v", addr)
-	if err != nil {
-		return err
-	} else if n == 0 {
-		return errors.New("could not be parsed")
+	v := elem.Interface()
+	//convert string into value
+	if fv, ok := v.(flag.Value); ok {
+		//addr implements set
+		if err := fv.Set(s); err != nil {
+			return err
+		}
+	} else if elem.Kind() == reflect.Ptr {
+		//set addr with scan
+		n, err := fmt.Sscanf(s, "%v", v)
+		if err != nil {
+			return err
+		} else if n == 0 {
+			return errors.New("could not be parsed")
+		}
+	} else {
+		return errors.New("could not be set")
 	}
 	//slice? append!
 	if i.slice {
-		i.val.Set(reflect.Append(i.val, ptr.Elem()))
+		//no pointer elems
+		if elem.Kind() == reflect.Ptr {
+			elem = elem.Elem()
+		}
+		//append!
+		i.val.Set(reflect.Append(i.val, elem))
 	}
 	//done
 	return nil
+}
+
+//IsBoolFlag implements the hidden interface
+//documented here https://golang.org/pkg/flag/#Value
+func (i *item) IsBoolFlag() bool {
+	return i.noarg
+}
+
+//noopValue defines a flag value which does nothing
+var noopValue = noopValueType(0)
+
+type noopValueType int
+
+func (noopValueType) String() string {
+	return ""
+}
+
+func (noopValueType) Set(s string) error {
+	return nil
+}
+
+//textValue wraps [un]marshaller into a flag value
+type textValue struct {
+	texter
+}
+
+type texter interface {
+	encoding.TextMarshaler
+	encoding.TextUnmarshaler
+}
+
+func (t textValue) String() string {
+	b, err := t.MarshalText()
+	if err == nil {
+		return string(b)
+	}
+	return ""
+}
+
+func (t textValue) Set(s string) error {
+	return t.UnmarshalText([]byte(s))
+}
+
+//binaryValue wraps [un]marshaller into a flag value
+type binaryValue struct {
+	binaryer
+}
+
+type binaryer interface {
+	encoding.BinaryMarshaler
+	encoding.BinaryUnmarshaler
+}
+
+func (t binaryValue) String() string {
+	b, err := t.MarshalBinary()
+	if err == nil {
+		return string(b)
+	}
+	return ""
+}
+
+func (t binaryValue) Set(s string) error {
+	return t.UnmarshalBinary([]byte(s))
+}
+
+//borrowed from the stdlib :)
+type durationValue time.Duration
+
+func newDurationValue(p *time.Duration) *durationValue {
+	return (*durationValue)(p)
+}
+
+func (d *durationValue) Set(s string) error {
+	v, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	*d = durationValue(v)
+	return nil
+}
+
+func (d *durationValue) Get() interface{} {
+	return time.Duration(*d)
+}
+
+func (d *durationValue) String() string {
+	return (*time.Duration)(d).String()
 }

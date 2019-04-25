@@ -1,6 +1,6 @@
 ## simple example
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -25,7 +25,7 @@ func main() {
 $ eg-simple --file zip.txt --lines 42
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --file zip.txt --lines 42 -->
+<!--tmpl,code=plain:go run main.go --file zip.txt --lines 42 -->
 ``` plain 
 {zip.txt 42}
 ```
@@ -35,7 +35,7 @@ $ eg-simple --file zip.txt --lines 42
 $ eg-simple --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-simple && ./eg-simple --help && rm eg-simple -->
+<!--tmpl,code=plain:go build -o eg-simple && ./eg-simple --help && rm eg-simple -->
 ``` plain 
 
   Usage: eg-simple [options]

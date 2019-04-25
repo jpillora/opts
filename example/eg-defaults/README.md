@@ -1,6 +1,6 @@
 ## defaults example
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -33,7 +33,7 @@ func main() {
 $ defaults --foo hello
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go --foo hello -->
+<!--tmpl,code=plain:go run main.go --foo hello -->
 ``` plain 
 hello
 moon
@@ -44,7 +44,7 @@ moon
 $ defaults --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-defaults && ./eg-defaults --help && rm eg-defaults -->
+<!--tmpl,code=plain:go build -o eg-defaults && ./eg-defaults --help && rm eg-defaults -->
 ``` plain 
 
   Usage: eg-defaults [options]

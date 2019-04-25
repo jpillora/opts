@@ -1,6 +1,6 @@
 ## cmds example
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -50,7 +50,7 @@ func (b *Bar) Run() error {
 $ cmds bar --zip hello --zap world
 ```
 
-<!--tmpl,chomp,code=plain:go run main.go bar --zip hello --zap world -->
+<!--tmpl,code=plain:go run main.go bar --zip hello --zap world -->
 ``` plain 
 
   Usage: eg-commands-inline bar [options]
@@ -72,7 +72,7 @@ $ cmds bar --zip hello --zap world
 $ cmds --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-commands-inline && ./eg-commands-inline --help && rm eg-commands-inline -->
+<!--tmpl,code=plain:go build -o eg-commands-inline && ./eg-commands-inline --help && rm eg-commands-inline -->
 ``` plain 
 
   Usage: eg-commands-inline [options] <command>

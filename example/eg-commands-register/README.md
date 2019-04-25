@@ -2,7 +2,7 @@
 
 _`main.go`_
 
-<!--tmpl,chomp,code=go:cat main.go -->
+<!--tmpl,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -26,7 +26,7 @@ func main() {
 
 _`foo/cmd.go`_
 
-<!--tmpl,chomp,code=go:cat foo/cmd.go -->
+<!--tmpl,code=go:cat foo/cmd.go -->
 ``` go 
 package foo
 
@@ -61,7 +61,7 @@ func (f *cmd) Run() error {
 $ ./eg-commands-register --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-commands-register && ./eg-commands-register --help && rm eg-commands-register -->
+<!--tmpl,code=plain:go build -o eg-commands-register && ./eg-commands-register --help && rm eg-commands-register -->
 ``` plain 
 
   Usage: eg-commands-register [options] <command>
