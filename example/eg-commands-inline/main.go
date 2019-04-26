@@ -9,15 +9,15 @@ import (
 type Config struct {
 	//register commands by including them
 	//in the parent struct
-	Foo `help:"This text also becomes commands Description() text"`
-	Bar `help:"command two of two"`
+	Foo  `opts:"type=cmd,help=This text also becomes commands description text"`
+	*Bar `opts:"type=cmd,help=command two of two"`
 }
 
 func main() {
 	c := Config{}
 	opts.NewNamed(&c, "eg-commands-inline").
 		Parse().
-		RunFatal()
+		Run()
 }
 
 type Foo struct {

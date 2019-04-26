@@ -29,7 +29,7 @@ type datum struct {
 }
 
 type text struct {
-	Text, Def, Env string
+	Text, Def, Env, Multi string
 }
 
 var DefaultOrder = []string{
@@ -66,10 +66,10 @@ var DefaultTemplates = map[string]string{
 	"usageargs":    `{{range .Args}} {{.Name}}{{end}}`,
 	"usagearglist": `{{if .ArgList}} {{.ArgList.Name}}{{end}}`,
 	"usagecmd":     `{{if .Cmds}} <command>{{end}}`,
-	//extra help text
-	"helpextra": `{{if .Def}}default {{.Def}}{{end}}` +
-		`{{if and .Def .Env}}, {{end}}` +
-		`{{if .Env}}env {{.Env}}{{end}}`,
+	//extra help text gets appended to option.Help
+	"extradefault":  `{{if .}}default {{.}}{{end}}`,
+	"extraenv":      `{{if .}}env {{.}}{{end}}`,
+	"extramultiple": `{{if .}}allows multiple{{end}}`,
 	//description
 	"desc": `{{if .Desc}}` + "\n" +
 		"{{ .Desc }}\n" +
@@ -97,6 +97,14 @@ var trailingSpaces = regexp.MustCompile(`(?m)\ +$`)
 
 //Help renders the help text as a string
 func (o *node) Help() string {
+	h, err := renderHelp(o)
+	if err != nil {
+		log.Fatalf("render help failed: %s", err)
+	}
+	return h
+}
+
+func renderHelp(o *node) (string, error) {
 	var err error
 	//add default templates
 	for name, str := range DefaultTemplates {
@@ -117,20 +125,23 @@ func (o *node) Help() string {
 			return b.String(), nil
 		},
 	})
-	//verify all templates
+	//parse all templates
 	for name, str := range o.templates {
 		t, err = t.Parse(fmt.Sprintf(`{{define "%s"}}%s{{end}}`, name, str))
 		if err != nil {
-			log.Fatalf("Template error: %s: %s", name, err)
+			return "", fmt.Errorf("template '%s': %s", name, err)
 		}
 	}
 	//convert node into template data
-	tf := convert(o)
+	tf, err := convert(o)
+	if err != nil {
+		return "", fmt.Errorf("node convert: %s", err)
+	}
 	//execute all templates
 	b := &bytes.Buffer{}
 	err = t.ExecuteTemplate(b, "help", tf)
 	if err != nil {
-		log.Fatalf("Template execute: %s", err)
+		return "", fmt.Errorf("template execute: %s", err)
 	}
 	out := b.String()
 	if o.padAll {
@@ -150,10 +161,10 @@ func (o *node) Help() string {
 		out = "\n" + strings.Join(lines, "\n") + "\n"
 	}
 	out = trailingSpaces.ReplaceAllString(out, "")
-	return out
+	return out, nil
 }
 
-func convert(o *node) *data {
+func convert(o *node) (*data, error) {
 	names := []string{}
 	curr := o
 	for curr != nil {
@@ -163,12 +174,29 @@ func convert(o *node) *data {
 	name := strings.Join(names, " ")
 	//get item help, with optional default values and env names and
 	//constrain to a specific line width
-	extratmpl, _ := template.New("").Parse(o.templates["helpextra"])
+	keys := []string{"default", "env", "multiple"}
+	extras := make([]*template.Template, 3)
+	for i, k := range keys {
+		t, err := template.New("").Parse(o.templates["extra"+k])
+		if err != nil {
+			return nil, fmt.Errorf("template extra%s: %s", k, err)
+		}
+		extras[i] = t
+	}
 	itemHelp := func(i *item, width int) string {
-		b := bytes.Buffer{}
-		extratmpl.Execute(&b, &text{Def: i.defstr, Env: i.envName})
-		extra := b.String()
+		vals := []interface{}{i.defstr, i.envName, i.slice}
+		outs := []string{}
+		for i, v := range vals {
+			b := strings.Builder{}
+			if err := extras[i].Execute(&b, v); err != nil {
+				log.Printf(">>> %s: %s", keys[i], err)
+			}
+			if b.Len() > 0 {
+				outs = append(outs, b.String())
+			}
+		}
 		help := i.help
+		extra := strings.Join(outs, ", ")
 		if help == "" {
 			help = extra
 		} else if extra != "" {
@@ -265,5 +293,5 @@ func convert(o *node) *data {
 		Repo:    o.repo,
 		Author:  o.author,
 		ErrMsg:  err,
-	}
+	}, nil
 }

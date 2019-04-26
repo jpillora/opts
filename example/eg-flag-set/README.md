@@ -33,7 +33,7 @@ $ eg-flag-set -a
 
 <!--tmpl,chomp,code=plain:go run main.go -a -->
 ``` plain 
-I0425 23:30:27.927798   18815 main.go:21] hello from app via glog
+2019/04/26 22:15:56 command 'main' is not runnable
 ```
 <!--/tmpl-->
 
@@ -41,7 +41,7 @@ I0425 23:30:27.927798   18815 main.go:21] hello from app via glog
 $ eg-flag-set --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-flag-set && ./eg-flag-set --help && rm eg-flag-set -->
+<!--tmpl,chomp,code=plain:go build -o eg-flag-set && ./eg-flag-set --help ; rm eg-flag-set -->
 ``` plain 
 
   Usage: eg-flag-set [options]

@@ -5,11 +5,11 @@ import (
 )
 
 type Config struct {
-	Alpha string
-	Bar
+	Alpha   string
 	Charlie string
 	Delta   string
-	Foo
+	Foo     `opts:"type=cmd"`
+	Bar     `opts:"type=cmd"`
 }
 
 type Foo struct {

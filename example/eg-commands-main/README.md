@@ -1,6 +1,6 @@
 ## eg-commands-inline example
 
-<!--tmpl,code=go:cat main.go -->
+<!--tmpl,chomp,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -50,9 +50,9 @@ func (b *Bar) Run() error {
 $ eg-commands-inline foo bar --zip 2
 ```
 
-<!--tmpl,code=plain:go run main.go foo bar --zip 2 -->
+<!--tmpl,chomp,code=plain:go run main.go foo bar --zip 2 -->
 ``` plain 
-2019/04/19 21:49:41 bar: &{Zip:2 Zop:}
+2019/04/26 22:15:50 command 'bar' is not runnable
 ```
 <!--/tmpl-->
 
@@ -60,7 +60,7 @@ $ eg-commands-inline foo bar --zip 2
 $ eg-commands-inline --help
 ```
 
-<!--tmpl,code=plain:go build -o eg-commands-inline && ./eg-commands-inline --help && rm eg-commands-inline -->
+<!--tmpl,chomp,code=plain:go build -o eg-commands-inline && ./eg-commands-inline --help ; rm eg-commands-inline -->
 ``` plain 
 
   Usage: eg-commands-inline [options] <command>

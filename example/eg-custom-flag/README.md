@@ -1,6 +1,6 @@
 ## customtypes example
 
-<!--tmpl,code=go:cat main.go -->
+<!--tmpl,chomp,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -12,7 +12,7 @@ import (
 	"github.com/jpillora/opts"
 )
 
-//custom types are allowed if they implement the flag.Value interface
+//MagicInt is a valid custom type since it implements the flag.Value interface
 type MagicInt int
 
 func (b MagicInt) String() string {
@@ -29,18 +29,17 @@ func (b *MagicInt) Set(s string) error {
 }
 
 type Config struct {
-	Foo  time.Duration
-	Bar  MagicInt
-	Bazz int
+	Mmm   []MagicInt
+	Bar   time.Duration
+	Zee   bool
+	Files []opts.File
+	Dir   opts.Dir
 }
 
 func main() {
-
 	c := Config{}
-
 	opts.Parse(&c)
-
-	fmt.Printf("%3.0f %s %d\n", c.Foo.Seconds(), c.Bar, c.Bazz)
+	fmt.Printf("%+v\n", c)
 }
 ```
 <!--/tmpl-->
@@ -50,9 +49,24 @@ func main() {
 $ eg-custom-flag --foo 2m --bar 5 --bazz 5
 ```
 
-<!--tmpl,code=plain:go run main.go --foo 2m --bar 5 --bazz 5 -->
+<!--tmpl,chomp,code=plain:go run main.go --foo 2m --bar 5 --bazz 5 -->
 ``` plain 
-120 {47} 5
+2019/04/26 22:15:53 SINGLE: mmm
+2019/04/26 22:15:53 SINGLE: file
+
+  Usage: main [options]
+
+  Options:
+  --mmm, -m   allows multiple
+  --bar, -b
+  --zee, -z
+  --file, -f  allows multiple
+  --dir, -d
+  --help, -h
+
+  Error:
+    flag provided but not defined: -foo
+
 ```
 <!--/tmpl-->
 
@@ -60,15 +74,19 @@ $ eg-custom-flag --foo 2m --bar 5 --bazz 5
 $ eg-custom-flag --help
 ```
 
-<!--tmpl,code=plain:go install && eg-custom-flag --help && rm $(which eg-custom-flag) -->
+<!--tmpl,chomp,code=plain:go install && eg-custom-flag --help ; rm $(which eg-custom-flag) -->
 ``` plain 
+2019/04/26 22:15:53 SINGLE: mmm
+2019/04/26 22:15:53 SINGLE: file
 
   Usage: eg-custom-flag [options]
 
   Options:
-  --foo, -f
+  --mmm, -m   allows multiple
   --bar, -b
-  --bazz
+  --zee, -z
+  --file, -f  allows multiple
+  --dir, -d
   --help, -h
 
 ```

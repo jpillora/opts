@@ -39,6 +39,18 @@ func (n *node) matchedCommand() *node {
 	return n
 }
 
+//IsRunnable
+func (n *node) IsRunnable() bool {
+	ok, _ := n.run(true)
+	return ok
+}
+
+//Run the parsed configuration
+func (n *node) Run() error {
+	_, err := n.run(false)
+	return err
+}
+
 type runner1 interface {
 	Run() error
 }
@@ -47,29 +59,22 @@ type runner2 interface {
 	Run()
 }
 
-//IsRunnable
-func (n *node) IsRunnable() bool {
+func (n *node) run(test bool) (bool, error) {
 	m := n.matchedCommand()
-	v := m.val.Interface()
-	_, ok1 := v.(runner1)
-	_, ok2 := v.(runner2)
-	return ok1 || ok2
-}
-
-//Run the parsed configuration
-func (n *node) Run() error {
-	m := n.matchedCommand()
-	v := m.val.Interface()
+	v := m.val.Addr().Interface()
 	r1, ok1 := v.(runner1)
-	if ok1 {
-		return r1.Run()
-	}
 	r2, ok2 := v.(runner2)
+	if test {
+		return ok1 || ok2, nil
+	}
+	if ok1 {
+		return true, r1.Run()
+	}
 	if ok2 {
 		r2.Run()
-		return nil
+		return true, nil
 	}
-	return fmt.Errorf("command '%s' is not runnable", m.name)
+	return false, fmt.Errorf("command '%s' is not runnable", m.name)
 }
 
 //Run the parsed configuration

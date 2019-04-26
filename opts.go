@@ -32,9 +32,10 @@ type Opts interface {
 	ImportGlobalFlagSet() Opts
 	//subcommands
 	AddCommand(Opts) Opts
-	//parse this opts node and its children
+	//Parse this opts node and its children
 	Parse() ParsedOpts
 	ParseArgs(args []string) ParsedOpts
+	//private
 	parse([]string) error
 }
 
@@ -44,9 +45,7 @@ type ParsedOpts interface {
 	//Whether the Run method of the parsed command exists
 	IsRunnable() bool
 	//Execute the Run method of the parsed command.
-	//The target Run method must be one of:
-	//- Run() error
-	//- Run()
+	//The target Run method must be `Run() error` or `Run()`
 	Run() error
 	//Execute the Run method of the parsed command and
 	//exit(1) if an error is returned.

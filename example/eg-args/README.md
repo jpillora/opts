@@ -1,28 +1,23 @@
 ## args example
 
-<!--tmpl,code=go:cat main.go -->
+<!--tmpl,chomp,code=go:cat main.go -->
 ``` go 
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/jpillora/opts"
 )
 
 type Config struct {
-	Bazzes []string `min:"2"`
+	Octopi []string `opts:"type=arg,min=2"`
 }
 
 func main() {
-
 	c := Config{}
-
 	opts.New(&c).Parse()
-
-	for i, foo := range c.Bazzes {
-		fmt.Println(i, foo)
-	}
+	log.Printf("%+v", c)
 }
 ```
 <!--/tmpl-->
@@ -31,10 +26,20 @@ func main() {
 $ args --foo hello --bar world
 ```
 
-<!--tmpl,code=plain:go run main.go foo bar -->
+<!--tmpl,chomp,code=plain:go run main.go foo bar -->
 ``` plain 
-0 foo
-1 bar
+2019/04/26 22:15:48 SINGLE: octopus
+
+  Usage: main [options] <octopus>
+
+  allows multiple
+
+  Options:
+  --help, -h
+
+  Error:
+    Unexpected arguments: [bar]
+
 ```
 <!--/tmpl-->
 
@@ -42,10 +47,13 @@ $ args --foo hello --bar world
 $ args --help
 ```
 
-<!--tmpl,code=plain:go build -o eg-args && ./eg-args --help && rm eg-args -->
+<!--tmpl,chomp,code=plain:go build -o eg-args && ./eg-args --help ; rm eg-args -->
 ``` plain 
+2019/04/26 22:15:48 SINGLE: octopus
 
-  Usage: eg-args [options] bazzes...
+  Usage: eg-args [options] <octopus>
+
+  allows multiple
 
   Options:
   --help, -h

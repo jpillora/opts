@@ -2,7 +2,7 @@
 
 _`main.go`_
 
-<!--tmpl,code=go:cat main.go -->
+<!--tmpl,chomp,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -30,7 +30,7 @@ func main() {
 
 _`foo/foo.go`_
 
-<!--tmpl,code=go:cat foo/foo.go -->
+<!--tmpl,chomp,code=go:cat foo/foo.go -->
 ``` go 
 package foo
 
@@ -59,7 +59,7 @@ $ go build -ldflags "-X main.version=0.2.6" -o foo
 $ ./foo --help
 ```
 
-<!--tmpl,code=plain:go build -ldflags "-X main.version=0.2.6" -o eg-app && ./eg-app --help && rm eg-app -->
+<!--tmpl,chomp,code=plain:go build -ldflags "-X main.version=0.2.6" -o eg-app && ./eg-app --help ; rm eg-app -->
 ``` plain 
 
   Usage: eg-app [options]

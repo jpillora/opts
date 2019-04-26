@@ -1,27 +1,28 @@
 ## env example
 
-<!--tmpl,code=go:cat main.go -->
+<!--tmpl,chomp,code=go:cat main.go -->
 ``` go 
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/jpillora/opts"
 )
 
 type Config struct {
-	Foo string
-	Bar string
+	Foo string `opts:"env=FOO"`
+	Bar string `opts:"env"`
 }
 
 func main() {
 	c := Config{}
-	//In this case UseEnv() is equivalent to
-	//adding `env:"FOO"` and `env:"BAR"` tags
-	opts.New(&c).UseEnv().Parse()
-	fmt.Println(c.Foo)
-	fmt.Println(c.Bar)
+	//NOTE: we could also use UseEnv(), which
+	//adds 'env' to all fields.
+	opts.New(&c).
+		// UseEnv().
+		Parse()
+	log.Printf("%+v", c)
 }
 ```
 <!--/tmpl-->
@@ -32,10 +33,9 @@ $ export BAR=world
 $ go run env.go
 ```
 
-<!--tmpl,code=plain:(export FOO=hello && export BAR=world && go run main.go) -->
+<!--tmpl,chomp,code=plain:(export FOO=hello && export BAR=world && go run main.go) -->
 ``` plain 
-hello
-world
+2019/04/26 22:15:55 {Foo: Bar:}
 ```
 <!--/tmpl-->
 
@@ -43,7 +43,7 @@ world
 $ eg-env --help
 ```
 
-<!--tmpl,code=plain:go build -o eg-env && ./eg-env --help && rm eg-env -->
+<!--tmpl,chomp,code=plain:go build -o eg-env && ./eg-env --help ; rm eg-env -->
 ``` plain 
 
   Usage: eg-env [options]

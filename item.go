@@ -27,6 +27,7 @@ type item struct {
 	min       int //valid if slice
 	noarg     bool
 	predictor complete.Predictor
+	set       bool
 }
 
 func newItem(val reflect.Value) (*item, error) {
@@ -74,6 +75,10 @@ func newItem(val reflect.Value) (*item, error) {
 	//lock in val
 	i.val = val
 	i.slice = val.Kind() == reflect.Slice
+	//prevent defaults on slices (should vals be appended? should it be reset? how to display defaults?)
+	if i.slice && val.Len() > 0 {
+		return nil, fmt.Errorf("slices cannot have default values")
+	}
 	//type checks
 	t := i.elemType()
 	if t.Kind() == reflect.Ptr {
@@ -116,16 +121,20 @@ func (i *item) String() string {
 }
 
 func (i *item) Set(s string) error {
+	//can only set singles once
+	if i.set && !i.slice {
+		return errors.New("already set")
+	}
 	//set has two modes, slice and inplace.
 	// when slice, create a new zero value, scan into it, append to slice
 	// when inplace, take pointer, scan into it
 	var elem reflect.Value
 	if i.slice {
-		elem = reflect.New(i.elemType())
+		elem = reflect.New(i.elemType()) //ptr
 	} else if i.val.CanAddr() {
-		elem = i.val.Addr()
+		elem = i.val.Addr() //ptr
 	} else {
-		elem = i.val
+		elem = i.val //possibly a flag.Value
 	}
 	v := elem.Interface()
 	//convert string into value
@@ -154,6 +163,8 @@ func (i *item) Set(s string) error {
 		//append!
 		i.val.Set(reflect.Append(i.val, elem))
 	}
+	//mark item as set!
+	i.set = true
 	//done
 	return nil
 }

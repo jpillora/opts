@@ -11,13 +11,18 @@ func TestKVMap(t *testing.T) {
 		output map[string]string
 	}{
 		{
-			"",
-			nil,
+			"a=b,c=d",
+			map[string]string{"a": "b", "c": "d"},
+		},
+		{
+			"foo,,bar,,",
+			map[string]string{"foo": "", "bar": ""},
 		},
 	} {
-		m := newKV(testcase.input)
+		kv := newKV(testcase.input)
+		m := kv.m
 		if !reflect.DeepEqual(m, testcase.output) {
-			t.Fatalf("input: %s\n  expected: %s\n  got: %s",
+			t.Fatalf("input: %s\n  expected: %s\n      got: %s",
 				testcase.input,
 				testcase.output,
 				m,

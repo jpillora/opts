@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path"
 	"reflect"
@@ -53,27 +52,34 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 	return n
 }
 
-//parse is the same as ParseArgs except
-//it returns an error on failure
+//parse validates and initialises all internal items
+//and then passes the args through, setting them items required
 func (n *node) parse(args []string) error {
 	//return the stored error
 	if n.err != nil {
 		return n.err
 	}
 	//find default name for root-node
-	if n.name == "" && n.parent == nil {
+	if n.item.name == "" && n.parent == nil {
 		if exe, err := os.Executable(); err == nil {
-			_, n.name = path.Split(exe)
+			_, n.item.name = path.Split(exe)
 		}
 	}
-	//root value
-	v := n.item.val
-	//all fields from val
-	if v.Type().Kind() != reflect.Ptr && v.Type().Elem().Kind() != reflect.Struct {
-		return n.errorf("%s should be a pointer to a struct", v.Type().Name())
+	//when parsing, node's value must be struct or non-nil *struct
+	{
+		v := n.item.val
+		t := v.Type()
+		if t.Kind() == reflect.Ptr {
+			t = t.Elem()
+			v = v.Elem()
+			n.item.val = v
+		}
+		if t.Kind() != reflect.Struct {
+			return n.errorf("should be a pointer to a struct")
+		}
 	}
 	//add this node and its fields (recurses if has sub-commands)
-	if err := n.addStructFields(v.Elem()); err != nil {
+	if err := n.addStructFields(n.item.val); err != nil {
 		return err
 	}
 	//add help flag
@@ -96,16 +102,16 @@ func (n *node) parse(args []string) error {
 		}
 	}
 	//add shortnames where possible
-	for _, flag := range n.flags {
-		if flag.shortName == "" && len(flag.name) >= 3 {
-			if s := flag.name[0:1]; !n.flagNames[s] {
-				flag.shortName = s
+	for _, item := range n.flags {
+		if item.shortName == "" && len(item.name) >= 3 {
+			if s := item.name[0:1]; !n.flagNames[s] {
+				item.shortName = s
 				n.flagNames[s] = true
 			}
 		}
 	}
-	//link each flag to fields in the underlying struct
-	flagset := flag.NewFlagSet(n.name, flag.ContinueOnError)
+	//create a new flagset, and link each item
+	flagset := flag.NewFlagSet(n.item.name, flag.ContinueOnError)
 	flagset.SetOutput(ioutil.Discard)
 	for _, item := range n.flags {
 		flagset.Var(item, item.name, "")
@@ -117,6 +123,21 @@ func (n *node) parse(args []string) error {
 		//insert flag errors into help text
 		n.err = err
 		n.internalOpts.Help = true
+	}
+	//loop through flags, applying env variables where necesseary
+	for _, item := range n.flags {
+		k := item.envName
+		if item.set || k == "" {
+			continue
+		}
+		v := os.Getenv(k)
+		if v == "" {
+			continue
+		}
+		err := item.Set(v)
+		if err != nil {
+			return fmt.Errorf("flag '%s' cannot set invalid env var (%s): %s", item.name, k, err)
+		}
 	}
 	//internal opts
 	if n.internalOpts.Help {
@@ -130,17 +151,26 @@ func (n *node) parse(args []string) error {
 	}
 	//fill each individual arg
 	args = flagset.Args()
-	for i, item := range n.args {
-		s := ""
-		if len(args) > 0 {
-			s = args[0]
-			args = args[1:]
+	i := 0
+	for {
+		if len(n.args) == i {
+			break
 		}
-		if s == "" {
-			return fmt.Errorf("Argument '%s' (#%d) is missing", item.name, i+1)
+		item := n.args[i]
+		if len(args) == 0 && !item.set && !item.slice {
+			return fmt.Errorf("argument '%s' is missing", item.name)
 		}
+		if len(args) == 0 {
+			break
+		}
+		s := args[0]
 		if err := item.Set(s); err != nil {
-			return fmt.Errorf("Argument '%s' (#%d) is invalid: %s", item.name, i+1, err)
+			return fmt.Errorf("argument '%s' is invalid: %s", item.name, err)
+		}
+		args = args[1:]
+		//use next arg?
+		if !item.slice {
+			i++
 		}
 	}
 	//use command? peek at args
@@ -158,14 +188,6 @@ func (n *node) parse(args []string) error {
 			return sub.parse(args[1:])
 		}
 	}
-	//fill arglist? assign remaining as slice
-	// if n.arglist != nil {
-	// 	if len(args) < n.arglist.min {
-	// 		return fmt.Errorf("Too few arguments (expected %d, got %d)", n.arglist.min, len(args))
-	// 	}
-	// 	n.arglist.val.Set(reflect.ValueOf(args))
-	// 	args = nil
-	// }
 	//we *should* have consumed all args at this point.
 	//this prevents:  ./foo --bar 42 -z 21 ping --pong 7
 	//where --pong 7 is ignored
@@ -175,25 +197,17 @@ func (n *node) parse(args []string) error {
 	return nil
 }
 
-func (n *node) addStructFields(c reflect.Value) error {
-	t := c.Type()
-	k := t.Kind()
-	//deref pointer
-	if k == reflect.Ptr {
-		c = c.Elem()
-		t = c.Type()
-		k = t.Kind()
-	}
-	if k != reflect.Struct {
-		return n.errorf("opts: %s should be a pointer to a struct (got %s)", t.Name(), k)
+func (n *node) addStructFields(sv reflect.Value) error {
+	if sv.Kind() != reflect.Struct {
+		return n.errorf("opts: %s should be a pointer to a struct (got %s)", sv.Type().Name(), sv.Kind())
 	}
 	//parse struct fields
-	for i := 0; i < c.NumField(); i++ {
-		sf := t.Field(i)
-		val := c.Field(i)
+	for i := 0; i < sv.NumField(); i++ {
+		sf := sv.Type().Field(i)
+		val := sv.Field(i)
 		//add one field
 		if err := n.addStructField(sf, val); err != nil {
-			return fmt.Errorf("field '%s': %s", sf.Name, err)
+			return fmt.Errorf("field '%s' %s", sf.Name, err)
 		}
 	}
 	return nil
@@ -202,9 +216,8 @@ func (n *node) addStructFields(c reflect.Value) error {
 func (n *node) addStructField(sf reflect.StructField, val reflect.Value) error {
 	kv := newKV(sf.Tag.Get("opts"))
 	help := sf.Tag.Get("help")
-	typeName := sf.Tag.Get("type") 
-	log.Printf("add field: %s", sf.Name)
-	if err := n.addKVField(kv, help, sf.Name, typeName, val); err != nil {
+	typeName := sf.Tag.Get("type")
+	if err := n.addKVField(kv, sf.Name, help, typeName, val); err != nil {
 		return err
 	}
 	if ks := kv.keys(); len(ks) > 0 {
@@ -218,10 +231,6 @@ func (n *node) addKVField(kv *kv, fName, help, typeName string, val reflect.Valu
 	if !val.CanSet() {
 		return nil
 	}
-	//deref pointer
-	if val.Type().Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
 	//parse key-values
 	//ignore `opts:"-"`
 	if _, ok := kv.take("-"); ok {
@@ -232,9 +241,10 @@ func (n *node) addKVField(kv *kv, fName, help, typeName string, val reflect.Valu
 	if name == "" {
 		//default to struct field name
 		name = camel2dash(fName)
-		//slice? use singular, since usage is --file foo --file bar
+		//slice? use singular, usage of
+		//Foos []string should be: --foo bar --foo bazz
 		if val.Type().Kind() == reflect.Slice {
-			name = strings.TrimSuffix(name, "s")
+			name = getSingular(name)
 		}
 	}
 	//new kv type defs supercede legacy defs
@@ -250,9 +260,9 @@ func (n *node) addKVField(kv *kv, fName, help, typeName string, val reflect.Valu
 			typeName = "flag"
 		}
 	}
+	//special cases
 	if typeName == "embedded" {
-		//recurse!
-		return n.addStructFields(val)
+		return n.addStructFields(val) //recurse!
 	}
 	if typeName == "cmdname" {
 		return n.setCmdName(val)
@@ -327,6 +337,16 @@ func (n *node) addKVField(kv *kv, fName, help, typeName string, val reflect.Valu
 		//add to this command's flags
 		n.flags = append(n.flags, i)
 	case "arg":
+		//cannot have duplicates
+		if len(n.cmds) > 0 {
+			return n.errorf("args and commands cannot be used together")
+		}
+		//cannot put an arg after an arg list
+		for _, item := range n.args {
+			if item.slice {
+				return n.errorf("cannot come before arg list '%s'", fName)
+			}
+		}
 		//add to this command's arguments
 		n.args = append(n.args, i)
 	default:
@@ -348,26 +368,24 @@ func (n *node) setCmdName(val reflect.Value) error {
 }
 
 func (n *node) addInlineCmd(name, help string, val reflect.Value) error {
-	v := val
-	if v.Type().Kind() == reflect.Ptr {
-		v = v.Elem()
+	vt := val.Type()
+	if vt.Kind() == reflect.Ptr {
+		vt = vt.Elem()
 	}
-	if v.Type().Kind() != reflect.Struct {
+	if vt.Kind() != reflect.Struct {
 		return errors.New("inline commands 'type=cmd' must be structs")
-	} else if !v.CanAddr() {
+	} else if !val.CanAddr() {
 		return errors.New("cannot address inline command")
 	}
-	v = v.Addr()
 	//if nil ptr, auto-create new struct
-	if v.IsNil() {
-		ptr := reflect.New(v.Type().Elem())
-		v.Set(ptr)
+	if val.Kind() == reflect.Ptr && val.IsNil() {
+		val.Set(reflect.New(vt))
 	}
 	//ready!
 	if _, ok := n.cmds[name]; ok {
 		return n.errorf("command already exists: %s", name)
 	}
-	sub := newNode(v)
+	sub := newNode(val)
 	sub.Name(name)
 	sub.help = help
 	sub.Description(help)
@@ -384,10 +402,7 @@ func (n *node) addInlineCmd(name, help string, val reflect.Value) error {
 // 		return n.errorf("only 1 arglist field is allowed ('%s' already defined)", n.arglist.name)
 // 	}
 // 	name := kv["name"]
-// 	if val.Len() != 0 {
-// 		return n.errorf("arglist '%s' is required so it should not be set. "+
-// 			"If you'd like to set a default, consider using an option instead.", name)
-// 	}
+
 // 	min, _ := strconv.Atoi(kv["min"])
 // 	//insert (there can only be one)
 // 	n.arglist = &argumentlist{
@@ -447,7 +462,7 @@ func (n *node) addFlagsets() error {
 			//convert f into a black hole
 			f.Value = noopValue
 		})
-		//
+		//fail with last error
 		if err != nil {
 			return err
 		}
@@ -460,7 +475,7 @@ func (n *node) addFlagsets() error {
 
 func (n *node) setPkgDefaults() {
 	//attempt to infer package name, repo, author
-	configStruct := n.item.val.Elem().Type()
+	configStruct := n.item.val.Type()
 	pkgPath := configStruct.PkgPath()
 	parts := strings.Split(pkgPath, "/")
 	if len(parts) >= 3 {

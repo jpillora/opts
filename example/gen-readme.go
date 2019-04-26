@@ -1,8 +1,6 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -51,10 +49,6 @@ func processReadme(eg string) {
 		log.Printf("example '%s' has no README.md file", eg)
 		return
 	}
-	b = bytes.ReplaceAll(b,
-		[]byte("go run main.go --help"),
-		[]byte(fmt.Sprintf("go build -o %s && ./%s --help && rm %s", eg, eg, eg)),
-	)
 	b = mdtmpl.ExecuteIn(b, eg)
 	check(ioutil.WriteFile(fp, b, 0655))
 	log.Printf("executed templates and rewrote '%s'", eg)

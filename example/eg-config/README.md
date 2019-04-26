@@ -1,6 +1,6 @@
 ## config example
 
-<!--tmpl,code=go:cat main.go -->
+<!--tmpl,chomp,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -26,7 +26,7 @@ func main() {
 ```
 <!--/tmpl-->
 
-<!--tmpl,code=json:cat config.json -->
+<!--tmpl,chomp,code=json:cat config.json -->
 ``` json 
 {
 	"foo": "hello",
@@ -39,10 +39,19 @@ func main() {
 $ config --bar moon
 ```
 
-<!--tmpl,code=plain:go run main.go --bar moon -->
+<!--tmpl,chomp,code=plain:go run main.go --bar moon -->
 ``` plain 
-hello
-moon
+
+  Usage: main [options]
+
+  Options:
+  --foo
+  --bar
+  --help
+
+  Error:
+    Invalid config file: json: Unmarshal(non-pointer main.Config)
+
 ```
 <!--/tmpl-->
 
@@ -50,15 +59,18 @@ moon
 $ config --help
 ```
 
-<!--tmpl,code=plain:go build -o eg-config && ./eg-config --help && rm eg-config -->
+<!--tmpl,chomp,code=plain:go build -o eg-config && ./eg-config --help ; rm eg-config -->
 ``` plain 
 
   Usage: eg-config [options]
 
   Options:
-  --foo, -f
-  --bar, -b
-  --help, -h
+  --foo
+  --bar
+  --help
+
+  Error:
+    Invalid config file: json: Unmarshal(non-pointer main.Config)
 
 ```
 <!--/tmpl-->

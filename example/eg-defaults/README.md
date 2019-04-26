@@ -1,6 +1,6 @@
 ## defaults example
 
-<!--tmpl,code=go:cat main.go -->
+<!--tmpl,chomp,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -12,17 +12,12 @@ import (
 
 type Config struct {
 	Foo string
-	Bar string
+	Bar string `opts:"default=world"` //only changes help text
 }
 
 func main() {
-
-	c := Config{
-		Bar: "moon",
-	}
-
+	c := Config{Foo: "hello"}
 	opts.Parse(&c)
-
 	fmt.Println(c.Foo)
 	fmt.Println(c.Bar)
 }
@@ -33,10 +28,10 @@ func main() {
 $ defaults --foo hello
 ```
 
-<!--tmpl,code=plain:go run main.go --foo hello -->
+<!--tmpl,chomp,code=plain:go run main.go --foo hello -->
 ``` plain 
 hello
-moon
+
 ```
 <!--/tmpl-->
 
@@ -44,14 +39,14 @@ moon
 $ defaults --help
 ```
 
-<!--tmpl,code=plain:go build -o eg-defaults && ./eg-defaults --help && rm eg-defaults -->
+<!--tmpl,chomp,code=plain:go build -o eg-defaults && ./eg-defaults --help ; rm eg-defaults -->
 ``` plain 
 
   Usage: eg-defaults [options]
 
   Options:
-  --foo, -f
-  --bar, -b   default moon
+  --foo, -f   default hello
+  --bar, -b   default world
   --help, -h
 
 ```

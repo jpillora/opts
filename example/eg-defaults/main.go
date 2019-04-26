@@ -8,17 +8,12 @@ import (
 
 type Config struct {
 	Foo string
-	Bar string
+	Bar string `opts:"default=world"` //only changes help text
 }
 
 func main() {
-
-	c := Config{
-		Bar: "moon",
-	}
-
+	c := Config{Foo: "hello"}
 	opts.Parse(&c)
-
 	fmt.Println(c.Foo)
 	fmt.Println(c.Bar)
 }

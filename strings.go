@@ -2,6 +2,7 @@ package opts
 
 import (
 	"bytes"
+	"regexp"
 	"sort"
 	"strings"
 	"unicode"
@@ -127,6 +128,98 @@ func camel2dash(str string) string {
 	return buf.String()
 }
 
+//borrowed from https://raw.githubusercontent.com/jinzhu/inflection/master/inflections.go
+var getSingular = func() func(str string) string {
+	type inflection struct {
+		regexp  *regexp.Regexp
+		replace string
+	}
+	// Regular is a regexp find replace inflection
+	type Regular struct {
+		find    string
+		replace string
+	}
+	// Irregular is a hard replace inflection,
+	// containing both singular and plural forms
+	type Irregular struct {
+		singular string
+		plural   string
+	}
+	var singularInflections = []Regular{
+		{"s$", ""},
+		{"(ss)$", "${1}"},
+		{"(n)ews$", "${1}ews"},
+		{"([ti])a$", "${1}um"},
+		{"((a)naly|(b)a|(d)iagno|(p)arenthe|(p)rogno|(s)ynop|(t)he)(sis|ses)$", "${1}sis"},
+		{"(^analy)(sis|ses)$", "${1}sis"},
+		{"([^f])ves$", "${1}fe"},
+		{"(hive)s$", "${1}"},
+		{"(tive)s$", "${1}"},
+		{"([lr])ves$", "${1}f"},
+		{"([^aeiouy]|qu)ies$", "${1}y"},
+		{"(s)eries$", "${1}eries"},
+		{"(m)ovies$", "${1}ovie"},
+		{"(c)ookies$", "${1}ookie"},
+		{"(x|ch|ss|sh)es$", "${1}"},
+		{"^(m|l)ice$", "${1}ouse"},
+		{"(bus)(es)?$", "${1}"},
+		{"(o)es$", "${1}"},
+		{"(shoe)s$", "${1}"},
+		{"(cris|test)(is|es)$", "${1}is"},
+		{"^(a)x[ie]s$", "${1}xis"},
+		{"(octop|vir)(us|i)$", "${1}us"},
+		{"(alias|status)(es)?$", "${1}"},
+		{"^(ox)en", "${1}"},
+		{"(vert|ind)ices$", "${1}ex"},
+		{"(matr)ices$", "${1}ix"},
+		{"(quiz)zes$", "${1}"},
+		{"(database)s$", "${1}"},
+	}
+	var irregularInflections = []Irregular{
+		{"person", "people"},
+		{"man", "men"},
+		{"child", "children"},
+		{"sex", "sexes"},
+		{"move", "moves"},
+		{"mombie", "mombies"},
+	}
+	var uncountableInflections = []string{"equipment", "information", "rice", "money", "species", "series", "fish", "sheep", "jeans", "police"}
+	var compiledSingularMaps []inflection
+	compiledSingularMaps = []inflection{}
+	for _, uncountable := range uncountableInflections {
+		inf := inflection{
+			regexp:  regexp.MustCompile("^(?i)(" + uncountable + ")$"),
+			replace: "${1}",
+		}
+		compiledSingularMaps = append(compiledSingularMaps, inf)
+	}
+	for _, value := range irregularInflections {
+		infs := []inflection{
+			inflection{regexp: regexp.MustCompile(strings.ToUpper(value.plural) + "$"), replace: strings.ToUpper(value.singular)},
+			inflection{regexp: regexp.MustCompile(strings.Title(value.plural) + "$"), replace: strings.Title(value.singular)},
+			inflection{regexp: regexp.MustCompile(value.plural + "$"), replace: value.singular},
+		}
+		compiledSingularMaps = append(compiledSingularMaps, infs...)
+	}
+	for i := len(singularInflections) - 1; i >= 0; i-- {
+		value := singularInflections[i]
+		infs := []inflection{
+			inflection{regexp: regexp.MustCompile(strings.ToUpper(value.find)), replace: strings.ToUpper(value.replace)},
+			inflection{regexp: regexp.MustCompile(value.find), replace: value.replace},
+			inflection{regexp: regexp.MustCompile("(?i)" + value.find), replace: value.replace},
+		}
+		compiledSingularMaps = append(compiledSingularMaps, infs...)
+	}
+	return func(str string) string {
+		for _, inflection := range compiledSingularMaps {
+			if inflection.regexp.MatchString(str) {
+				return inflection.regexp.ReplaceAllString(str, inflection.replace)
+			}
+		}
+		return str
+	}
+}()
+
 type kv struct {
 	m map[string]string
 }
@@ -153,6 +246,18 @@ func newKV(s string) *kv {
 	key := ""
 	keying := true
 	sb := strings.Builder{}
+	commit := func() {
+		s := sb.String()
+		if key == "" && s == "" {
+			return
+		} else if key == "" {
+			m[s] = ""
+		} else {
+			m[key] = s
+			key = ""
+		}
+		sb.Reset()
+	}
 	for _, r := range s {
 		//key done
 		if keying && r == '=' {
@@ -161,26 +266,16 @@ func newKV(s string) *kv {
 			keying = false
 			continue
 		}
-		//value done
+		//go to next
 		if r == ',' {
-			val := sb.String()
-			sb.Reset()
-			m[key] = val
-			key = ""
-			val = ""
+			commit()
 			keying = true
 			continue
 		}
 		//write to builder
 		sb.WriteRune(r)
 	}
-	if sb.Len() > 0 {
-		//write last key=value
-		if key == "" {
-			m[sb.String()] = ""
-		} else {
-			m[key] = sb.String()
-		}
-	}
+	//write last key=value
+	commit()
 	return &kv{m: m}
 }

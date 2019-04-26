@@ -1,21 +1,22 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/jpillora/opts"
 )
 
 type Config struct {
-	Foo string
-	Bar string
+	Foo string `opts:"env=FOO"`
+	Bar string `opts:"env"`
 }
 
 func main() {
 	c := Config{}
-	//In this case UseEnv() is equivalent to
-	//adding `env:"FOO"` and `env:"BAR"` tags
-	opts.New(&c).UseEnv().Parse()
-	fmt.Println(c.Foo)
-	fmt.Println(c.Bar)
+	//NOTE: we could also use UseEnv(), which
+	//adds 'env' to all fields.
+	opts.New(&c).
+		// UseEnv().
+		Parse()
+	log.Printf("%+v", c)
 }

@@ -1,22 +1,18 @@
 package main
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/jpillora/opts"
 )
 
 type Config struct {
-	Foo string `type:"arg" help:"<foo> is a very important argument"`
+	Foo string `opts:"type=arg,help=<foo> is a very important argument"`
 	Bar string
 }
 
 func main() {
-
 	c := Config{}
-
 	opts.New(&c).Parse()
-
-	fmt.Println(c.Foo)
-	fmt.Println(c.Bar)
+	log.Printf("%+v", c)
 }

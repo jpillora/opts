@@ -1,6 +1,6 @@
 ## cmds example
 
-<!--tmpl,code=go:cat main.go -->
+<!--tmpl,chomp,code=go:cat main.go -->
 ``` go 
 package main
 
@@ -13,15 +13,15 @@ import (
 type Config struct {
 	//register commands by including them
 	//in the parent struct
-	Foo `help:"This text also becomes commands Description() text"`
-	Bar `help:"command two of two"`
+	Foo  `opts:"type=cmd,help=This text also becomes commands description text"`
+	*Bar `opts:"type=cmd,help=command two of two"`
 }
 
 func main() {
 	c := Config{}
 	opts.NewNamed(&c, "eg-commands-inline").
 		Parse().
-		RunFatal()
+		Run()
 }
 
 type Foo struct {
@@ -50,7 +50,7 @@ func (b *Bar) Run() error {
 $ cmds bar --zip hello --zap world
 ```
 
-<!--tmpl,code=plain:go run main.go bar --zip hello --zap world -->
+<!--tmpl,chomp,code=plain:go run main.go bar --zip hello --zap world -->
 ``` plain 
 
   Usage: eg-commands-inline bar [options]
@@ -72,7 +72,7 @@ $ cmds bar --zip hello --zap world
 $ cmds --help
 ```
 
-<!--tmpl,code=plain:go build -o eg-commands-inline && ./eg-commands-inline --help && rm eg-commands-inline -->
+<!--tmpl,chomp,code=plain:go build -o eg-commands-inline && ./eg-commands-inline --help ; rm eg-commands-inline -->
 ``` plain 
 
   Usage: eg-commands-inline [options] <command>
@@ -81,7 +81,7 @@ $ cmds --help
   --help, -h
 
   Commands:
-  • foo - This text also becomes commands Description() text
+  • foo - This text also becomes commands description text
   • bar - command two of two
 
 ```
