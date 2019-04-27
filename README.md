@@ -92,7 +92,11 @@ Where **`key`** must be:
 * `help` - The help text used to describe the field. It will be displayed next to the flag name in the help output.
 
 	**Note:** `help` is the only setting that can also be set as a
-	stand-alone struct tag (i.e. `help:"my text goes here"`). You must use the stand-alone tag if you wish to use `"`, `=` or `,` in your help string.
+	stand-alone struct tag (i.e. `help:"my text goes here"`). You must use the stand-alone tag if you wish to use a comma `,` in your help string.
+
+* `group` - The name of a group to store the field. Defining this field will create a new section in the help text `<Group> options`. The default group is the empty string (`Options`).
+
+	**Note:** `embedded` `struct`s implicitly set the group name to be the name of the struct field.
 
 * `env` - An environent variable to use as the field's **default** value. It can always be overridden by providing the appropriate flag.
 
@@ -102,32 +106,36 @@ Where **`key`** must be:
 
 	All fields will be given a **opts** `type`. By default a struct field will be assigned a `type` depending on its field type:
 
-  | Go Type        | Default opts `type` |      Valid `type`s       |
-  | -------------- | :-----------------: | :----------------------: |
-  | flag-value     |       `flag`        |      `flag`, `arg`       |
-  | `[]`flag-value |       `flag`        |      `flag`, `arg`       |
-  | `string`       |       `flag`        | `flag`, `arg`, `cmdname` |
-  | `struct`       |     `embedded`      |    `cmd`, `embedded`     |
+  | Go Type          | Default opts `type` |      Valid `type`s       |
+  | ---------------- | :-----------------: | :----------------------: |
+  | *flag-value*     |       `flag`        |      `flag`, `arg`       |
+  | `[]`*flag-value* |       `flag`        |      `flag`, `arg`       |
+  | `string`         |       `flag`        | `flag`, `arg`, `cmdname` |
+  | `struct`         |     `embedded`      |    `cmd`, `embedded`     |
 
 	Notes:
 
-	* A flag-value is any of: `string`, `bool`, `int{8-64}`, `uint{8-64}`, `float{32-64}`, `time.Duration`, `flag.Value`, `encoding.TextMarshaler+Unmarshaler` (includes `time.Time`), `encoding.BinaryMarshaler+Unmarshaler` (includes `url.URL`)
-	* All flag-value can also be a slice, which enables multiple flags. For example, `--foo 1 --foo 2` could result in `[]int{1,2}`.
+	* A *flag-value* is any of: `string`, `bool`, `int{8-64}`, `uint{8-64}`, `float{32-64}`, `time.Duration`, `flag.Value`, `encoding.TextMarshaler+Unmarshaler` (includes `time.Time`), `encoding.BinaryMarshaler+Unmarshaler` (includes `url.URL`)
+	* A slice of *flag-value*s enables multiple flags. For example, `--foo 1 --foo 2` could result in `[]int{1,2}`.
 
-	Where **`value`** must be one of:
+	Where `type`s **`value`** must be one of:
 
-	* `flag` - The field will be treated as a flag. That is, an optional, named, configurable field. Set using `./program --flag-name <flag-value>`.
+	* `flag` - The field will be treated as a flag. That is, an optional, named, configurable field. Set using `./program --flag-name <flag-value>` (default for *flag-value*).
 
 	* `arg` - The field will be treated as an argument. That is, a required, positional, unamed, configurable field. Set using `./program <argument-value>`.
 
 	* `args` - The field will be treated as an argument list. Set using `./program <argument-value>`.
+
+	* `embedded` - A special type which causes the fields of struct to be used in the current struct. Useful if you want to split your command-line options across multiple files (default for `struct`).
+
+		Restricted to fields with Go type `struct`.
 
 	* `cmd` - A command is nested `opts.Opt` instance, so its fields behave in exactly the same way as the parent struct.
 
 		You can set the flags of a command "`cmd`" with:
 		
 		```
-		prog --prog-opt X cmd --cmd-opt Y
+		prog --prog-flag X cmd --cmd-flag Y
 		```
 
 		Restricted to fields with Go type `struct`.
@@ -135,10 +143,6 @@ Where **`key`** must be:
 	* `cmdname` - A special type which will assume the name of the selected command
 
 		Restricted to fields with Go type `string`.
-
-	* `embedded` - A special type which causes the fields of struct to be used in the current struct. Useful if you want to split your command-line options across multiple files.
-
-		Restricted to fields with Go type `struct`.
 
 
 ### Other projects
