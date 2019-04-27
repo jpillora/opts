@@ -13,7 +13,7 @@ import (
 type data struct {
 	datum        //data is also a datum
 	ArgList      *datum
-	Flags        []*datum
+	FlagGroups   []*datumGroup
 	Args         []*datum
 	Cmds         []*datum
 	Order        []string
@@ -28,8 +28,9 @@ type datum struct {
 	Name, Help, Pad string //Pad is Opt.padWidth many spaces
 }
 
-type text struct {
-	Text, Def, Env, Multi string
+type datumGroup struct {
+	Name  string
+	Flags []*datum
 }
 
 var DefaultOrder = []string{
@@ -37,7 +38,7 @@ var DefaultOrder = []string{
 	"desc",
 	"args",
 	"arglist",
-	"options",
+	"flaggroups",
 	"cmds",
 	"author",
 	"version",
@@ -62,7 +63,7 @@ var DefaultTemplates = map[string]string{
 		`{{template "usageargs" .}}` +
 		`{{template "usagearglist" .}}` +
 		`{{template "usagecmd" .}}` + "\n",
-	"usageoptions": `{{if .Flags}} [options]{{end}}`,
+	"usageoptions": ` [options]`,
 	"usageargs":    `{{range .Args}} {{.Name}}{{end}}`,
 	"usagearglist": `{{if .ArgList}} {{.ArgList.Name}}{{end}}`,
 	"usagecmd":     `{{if .Cmds}} <command>{{end}}`,
@@ -78,10 +79,12 @@ var DefaultTemplates = map[string]string{
 	"args":    `{{range .Args}}{{template "arg" .}}{{end}}`,
 	"arg":     "{{if .Help}}\n{{.Help}}\n{{end}}",
 	"arglist": "{{if .ArgList}}{{ if .ArgList.Help}}\n{{.ArgList.Help}}\n{{end}}{{end}}",
-	//options
-	"options": `{{if .Flags}}` + "\nOptions:\n" +
-		`{{ range $opt := .Flags}}{{template "option" $opt}}{{end}}{{end}}`,
-	"option": `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
+	//flags
+	"flaggroups": `{{ range $opt := .FlagGroups}}{{template "flaggroup" $opt}}{{end}}`,
+	"flaggroup": `{{if .Flags}}` + "\n" +
+		"{{if .Name}}{{.Name}} options{{else}}Options{{end}}:\n" +
+		`{{ range $opt := .Flags}}{{template "flag" $opt}}{{end}}{{end}}`,
+	"flag": `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
 	//cmds
 	"cmds": "{{if .Cmds}}\nCommands:\n" +
 		`{{ range $sub := .Cmds}}{{template "cmd" $sub}}{{end}}{{end}}`,
@@ -125,7 +128,7 @@ func renderHelp(o *node) (string, error) {
 			return b.String(), nil
 		},
 	})
-	//parse all templates
+	//parse all templates and "define" themselves as nested templates
 	for name, str := range o.templates {
 		t, err = t.Parse(fmt.Sprintf(`{{define "%s"}}%s{{end}}`, name, str))
 		if err != nil {
@@ -196,6 +199,14 @@ func convert(o *node) (*data, error) {
 			}
 		}
 		help := i.help
+		//TODO: magical replace
+		// if t := "shell-completion"; strings.HasSuffix(help, t) {
+		// 	if s := os.Getenv("BASH"); s != "" {
+		// 		help = strings.Replace(help, t, "bash-completion", 1)
+		// 	} else if strings.HasSuffix(os.Getenv("SHELL"), "fish") {
+		// 		help = strings.Replace(help, t, "fish-completion", 1)
+		// 	}
+		// }
 		extra := strings.Join(outs, ", ")
 		if help == "" {
 			help = extra
@@ -216,6 +227,7 @@ func convert(o *node) (*data, error) {
 			Help: itemHelp(arg, o.lineWidth),
 		}
 	}
+	//TODO:
 	// var arglist *datum
 	// if o.arglist != nil {
 	// 	n := o.arglist.name + "..."
@@ -227,40 +239,51 @@ func convert(o *node) (*data, error) {
 	// 		Help: itemHelp(&o.arglist.item, o.lineWidth),
 	// 	}
 	// }
-	flags := make([]*datum, len(o.flags))
-	//calculate padding etc.
+	flagGroups := make([]*datumGroup, len(o.flagGroups))
+	//initialise and calculate padding
 	max := 0
 	pad := nletters(' ', o.padWidth)
-	for i, opt := range o.flags {
-		to := &datum{Pad: pad}
-		to.Name = "--" + opt.name
-		if opt.shortName != "" {
-			to.Name += ", -" + opt.shortName
+	for i, g := range o.flagGroups {
+		dg := &datumGroup{
+			Name:  g.name,
+			Flags: make([]*datum, len(g.flags)),
 		}
-		l := len(to.Name)
-		if l > max {
-			max = l
+		flagGroups[i] = dg
+		for i, item := range g.flags {
+			to := &datum{Pad: pad}
+			to.Name = "--" + item.name
+			if item.shortName != "" {
+				to.Name += ", -" + item.shortName
+			}
+			l := len(to.Name)
+			//max shared across ALL groups
+			if l > max {
+				max = l
+			}
+			dg.Flags[i] = to
 		}
-		flags[i] = to
 	}
 	padsInOption := o.padWidth
 	optionNameWidth := max + padsInOption
 	spaces := nletters(' ', optionNameWidth)
 	helpWidth := o.lineWidth - optionNameWidth
-	//render each option
-	for i, to := range flags {
-		//pad all option names to be the same length
-		to.Name += spaces[:max-len(to.Name)]
-		//constrain help text
-		help := itemHelp(o.flags[i], helpWidth)
-		//add a margin
-		lines := strings.Split(help, "\n")
-		for i, l := range lines {
-			if i > 0 {
-				lines[i] = spaces + l
+	//go back and render each option using calculated values
+	for i, dg := range flagGroups {
+		for j, to := range dg.Flags {
+			//pad all option names to be the same length
+			to.Name += spaces[:max-len(to.Name)]
+			//constrain help text
+			item := o.flagGroups[i].flags[j]
+			help := itemHelp(item, helpWidth)
+			//add a margin
+			lines := strings.Split(help, "\n")
+			for i, l := range lines {
+				if i > 0 {
+					lines[i] = spaces + l
+				}
 			}
+			to.Help = strings.Join(lines, "\n")
 		}
-		to.Help = strings.Join(lines, "\n")
 	}
 	//commands
 	subs := make([]*datum, len(o.cmds))
@@ -284,14 +307,14 @@ func convert(o *node) (*data, error) {
 			Help: o.help,
 			Pad:  pad,
 		},
-		Args:    args,
-		Flags:   flags,
-		Cmds:    subs,
-		Order:   o.order,
-		Version: o.version,
-		Desc:    constrain(o.desc, o.lineWidth),
-		Repo:    o.repo,
-		Author:  o.author,
-		ErrMsg:  err,
+		Args:       args,
+		FlagGroups: flagGroups,
+		Cmds:       subs,
+		Order:      o.order,
+		Version:    o.version,
+		Desc:       constrain(o.desc, o.lineWidth),
+		Repo:       o.repo,
+		Author:     o.author,
+		ErrMsg:     err,
 	}, nil
 }

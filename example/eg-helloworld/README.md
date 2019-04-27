@@ -1,4 +1,4 @@
-## simple example
+## helloworld example
 
 <!--tmpl,chomp,code=go:cat main.go -->
 ``` go 
@@ -22,23 +22,23 @@ func main() {
 <!--/tmpl-->
 
 ```
-$ eg-simple --file zip.txt --lines 42
+$ eg-helloworld --file zip.txt --lines 42
 ```
 
 <!--tmpl,chomp,code=plain:go run main.go --file zip.txt --lines 42 -->
 ``` plain 
-2019/04/26 22:15:59 {File:zip.txt Lines:42}
+2019/04/27 12:23:55 {File:zip.txt Lines:42}
 ```
 <!--/tmpl-->
 
 ```
-$ eg-simple --help
+$ eg-helloworld --help
 ```
 
-<!--tmpl,chomp,code=plain:go build -o eg-simple && ./eg-simple --help ; rm eg-simple -->
+<!--tmpl,chomp,code=plain:go build -o eg-helloworld && ./eg-helloworld --help ; rm eg-helloworld -->
 ``` plain 
 
-  Usage: eg-simple [options]
+  Usage: eg-helloworld [options]
 
   Options:
   --file, -f   file to load

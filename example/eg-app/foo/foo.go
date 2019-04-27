@@ -11,8 +11,8 @@ type App struct {
 	bazz int
 }
 
-func (f *App) Run() {
-	f.bar = 42 + f.Zip
-	f.bazz = 21 + f.Zop
-	println("Foo is running...")
+func (a *App) Run() {
+	a.bar = 42 + a.Zip
+	a.bazz = 21 + a.Zop
+	println("App is running: %+v", a)
 }

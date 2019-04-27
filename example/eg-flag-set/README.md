@@ -33,7 +33,7 @@ $ eg-flag-set -a
 
 <!--tmpl,chomp,code=plain:go run main.go -a -->
 ``` plain 
-2019/04/26 22:15:56 command 'main' is not runnable
+I0427 12:23:53.529664   85135 main.go:21] hello from app via glog
 ```
 <!--/tmpl-->
 
@@ -48,8 +48,6 @@ $ eg-flag-set --help
 
   Options:
   --help, -h
-  --install, -i           install shell-completion
-  --uninstall, -u         uninstall shell-completion
   --alsologtostderr, -a   log to standard error as well as files (default false)
   --log_backtrace_at, -l  when logging hits line file:N, emit a stack trace (default :0)
   --log_dir               If non-empty, write log files in this directory
@@ -57,6 +55,10 @@ $ eg-flag-set --help
   --stderrthreshold, -s   logs at or above this threshold go to stderr (default 0)
   --v                     log level for V logs (default 0)
   --vmodule               comma-separated list of pattern=N settings for file-filtered logging
+
+  Completion options:
+  --install, -i           install shell-completion
+  --uninstall, -u         uninstall shell-completion
 
 ```
 <!--/tmpl-->

@@ -35,7 +35,7 @@ $ go run env.go
 
 <!--tmpl,chomp,code=plain:(export FOO=hello && export BAR=world && go run main.go) -->
 ``` plain 
-2019/04/26 22:15:55 {Foo: Bar:}
+2019/04/27 12:23:52 {Foo:hello Bar:world}
 ```
 <!--/tmpl-->
 

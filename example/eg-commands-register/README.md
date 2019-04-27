@@ -1,4 +1,4 @@
-## commands using the `Register` strategy
+## commands using the `Register` pattern
 
 _`main.go`_
 
@@ -68,7 +68,7 @@ $ ./eg-commands-register --help
   --help, -h
 
   Commands:
-  • foo
+  • cmd
 
 ```
 <!--/tmpl-->

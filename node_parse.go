@@ -65,21 +65,8 @@ func (n *node) parse(args []string) error {
 			_, n.item.name = path.Split(exe)
 		}
 	}
-	//when parsing, node's value must be struct or non-nil *struct
-	{
-		v := n.item.val
-		t := v.Type()
-		if t.Kind() == reflect.Ptr {
-			t = t.Elem()
-			v = v.Elem()
-			n.item.val = v
-		}
-		if t.Kind() != reflect.Struct {
-			return n.errorf("should be a pointer to a struct")
-		}
-	}
 	//add this node and its fields (recurses if has sub-commands)
-	if err := n.addStructFields(n.item.val); err != nil {
+	if err := n.addStructFields(defaultGroup, n.item.val); err != nil {
 		return err
 	}
 	//add help flag
@@ -102,7 +89,7 @@ func (n *node) parse(args []string) error {
 		}
 	}
 	//add shortnames where possible
-	for _, item := range n.flags {
+	for _, item := range n.flags() {
 		if item.shortName == "" && len(item.name) >= 3 {
 			if s := item.name[0:1]; !n.flagNames[s] {
 				item.shortName = s
@@ -113,7 +100,7 @@ func (n *node) parse(args []string) error {
 	//create a new flagset, and link each item
 	flagset := flag.NewFlagSet(n.item.name, flag.ContinueOnError)
 	flagset.SetOutput(ioutil.Discard)
-	for _, item := range n.flags {
+	for _, item := range n.flags() {
 		flagset.Var(item, item.name, "")
 		if sn := item.shortName; sn != "" {
 			flagset.Var(item, sn, "")
@@ -125,7 +112,7 @@ func (n *node) parse(args []string) error {
 		n.internalOpts.Help = true
 	}
 	//loop through flags, applying env variables where necesseary
-	for _, item := range n.flags {
+	for _, item := range n.flags() {
 		k := item.envName
 		if item.set || k == "" {
 			continue
@@ -197,7 +184,7 @@ func (n *node) parse(args []string) error {
 	return nil
 }
 
-func (n *node) addStructFields(sv reflect.Value) error {
+func (n *node) addStructFields(group string, sv reflect.Value) error {
 	if sv.Kind() != reflect.Struct {
 		return n.errorf("opts: %s should be a pointer to a struct (got %s)", sv.Type().Name(), sv.Kind())
 	}
@@ -206,18 +193,18 @@ func (n *node) addStructFields(sv reflect.Value) error {
 		sf := sv.Type().Field(i)
 		val := sv.Field(i)
 		//add one field
-		if err := n.addStructField(sf, val); err != nil {
+		if err := n.addStructField(group, sf, val); err != nil {
 			return fmt.Errorf("field '%s' %s", sf.Name, err)
 		}
 	}
 	return nil
 }
 
-func (n *node) addStructField(sf reflect.StructField, val reflect.Value) error {
+func (n *node) addStructField(group string, sf reflect.StructField, val reflect.Value) error {
 	kv := newKV(sf.Tag.Get("opts"))
 	help := sf.Tag.Get("help")
 	typeName := sf.Tag.Get("type")
-	if err := n.addKVField(kv, sf.Name, help, typeName, val); err != nil {
+	if err := n.addKVField(kv, sf.Name, help, typeName, group, val); err != nil {
 		return err
 	}
 	if ks := kv.keys(); len(ks) > 0 {
@@ -226,7 +213,7 @@ func (n *node) addStructField(sf reflect.StructField, val reflect.Value) error {
 	return nil
 }
 
-func (n *node) addKVField(kv *kv, fName, help, typeName string, val reflect.Value) error {
+func (n *node) addKVField(kv *kv, fName, help, typeName, group string, val reflect.Value) error {
 	//ignore unaddressed unexported fields
 	if !val.CanSet() {
 		return nil
@@ -260,9 +247,13 @@ func (n *node) addKVField(kv *kv, fName, help, typeName string, val reflect.Valu
 			typeName = "flag"
 		}
 	}
+	//use the specified group
+	if g, ok := kv.take("group"); ok {
+		group = g
+	}
 	//special cases
 	if typeName == "embedded" {
-		return n.addStructFields(val) //recurse!
+		return n.addStructFields(group, val) //recurse!
 	}
 	if typeName == "cmdname" {
 		return n.setCmdName(val)
@@ -335,16 +326,19 @@ func (n *node) addKVField(kv *kv, fName, help, typeName string, val reflect.Valu
 			i.shortName = short
 		}
 		//add to this command's flags
-		n.flags = append(n.flags, i)
+		g := n.flagGroup(group)
+		g.flags = append(g.flags, i)
 	case "arg":
-		//cannot have duplicates
+		//validations
+		if group != "" {
+			return n.errorf("args cannot be placed into a group")
+		}
 		if len(n.cmds) > 0 {
 			return n.errorf("args and commands cannot be used together")
 		}
-		//cannot put an arg after an arg list
 		for _, item := range n.args {
 			if item.slice {
-				return n.errorf("cannot come before arg list '%s'", fName)
+				return n.errorf("cannot come after arg list '%s'", fName)
 			}
 		}
 		//add to this command's arguments
@@ -394,28 +388,6 @@ func (n *node) addInlineCmd(name, help string, val reflect.Value) error {
 	return nil
 }
 
-// func (n *node) addArgList(kv map[string]string, val reflect.Value) error {
-// 	if len(n.cmds) > 0 {
-// 		return n.errorf("argslists and commands cannot be used together")
-// 	}
-// 	if n.arglist != nil {
-// 		return n.errorf("only 1 arglist field is allowed ('%s' already defined)", n.arglist.name)
-// 	}
-// 	name := kv["name"]
-
-// 	min, _ := strconv.Atoi(kv["min"])
-// 	//insert (there can only be one)
-// 	n.arglist = &argumentlist{
-// 		item: item{
-// 			val:  val,
-// 			name: name,
-// 			help: kv["help"],
-// 		},
-// 		min: min,
-// 	}
-// 	return nil
-// }
-
 func (n *node) addInternalFlags() error {
 	flags := []string{"Help"}
 	if n.version != "" {
@@ -428,7 +400,7 @@ func (n *node) addInternalFlags() error {
 	for _, flag := range flags {
 		sf, _ := g.Type().FieldByName(flag)
 		v := g.FieldByName(flag)
-		if err := n.addStructField(sf, v); err != nil {
+		if err := n.addStructField(defaultGroup, sf, v); err != nil {
 			return n.errorf("error adding internal %s flag: %s - please report issue", flag, err)
 		}
 	}
@@ -457,7 +429,8 @@ func (n *node) addFlagsets() error {
 				return
 			}
 			//ready!
-			n.flags = append(n.flags, i)
+			g := n.flagGroup("")
+			g.flags = append(g.flags, i)
 			n.flagNames[i.name] = true
 			//convert f into a black hole
 			f.Value = noopValue

@@ -21,8 +21,8 @@ import (
 
 func main() {
 	config := struct {
-		File  string `help:"file to load"`
-		Lines int    `help:"number of lines to show"`
+		File  string `opts:"help=file to load"`
+		Lines int    `opts:"help=number of lines to show"`
 	}{}
 	opts.Parse(&config)
 	log.Printf("%+v", config)
@@ -48,13 +48,14 @@ $ ./my-prog -f foo -l 12
 
 ### Features (with examples)
 
-* Easy to use ([simple](example/simple/))
-* Promotes separation of CLI code and library code ([separation](example/separation/))
-* Automatically generated `--help` text via struct tags `help:"Foo bar"` ([help](example/help/))
-* Commands by nesting structs ([cmds](example/cmds/))
-* Default values by modifying the struct prior to `Parse()` ([defaults](example/defaults/))
-* Default values from a JSON config file, unmarshalled via your config struct ([config](example/config/))
-* Default values from environment, defined by your field names ([env](example/env/))
+* Easy to use ([eg-helloworld](example/eg-helloworld/))
+* Promotes separation of CLI code and library code ([eg-app](example/eg-app/))
+* Automatically generated `--help` text via struct tags ([eg-help](example/eg-help/))
+* Default values by modifying the struct prior to `Parse()` ([eg-defaults](example/eg-defaults/))
+* Default values from a JSON config file, unmarshalled via your config struct ([eg-config](example/eg-config/))
+* Default values from environment, defined by your field names ([eg-env](example/eg-env/))
+* Flag groups ([eg-groups](example/eg-groups/))
+* Commands by nesting `Opts` or structs
 * Infers program name from executable name
 * Infers sub-command names from package name
 * Extensible via `flag.Value` ([customtypes](example/customtypes/))

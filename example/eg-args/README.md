@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	Shark  string   `opts:"type=arg"`
 	Octopi []string `opts:"type=arg,min=2"`
 }
 
@@ -28,18 +29,7 @@ $ args --foo hello --bar world
 
 <!--tmpl,chomp,code=plain:go run main.go foo bar -->
 ``` plain 
-2019/04/26 22:15:48 SINGLE: octopus
-
-  Usage: main [options] <octopus>
-
-  allows multiple
-
-  Options:
-  --help, -h
-
-  Error:
-    Unexpected arguments: [bar]
-
+2019/04/27 12:23:45 {Shark:foo Octopi:[bar]}
 ```
 <!--/tmpl-->
 
@@ -49,9 +39,8 @@ $ args --help
 
 <!--tmpl,chomp,code=plain:go build -o eg-args && ./eg-args --help ; rm eg-args -->
 ``` plain 
-2019/04/26 22:15:48 SINGLE: octopus
 
-  Usage: eg-args [options] <octopus>
+  Usage: eg-args [options] <shark> <octopus>
 
   allows multiple
 

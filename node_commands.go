@@ -12,8 +12,12 @@ func (n *node) AddCommand(cmd Opts) Opts {
 	if !ok {
 		panic("another implementation of opts???")
 	}
-	//for subcommands, default name is package name
-	pkgPath := sub.item.val.Elem().Type().PkgPath()
+	//default subcommand name is struct name
+	if sub.name == "" {
+		sub.name = camel2dash(sub.item.val.Type().Name())
+	}
+	//fallback default name is package name
+	pkgPath := sub.item.val.Type().PkgPath()
 	if sub.name == "" && pkgPath != "" {
 		parts := strings.Split(pkgPath, "/")
 		sub.name = parts[len(parts)-1]

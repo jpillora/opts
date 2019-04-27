@@ -11,6 +11,15 @@ import (
 	"github.com/posener/complete"
 )
 
+//item group represents a single "Options" block
+//in the help text ouput
+type itemGroup struct {
+	name  string
+	flags []*item
+}
+
+const defaultGroup = ""
+
 //item is the structure representing a
 //an opt item. it also implements flag.Value
 //generically using reflect.

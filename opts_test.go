@@ -259,6 +259,31 @@ func TestDocAfter(t *testing.T) {
 `)
 }
 
+func TestDocGroups(t *testing.T) {
+	//config
+	type Config struct {
+		Fizz       string
+		Buzz       bool
+		Ping, Pong int `opts:"group=More"`
+	}
+	c := &Config{}
+	//flag example parse
+	o := New(c).Name("groups").ParseArgs([]string{})
+	check(t, o.Help(), `
+  Usage: groups [options]
+
+  Options:
+  --fizz, -f
+  --buzz, -b
+  --help, -h
+
+  More options:
+  --ping, -p
+  --pong
+
+`)
+}
+
 func TestDocArgList(t *testing.T) {
 	//config
 	type Config struct {

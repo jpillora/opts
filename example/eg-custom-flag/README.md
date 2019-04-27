@@ -51,8 +51,6 @@ $ eg-custom-flag --foo 2m --bar 5 --bazz 5
 
 <!--tmpl,chomp,code=plain:go run main.go --foo 2m --bar 5 --bazz 5 -->
 ``` plain 
-2019/04/26 22:15:53 SINGLE: mmm
-2019/04/26 22:15:53 SINGLE: file
 
   Usage: main [options]
 
@@ -76,8 +74,6 @@ $ eg-custom-flag --help
 
 <!--tmpl,chomp,code=plain:go install && eg-custom-flag --help ; rm $(which eg-custom-flag) -->
 ``` plain 
-2019/04/26 22:15:53 SINGLE: mmm
-2019/04/26 22:15:53 SINGLE: file
 
   Usage: eg-custom-flag [options]
 

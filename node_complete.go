@@ -41,7 +41,7 @@ func (n *node) nodeCompletion() complete.Command {
 		Args:        nil,
 	}
 	//prepare flags
-	for _, item := range n.flags {
+	for _, item := range n.flags() {
 		//item's predictor
 		p := item.predictor
 		//default predictor

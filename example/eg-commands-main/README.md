@@ -15,9 +15,9 @@ type Config struct{}
 func main() {
 	opts.New(&Config{}).
 		AddCommand(
-			opts.NewNamed(&Foo{}, "foo").
+			opts.New(&Foo{}).
 				AddCommand(
-					opts.NewNamed(&Bar{}, "bar"),
+					opts.New(&Bar{}),
 				),
 		).
 		Parse().
@@ -52,7 +52,7 @@ $ eg-commands-inline foo bar --zip 2
 
 <!--tmpl,chomp,code=plain:go run main.go foo bar --zip 2 -->
 ``` plain 
-2019/04/26 22:15:50 command 'bar' is not runnable
+2019/04/27 12:23:47 bar: &{Zip:2 Zop:}
 ```
 <!--/tmpl-->
 

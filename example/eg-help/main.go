@@ -3,10 +3,10 @@ package main
 import "github.com/jpillora/opts"
 
 type HelpConfig struct {
-	Zip  string `type:"arg" help:"<zip> is a required arg which lorem ipsum dolor sit amet, consectetur adipiscing elit."`
+	Zip  string `opts:"type=arg,<zip> is a required arg which lorem ipsum dolor sit amet, consectetur adipiscing elit"`
 	Foo  string `help:"this is help for foo"`
 	Bar  int    `help:"and help for bar"`
-	Fizz string `help:"Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus at commodo odio. Sed id tincidunt purus. Cras vel felis dictum, lobortis metus a, tempus tellus"`
+	Fizz string `help:"lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus at commodo odio. Sed id tincidunt purus. Cras vel felis dictum, lobortis metus a, tempus tellus, and fizz"`
 	Buzz bool   `help:"and help for buzz"`
 }
 
