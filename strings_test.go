@@ -18,6 +18,10 @@ func TestKVMap(t *testing.T) {
 			"foo,,bar,,",
 			map[string]string{"foo": "", "bar": ""},
 		},
+		{
+			"ping=,,pong==,,",
+			map[string]string{"ping": "", "pong": "="},
+		},
 	} {
 		kv := newKV(testcase.input)
 		m := kv.m

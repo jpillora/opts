@@ -250,6 +250,9 @@ func (n *node) addKVField(kv *kv, fName, help, typeName, group string, val refle
 	//use the specified group
 	if g, ok := kv.take("group"); ok {
 		group = g
+	} else if typeName == "embedded" {
+		//if unset, embedded structs use the field name
+		group = fName
 	}
 	//special cases
 	if typeName == "embedded" {
