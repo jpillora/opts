@@ -69,10 +69,12 @@ func (n *node) parse(args []string) error {
 	if err := n.addStructFields(defaultGroup, n.item.val); err != nil {
 		return err
 	}
-	//add help flag
-	n.addInternalFlags()
 	//add user provided flagsets, will error if there is a naming collision
 	if err := n.addFlagsets(); err != nil {
+		return err
+	}
+	//add help flag
+	if err := n.addInternalFlags(); err != nil {
 		return err
 	}
 	//find defaults from config's package
@@ -392,19 +394,33 @@ func (n *node) addInlineCmd(name, help string, val reflect.Value) error {
 }
 
 func (n *node) addInternalFlags() error {
-	flags := []string{"Help"}
-	if n.version != "" {
-		flags = append(flags, "Version")
-	}
-	if n.complete {
-		flags = append(flags, "Install", "Uninstall")
-	}
+	type internal struct{ name, help, group string }
 	g := reflect.ValueOf(&n.internalOpts).Elem()
-	for _, flag := range flags {
-		sf, _ := g.Type().FieldByName(flag)
-		v := g.FieldByName(flag)
-		if err := n.addStructField(defaultGroup, sf, v); err != nil {
-			return n.errorf("error adding internal %s flag: %s - please report issue", flag, err)
+	flags := []internal{}
+	if n.version != "" {
+		flags = append(flags,
+			internal{name: "Version", help: "display version"},
+		)
+	}
+	flags = append(flags,
+		internal{name: "Help", help: "display help text"},
+	)
+	if n.complete {
+		s := "shell"
+		if bs := path.Base(os.Getenv("SHELL")); bs != "" {
+			s = bs
+		}
+		flags = append(flags,
+			internal{name: "Install", help: "install " + s + "-completion", group: "Completion"},
+			internal{name: "Uninstall", help: "uninstall " + s + "-completion", group: "Completion"},
+		)
+	}
+	//
+	for _, i := range flags {
+		sf, _ := g.Type().FieldByName(i.name)
+		val := g.FieldByName(i.name)
+		if err := n.addKVField(nil, sf.Name, i.help, "flag", i.group, val); err != nil {
+			return fmt.Errorf("error adding internal flag: %s: %s", i.name, err)
 		}
 	}
 	return nil

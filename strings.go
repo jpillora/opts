@@ -225,6 +225,9 @@ type kv struct {
 }
 
 func (kv *kv) keys() []string {
+	if kv == nil {
+		return nil
+	}
 	ks := []string{}
 	for k := range kv.m {
 		ks = append(ks, k)
@@ -234,6 +237,9 @@ func (kv *kv) keys() []string {
 }
 
 func (kv *kv) take(k string) (string, bool) {
+	if kv == nil {
+		return "", false
+	}
 	v, ok := kv.m[k]
 	if ok {
 		delete(kv.m, k)

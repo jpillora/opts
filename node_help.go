@@ -199,14 +199,6 @@ func convert(o *node) (*data, error) {
 			}
 		}
 		help := i.help
-		//TODO: magical replace
-		// if t := "shell-completion"; strings.HasSuffix(help, t) {
-		// 	if s := os.Getenv("BASH"); s != "" {
-		// 		help = strings.Replace(help, t, "bash-completion", 1)
-		// 	} else if strings.HasSuffix(os.Getenv("SHELL"), "fish") {
-		// 		help = strings.Replace(help, t, "fish-completion", 1)
-		// 	}
-		// }
 		extra := strings.Join(outs, ", ")
 		if help == "" {
 			help = extra

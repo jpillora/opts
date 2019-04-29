@@ -1,6 +1,9 @@
 package opts
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/posener/complete"
 	"github.com/posener/complete/cmd/install"
 )
@@ -19,7 +22,11 @@ func (n *node) manageCompletion(uninstall bool) error {
 		fn = install.Uninstall
 	}
 	if err := fn(n.name); err != nil {
-		e.msg = err.Error()
+		w := err.(interface{ WrappedErrors() []error })
+		e.msg = ""
+		for _, w := range w.WrappedErrors() {
+			e.msg += strings.TrimPrefix(fmt.Sprintf("%s\n", w), "does ")
+		}
 	} else if uninstall {
 		e.msg = "Uninstalled"
 	} else {

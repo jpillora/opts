@@ -36,8 +36,8 @@ type node struct {
 	internalOpts struct {
 		Help      bool
 		Version   bool
-		Install   bool `opts:"group=Completion,help=install shell-completion"`
-		Uninstall bool `opts:"group=Completion,help=uninstall shell-completion"`
+		Install   bool
+		Uninstall bool
 	}
 	complete bool
 }
