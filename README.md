@@ -4,7 +4,7 @@
 
 [![GoDoc](https://godoc.org/github.com/jpillora/opts?status.svg)](https://godoc.org/github.com/jpillora/opts) [![CircleCI](https://circleci.com/gh/jpillora/opts.svg?style=shield&circle-token=69ef9c6ac0d8cebcb354bb85c377eceff77bfb1b)](https://circleci.com/gh/jpillora/opts)
 
-Command-line parsing should be easy. Use configuration structs:
+Command-line parsing should be simple:
 
 ```go
 package main
@@ -78,7 +78,7 @@ tag with a series of settings in the form of **`key=value`**:
 `opts:"key=value,key=value,..."
 ```
 
-Where **`key`** must be:
+Where **`key`** must be one of:
 
 - `-` (dash) - Like `json:"-"`, the dash character will cause opts to ignore the struct field. Note, unexported fields are always ignored.
 
@@ -88,58 +88,58 @@ Where **`key`** must be:
 
 - `help` - The help text used to describe the field. It will be displayed next to the flag name in the help output.
 
-      	**Note:** `help` is the only setting that can also be set as a
+	**Note:** `help` is the only setting that can also be set as a
       	stand-alone struct tag (i.e. `help:"my text goes here"`). You must use the stand-alone tag if you wish to use a comma `,` in your help string.
 
 - `group` - The name of the flag group to store the field. Defining this field will create a new group of flags in the help text (will appear as "`<group>` options"). The default flag group is the empty string (will appear as "Options").
 
-      	**Note:** `embedded` `struct`s implicitly set the group name to be the name of the struct field.
+	**Note:** `embedded` `struct`s implicitly set the group name to be the name of the struct field.
 
 - `env` - An environent variable to use as the field's **default** value. It can always be overridden by providing the appropriate flag.
 
-      	For example, `opts:"env=FOO"`. It can also be infered using the field name with simply `opts:"env"`. You can enable inference on all flags with the `opts.Opts` method `UseEnv()`.
+	For example, `opts:"env=FOO"`. It can also be infered using the field name with simply `opts:"env"`. You can enable inference on all flags with the `opts.Opts` method `UseEnv()`.
 
 - `type` - The type assigned the field
 
-      	All fields will be given a **opts** `type`. By default a struct field will be assigned a `type` depending on its field type:
+	All fields will be given a **opts** `type`. By default a struct field will be assigned a `type` depending on its field type:
 
-  | Go Type          | Default opts `type` |      Valid `type`s       |
-  | ---------------- | :-----------------: | :----------------------: |
-  | _flag-value_     |       `flag`        |      `flag`, `arg`       |
-  | `[]`_flag-value_ |       `flag`        |      `flag`, `arg`       |
-  | `string`         |       `flag`        | `flag`, `arg`, `cmdname` |
-  | `struct`         |     `embedded`      |    `cmd`, `embedded`     |
+	| Go Type          | Default opts `type` |      Valid `type`s       |
+	| ---------------- | :-----------------: | :----------------------: |
+	| _flag-value_     |       `flag`        |      `flag`, `arg`       |
+	| `[]`_flag-value_ |       `flag`        |      `flag`, `arg`       |
+	| `string`         |       `flag`        | `flag`, `arg`, `cmdname` |
+	| `struct`         |     `embedded`      |    `cmd`, `embedded`     |
 
-      	Notes:
+	Notes:
 
-      	* A *flag-value* is any of: `string`, `bool`, `int{8-64}`, `uint{8-64}`, `float{32-64}`, `time.Duration`, `flag.Value`, `encoding.TextMarshaler+Unmarshaler` (includes `time.Time`), `encoding.BinaryMarshaler+Unmarshaler` (includes `url.URL`)
-      	* A slice of *flag-value*s enables multiple flags. For example, `--foo 1 --foo 2` could result in `[]int{1,2}`.
+	* A *flag-value* is any of: `string`, `bool`, `int{8-64}`, `uint{8-64}`, `float{32-64}`, `time.Duration`, `flag.Value`, `encoding.TextMarshaler+Unmarshaler` (includes `time.Time`), `encoding.BinaryMarshaler+Unmarshaler` (includes `url.URL`)
+	* A slice of *flag-value*s enables multiple flags. For example, `--foo 1 --foo 2` could result in `[]int{1,2}`.
 
-      	Where `type`s **`value`** must be one of:
+	Where `type`s **`value`** must be one of:
 
-      	* `flag` - The field will be treated as a flag. That is, an optional, named, configurable field. Set using `./program --flag-name <flag-value>` (default for *flag-value* fields).
+	* `flag` - The field will be treated as a flag. That is, an optional, named, configurable field. Set using `./program --flag-name <flag-value>` (default for *flag-value* fields).
 
-      	* `arg` - The field will be treated as an argument. That is, a required, positional, unamed, configurable field. Set using `./program <argument-value>`.
+	* `arg` - The field will be treated as an argument. That is, a required, positional, unamed, configurable field. Set using `./program <argument-value>`.
 
-      	* `args` - The field will be treated as an argument list. Set using `./program <argument-value>`.
+	* `args` - The field will be treated as an argument list. Set using `./program <argument-value>`.
 
-      	* `embedded` - A special type which causes the fields of struct to be used in the current struct. Useful if you want to split your command-line options across multiple files (default for `struct` fields).
+	* `embedded` - A special type which causes the fields of struct to be used in the current struct. Useful if you want to split your command-line options across multiple files (default for `struct` fields).
 
-      		Restricted to fields with Go type `struct`.
+		Restricted to fields with Go type `struct`.
 
-      	* `cmd` - A command is nested `opts.Opt` instance, so its fields behave in exactly the same way as the parent struct.
+	* `cmd` - A command is nested `opts.Opt` instance, so its fields behave in exactly the same way as the parent struct.
 
-      		You can set the flags of a command "`cmd`" with:
+		You can set the flags of a command "`cmd`" with:
 
-      		```
-      		prog --prog-flag X cmd --cmd-flag Y
-      		```
+		```
+		prog --prog-flag X cmd --cmd-flag Y
+		```
 
-      		Restricted to fields with Go type `struct`.
+		Restricted to fields with Go type `struct`.
 
-      	* `cmdname` - A special type which will assume the name of the selected command
+	* `cmdname` - A special type which will assume the name of the selected command
 
-      		Restricted to fields with Go type `string`.
+		Restricted to fields with Go type `string`.
 
 ### Other projects
 
