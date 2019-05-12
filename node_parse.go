@@ -205,8 +205,11 @@ func (n *node) addStructFields(group string, sv reflect.Value) error {
 func (n *node) addStructField(group string, sf reflect.StructField, val reflect.Value) error {
 	kv := newKV(sf.Tag.Get("opts"))
 	help := sf.Tag.Get("help")
-	typeName := sf.Tag.Get("type")
-	if err := n.addKVField(kv, sf.Name, help, typeName, group, val); err != nil {
+	mode := sf.Tag.Get("type") //legacy versions used "type"
+	if m := sf.Tag.Get("mode"); m != "" {
+		mode = m //allow "mode" to be used directly, undocumented!
+	}
+	if err := n.addKVField(kv, sf.Name, help, mode, group, val); err != nil {
 		return err
 	}
 	if ks := kv.keys(); len(ks) > 0 {
@@ -215,7 +218,7 @@ func (n *node) addStructField(group string, sf reflect.StructField, val reflect.
 	return nil
 }
 
-func (n *node) addKVField(kv *kv, fName, help, typeName, group string, val reflect.Value) error {
+func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.Value) error {
 	//ignore unaddressed unexported fields
 	if !val.CanSet() {
 		return nil
@@ -225,7 +228,7 @@ func (n *node) addKVField(kv *kv, fName, help, typeName, group string, val refle
 	if _, ok := kv.take("-"); ok {
 		return nil
 	}
-	//get field name and type
+	//get field name and mode
 	name, _ := kv.take("name")
 	if name == "" {
 		//default to struct field name
@@ -236,31 +239,31 @@ func (n *node) addKVField(kv *kv, fName, help, typeName, group string, val refle
 			name = getSingular(name)
 		}
 	}
-	//new kv type defs supercede legacy defs
-	if t, ok := kv.take("type"); ok {
-		typeName = t
+	//new kv mode supercede legacy mode
+	if t, ok := kv.take("mode"); ok {
+		mode = t
 	}
-	//default opts type from go type
-	if typeName == "" {
+	//default opts mode from go type
+	if mode == "" {
 		switch val.Type().Kind() {
 		case reflect.Struct:
-			typeName = "embedded"
+			mode = "embedded"
 		default:
-			typeName = "flag"
+			mode = "flag"
 		}
 	}
 	//use the specified group
 	if g, ok := kv.take("group"); ok {
 		group = g
-	} else if typeName == "embedded" {
+	} else if mode == "embedded" {
 		//if unset, embedded structs use the field name
-		group = fName
+		group = camel2title(fName)
 	}
 	//special cases
-	if typeName == "embedded" {
+	if mode == "embedded" {
 		return n.addStructFields(group, val) //recurse!
 	}
-	if typeName == "cmdname" {
+	if mode == "cmdname" {
 		return n.setCmdName(val)
 	}
 	//new kv help defs supercede legacy defs
@@ -268,7 +271,7 @@ func (n *node) addKVField(kv *kv, fName, help, typeName, group string, val refle
 		help = h
 	}
 	//inline sub-command
-	if typeName == "cmd" {
+	if mode == "cmd" {
 		return n.addInlineCmd(name, help, val)
 	}
 	//from this point, we must have a flag or an arg
@@ -276,7 +279,7 @@ func (n *node) addKVField(kv *kv, fName, help, typeName, group string, val refle
 	if err != nil {
 		return err
 	}
-	i.typeName = typeName
+	i.mode = mode
 	i.name = name
 	i.help = help
 	//set default text
@@ -317,7 +320,7 @@ func (n *node) addKVField(kv *kv, fName, help, typeName, group string, val refle
 		}
 	}
 	//insert either as flag or as argument
-	switch typeName {
+	switch mode {
 	case "flag":
 		//cannot have duplicates
 		if n.flagNames[name] {
@@ -349,7 +352,7 @@ func (n *node) addKVField(kv *kv, fName, help, typeName, group string, val refle
 		//add to this command's arguments
 		n.args = append(n.args, i)
 	default:
-		return fmt.Errorf("invalid opts type '%s'", typeName)
+		return fmt.Errorf("invalid opts mode '%s'", mode)
 	}
 	return nil
 }
@@ -403,7 +406,7 @@ func (n *node) addInternalFlags() error {
 		)
 	}
 	flags = append(flags,
-		internal{name: "Help", help: "display help text"},
+		internal{name: "Help", help: "display help"},
 	)
 	if n.complete {
 		s := "shell"

@@ -47,7 +47,7 @@ $ defaults --help
   Options:
   --foo, -f   default hello
   --bar, -b   default world
-  --help, -h
+  --help, -h  display help
 
 ```
 <!--/tmpl-->

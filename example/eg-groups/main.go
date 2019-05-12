@@ -9,7 +9,7 @@ import (
 type Config struct {
 	Fizz string
 	Buzz bool
-	//Foo has an implicit `opts:"type=embedded,group=Foo"`.
+	//Foo has an implicit `opts:"mode=embedded,group=Foo"`.
 	//Could be be merged with config by unsetting group `opts:"group="`.
 	Foo
 	Ping, Pong int `opts:"group=More"`

@@ -65,7 +65,7 @@ $ ./eg-commands-register --help
   Usage: eg-commands-register [options] <command>
 
   Options:
-  --help, -h
+  --help, -h  display help
 
   Commands:
   • cmd

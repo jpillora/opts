@@ -139,9 +139,9 @@ By default, **opts** attempts to output well-formatted help text when the user p
 
 Simple additions can be made by using the following methods:
 
-* `Summary(text)` - Adds a line of summary text below the usage text
-* `Version(text)` - Adds a version string below all options
-* `Author(text)` - Adds an author string below all options
+* `Summary(text)` - Adds a summary line below the usage text
+* `Version(text)` - Adds a version line below all options
+* `Author(text)` - Adds an author line below all options
 
 Simple formatting modifications can be made by using:
 

@@ -25,11 +25,11 @@ const defaultGroup = ""
 //generically using reflect.
 type item struct {
 	val       reflect.Value
+	mode      string
 	name      string
 	shortName string
 	envName   string
 	useEnv    bool
-	typeName  string
 	help      string
 	defstr    string
 	slice     bool

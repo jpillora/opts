@@ -13,8 +13,8 @@ import (
 type Config struct {
 	//register commands by including them
 	//in the parent struct
-	Foo  `opts:"type=cmd,help=This text also becomes commands description text"`
-	*Bar `opts:"type=cmd,help=command two of two"`
+	Foo  `opts:"mode=cmd,help=This text also becomes commands description text"`
+	*Bar `opts:"mode=cmd,help=command two of two"`
 }
 
 func main() {
@@ -60,7 +60,7 @@ $ cmds bar --zip hello --zap world
   Options:
   --ping, -p
   --pong
-  --help, -h
+  --help, -h  display help
 
   Error:
     flag provided but not defined: -zip
@@ -78,7 +78,7 @@ $ cmds --help
   Usage: eg-commands-inline [options] <command>
 
   Options:
-  --help, -h
+  --help, -h  display help
 
   Commands:
   • foo - This text also becomes commands description text

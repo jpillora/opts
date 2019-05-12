@@ -11,13 +11,15 @@ import (
 )
 
 type Config struct {
-	Fizz       string
-	Buzz       bool
-	FooConfig  `opts:"group=Foo"`
+	Fizz string
+	Buzz bool
+	//Foo has an implicit `opts:"mode=embedded,group=Foo"`.
+	//Can be unset with `opts:"group="`.
+	FooBar
 	Ping, Pong int `opts:"group=More"`
 }
 
-type FooConfig struct {
+type FooBar struct {
 	Bar  int
 	Bazz int
 }
@@ -44,7 +46,7 @@ $ eg-groups --help
   Options:
   --fizz, -f
   --buzz, -b
-  --help, -h
+  --help, -h  display help
 
   Foo options:
   --bar

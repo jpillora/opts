@@ -8,8 +8,8 @@ type Config struct {
 	Alpha   string
 	Charlie string
 	Delta   string
-	Foo     `opts:"type=cmd"`
-	Bar     `opts:"type=cmd"`
+	Foo     `opts:"mode=cmd"`
+	Bar     `opts:"mode=cmd"`
 }
 
 type Foo struct {

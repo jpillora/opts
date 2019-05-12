@@ -27,7 +27,7 @@ $ eg-helloworld --file zip.txt --lines 42
 
 <!--tmpl,chomp,code=plain:go run main.go --file zip.txt --lines 42 -->
 ``` plain 
-2019/04/27 12:23:55 {File:zip.txt Lines:42}
+2019/05/12 20:22:08 {File:zip.txt Lines:42}
 ```
 <!--/tmpl-->
 
@@ -43,7 +43,7 @@ $ eg-helloworld --help
   Options:
   --file, -f   file to load
   --lines, -l  number of lines to show
-  --help, -h
+  --help, -h   display help
 
 ```
 <!--/tmpl-->

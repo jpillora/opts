@@ -33,5 +33,30 @@ func TestKVMap(t *testing.T) {
 			)
 		}
 	}
+}
+
+func TestCamel2Dash(t *testing.T) {
+	for _, testcase := range []struct {
+		input  string
+		output string
+	}{
+		{
+			"fooBar",
+			"foo-bar",
+		},
+		{
+			"WordACRONYMAnotherWord",
+			"word-acronym-another-word",
+		},
+	} {
+		got := camel2dash(testcase.input)
+		if testcase.output != got {
+			t.Fatalf("input: %s\n  expected: %s\n       got: %s",
+				testcase.input,
+				testcase.output,
+				got,
+			)
+		}
+	}
 
 }

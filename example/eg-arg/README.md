@@ -11,7 +11,7 @@ import (
 )
 
 type Config struct {
-	Foo string `opts:"type=arg,help=<foo> is a very important argument"`
+	Foo string `opts:"mode=arg,help=<foo> is a very important argument"`
 	Bar string
 }
 
@@ -36,7 +36,7 @@ $ eg-arg --foo hello --bar world
 
   Options:
   --bar, -b
-  --help, -h
+  --help, -h  display help
 
   Error:
     flag provided but not defined: -foo
@@ -57,7 +57,7 @@ $ eg-arg --help
 
   Options:
   --bar, -b
-  --help, -h
+  --help, -h  display help
 
 ```
 <!--/tmpl-->

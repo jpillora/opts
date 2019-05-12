@@ -60,7 +60,7 @@ $ eg-custom-flag --foo 2m --bar 5 --bazz 5
   --zee, -z
   --file, -f  allows multiple
   --dir, -d
-  --help, -h
+  --help, -h  display help
 
   Error:
     flag provided but not defined: -foo
@@ -83,7 +83,7 @@ $ eg-custom-flag --help
   --zee, -z
   --file, -f  allows multiple
   --dir, -d
-  --help, -h
+  --help, -h  display help
 
 ```
 <!--/tmpl-->

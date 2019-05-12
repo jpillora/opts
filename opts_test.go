@@ -228,7 +228,7 @@ func TestDocBefore(t *testing.T) {
 
   Options:
   --foo, -f
-  --help, -h
+  --help, -h  display help
 
 `)
 }
@@ -254,7 +254,7 @@ func TestDocAfter(t *testing.T) {
 
   Options:
   --foo, -f
-  --help, -h
+  --help, -h  display help
 
 `)
 }
@@ -275,7 +275,7 @@ func TestDocGroups(t *testing.T) {
   Options:
   --fizz, -f
   --buzz, -b
-  --help, -h
+  --help, -h  display help
 
   More options:
   --ping, -p

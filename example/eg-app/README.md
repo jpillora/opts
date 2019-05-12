@@ -69,12 +69,12 @@ $ ./foo --help
   --pong           default world
   --zip, -z
   --zop
-  --help, -h
-  --version, -v
+  --version, -v    display version
+  --help, -h       display help
 
   Completion options:
-  --install, -i    install shell-completion
-  --uninstall, -u  uninstall shell-completion
+  --install, -i    install fish-completion
+  --uninstall, -u  uninstall fish-completion
 
   Version:
     0.2.6

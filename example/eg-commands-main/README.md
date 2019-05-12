@@ -52,7 +52,7 @@ $ eg-commands-inline foo bar --zip 2
 
 <!--tmpl,chomp,code=plain:go run main.go foo bar --zip 2 -->
 ``` plain 
-2019/04/27 12:23:47 bar: &{Zip:2 Zop:}
+2019/05/12 20:22:00 bar: &{Zip:2 Zop:}
 ```
 <!--/tmpl-->
 
@@ -66,7 +66,7 @@ $ eg-commands-inline --help
   Usage: eg-commands-inline [options] <command>
 
   Options:
-  --help, -h
+  --help, -h  display help
 
   Commands:
   • foo

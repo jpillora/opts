@@ -128,6 +128,21 @@ func camel2dash(str string) string {
 	return buf.String()
 }
 
+func camel2title(str string) string {
+	dash := camel2dash(str)
+	title := []rune(dash)
+	for i, r := range title {
+		if r == '-' {
+			r = ' '
+		}
+		if i == 0 {
+			r = unicode.ToUpper(r)
+		}
+		title[i] = r
+	}
+	return string(title)
+}
+
 //borrowed from https://raw.githubusercontent.com/jinzhu/inflection/master/inflections.go
 var getSingular = func() func(str string) string {
 	type inflection struct {

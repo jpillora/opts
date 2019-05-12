@@ -11,8 +11,8 @@ import (
 )
 
 type Config struct {
-	Shark  string   `opts:"type=arg"`
-	Octopi []string `opts:"type=arg,min=2"`
+	Shark  string   `opts:"mode=arg"`
+	Octopi []string `opts:"mode=arg,min=2"`
 }
 
 func main() {
@@ -29,7 +29,7 @@ $ args --foo hello --bar world
 
 <!--tmpl,chomp,code=plain:go run main.go foo bar -->
 ``` plain 
-2019/04/27 12:23:45 {Shark:foo Octopi:[bar]}
+2019/05/12 20:21:58 {Shark:foo Octopi:[bar]}
 ```
 <!--/tmpl-->
 
@@ -45,7 +45,7 @@ $ args --help
   allows multiple
 
   Options:
-  --help, -h
+  --help, -h  display help
 
 ```
 <!--/tmpl-->

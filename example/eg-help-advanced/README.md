@@ -44,7 +44,7 @@ $ eg-help-advanced --help
   Options:
   --foo, -f
   --bar, -b
-  --help, -h
+  --help, -h  display help
 
   My awesome repo:
     myfoo.com/bar
