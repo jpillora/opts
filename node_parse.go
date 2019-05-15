@@ -390,7 +390,7 @@ func (n *node) addInlineCmd(name, help string, val reflect.Value) error {
 	sub := newNode(val)
 	sub.Name(name)
 	sub.help = help
-	sub.Description(help)
+	sub.Summary(help)
 	sub.parent = n
 	n.cmds[name] = sub
 	return nil

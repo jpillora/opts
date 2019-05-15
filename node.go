@@ -27,7 +27,7 @@ type node struct {
 	//help
 	order                       []string
 	templates                   map[string]string
-	repo, author, version, desc string
+	repo, author, version, summary string
 	repoInfer, authorInfer      bool
 	lineWidth                   int
 	padAll                      bool

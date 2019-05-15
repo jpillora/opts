@@ -16,7 +16,7 @@ type Opts interface {
 	UseEnv() Opts
 	Complete() Opts
 	//documentation
-	Description(desc string) Opts
+	Summary(summary string) Opts
 	Repo(repo string) Opts
 	Author(author string) Opts
 	PkgRepo() Opts

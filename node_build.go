@@ -28,10 +28,10 @@ func (n *node) Version(version string) Opts {
 	return n
 }
 
-//Description sets the text description of the program,
+//Summary sets the text summary of the program,
 //which, by default, is inserted below the usage text
-func (n *node) Description(desc string) Opts {
-	n.desc = desc
+func (n *node) Summary(summary string) Opts {
+	n.summary = summary
 	return n
 }
 

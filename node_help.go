@@ -19,7 +19,7 @@ type data struct {
 	Order        []string
 	Parents      string
 	Version      string
-	Desc         string
+	Summary      string
 	Repo, Author string
 	ErrMsg       string
 }
@@ -35,7 +35,7 @@ type datumGroup struct {
 
 var DefaultOrder = []string{
 	"usage",
-	"desc",
+	"summary",
 	"args",
 	"arglist",
 	"flaggroups",
@@ -53,7 +53,7 @@ func defaultOrder() []string {
 }
 
 var DefaultTemplates = map[string]string{
-	//the root template simply loops through
+	//The root template simply loops through,
 	//the 'order' and renders each template by name
 	"help": `{{ $root := . }}` +
 		`{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
@@ -71,10 +71,8 @@ var DefaultTemplates = map[string]string{
 	"extradefault":  `{{if .}}default {{.}}{{end}}`,
 	"extraenv":      `{{if .}}env {{.}}{{end}}`,
 	"extramultiple": `{{if .}}allows multiple{{end}}`,
-	//description
-	"desc": `{{if .Desc}}` + "\n" +
-		"{{ .Desc }}\n" +
-		`{{end}}`,
+	//summary
+	"summary": "{{if .Summary}}\n{{ .Summary }}\n{{end}}", //Test
 	//args and arg section
 	"args":    `{{range .Args}}{{template "arg" .}}{{end}}`,
 	"arg":     "{{if .Help}}\n{{.Help}}\n{{end}}",
@@ -88,7 +86,7 @@ var DefaultTemplates = map[string]string{
 	//cmds
 	"cmds": "{{if .Cmds}}\nCommands:\n" +
 		`{{ range $sub := .Cmds}}{{template "cmd" $sub}}{{end}}{{end}}`,
-	"cmd": "• {{ .Name }}{{if .Help}} - {{ .Help }}{{end}}\n",
+	"cmd": "· {{ .Name }}{{if .Help}} - {{ .Help }}{{end}}\n",
 	//extras
 	"version": "{{if .Version}}\nVersion:\n{{.Pad}}{{.Version}}\n{{end}}",
 	"repo":    "{{if .Repo}}\nRead more:\n{{.Pad}}{{.Repo}}\n{{end}}",
@@ -304,7 +302,7 @@ func convert(o *node) (*data, error) {
 		Cmds:       subs,
 		Order:      o.order,
 		Version:    o.version,
-		Desc:       constrain(o.desc, o.lineWidth),
+		Summary:    constrain(o.summary, o.lineWidth),
 		Repo:       o.repo,
 		Author:     o.author,
 		ErrMsg:     err,

@@ -47,22 +47,22 @@ $ ./my-prog -f foo -l 12
 
 ### Features (with examples)
 
-- Easy to use ([eg-helloworld](example/eg-helloworld/))
-- Promotes separation of CLI code and library code ([eg-app](example/eg-app/))
-- Automatically generated `--help` text via struct tags ([eg-help](example/eg-help/))
-- Default values by modifying the struct prior to `Parse()` ([eg-defaults](example/eg-defaults/))
-- Default values from a JSON config file, unmarshalled via your config struct ([eg-config](example/eg-config/))
-- Default values from environment, defined by your field names ([eg-env](example/eg-env/))
-- Group your flags in the help output ([eg-groups](example/eg-groups/))
+- Easy to use ([eg-helloworld](https://github.com/jpillora/opts-examples/tree/master/eg-helloworld/))
+- Promotes separation of CLI code and library code ([eg-app](https://github.com/jpillora/opts-examples/tree/master/eg-app/))
+- Automatically generated `--help` text via struct tags ([eg-help](https://github.com/jpillora/opts-examples/tree/master/eg-help/))
+- Default values by modifying the struct prior to `Parse()` ([eg-defaults](https://github.com/jpillora/opts-examples/tree/master/eg-defaults/))
+- Default values from a JSON config file, unmarshalled via your config struct ([eg-config](https://github.com/jpillora/opts-examples/tree/master/eg-config/))
+- Default values from environment, defined by your field names ([eg-env](https://github.com/jpillora/opts-examples/tree/master/eg-env/))
+- Group your flags in the help output ([eg-groups](https://github.com/jpillora/opts-examples/tree/master/eg-groups/))
 - Sub-commands by nesting structs
 - Sub-commands by providing child `Opts`
 - Infers program name from executable name
 - Infers command names from struct or package name
-- Define custom flags types via `flag.Value` ([eg-customtypes](example/eg-customtypes/))
-- Customizable help text by modifying the default templates ([eg-customhelp](example/eg-customhelp/))
-- Built-in shell auto-completion ([eg-complete](example/eg-complete))
+- Define custom flags types via `flag.Value` ([eg-customtypes](https://github.com/jpillora/opts-examples/tree/master/eg-customtypes/))
+- Customizable help text by modifying the default templates ([eg-customhelp](https://github.com/jpillora/opts-examples/tree/master/eg-customhelp/))
+- Built-in shell auto-completion ([eg-complete](https://github.com/jpillora/opts-examples/tree/master/eg-complete))
 
-Find these examples and more in the [`example/`](./example) directory.
+Find these examples and more in the [`example/`](https://github.com/jpillora/opts-examples) directory.
 
 ### Package API
 
@@ -89,7 +89,7 @@ Where **`key`** must be one of:
 
 - `short` - One or two letters to be used a flag's "short" name. By default, the first letter of `name` will be used. It will remain unset if there is a duplicate short name. Only valid when `mode` is `flag`.
 
-- `help` - The help text used to describe the field. It will be displayed next to the flag name in the help output.
+- `help` - The help text used to summaryribe the field. It will be displayed next to the flag name in the help output.
 
 	**Note:** `help` is the only setting that can also be set as a stand-alone struct tag (i.e. `help:"my text goes here"`). You must use the stand-alone tag if you wish to use a comma `,` in your help string.
 
