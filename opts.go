@@ -5,65 +5,98 @@ import (
 	"reflect"
 )
 
-//Opts is configuration command. It represents a node
-//in a tree of commands and subcommands. Use the AddCommand
-//method to add subcommands (child nodes) to this command.
+//Opts is a single configuration command instance. It represents a node
+//in a tree of commands. Use the AddCommand method to add subcommands (child nodes)
+//to this command instance.
 type Opts interface {
-	//configure this opts node
+	//Name of the command. For the root command, Name defaults to the executable
+	//base name, whereas for subcommands, Name defaults to the package name.
 	Name(name string) Opts
+	//Version of the command. Commonly set using a package main variable at compile
+	//time using ldflags (for example, go build -ldflags -X main.version=42).
 	Version(version string) Opts
+	//ConfigPath is a path to a JSON file to use as defaults. This is useful in
+	//global paths like /etc/my-prog.json. For a user-specified path. Use the
+	//UserConfigPath method.
 	ConfigPath(path string) Opts
+	//UserConfigPath is the same as ConfigPath however an extra flag (--config-path)
+	//is added to this Opts instance to give the user control of the filepath.
+	UserConfigPath() Opts
+	//UseEnv enables the default environment variables on all fields. This is
+	//equivalent to adding the opts tag "env" on all struct fields.
 	UseEnv() Opts
+	//Complete enables auto-completion for this command. When enabled, two extra
+	//flags are added (--install and --uninstall) which can be used to install
+	//this commands dynamic shell (bash, zsh, fish) completion. Internally, this
+	//just adds a stub file which calls this binary to auto-complete it own
+	//command-line interface.
 	Complete() Opts
-	//documentation
+	//EmbedFlagSet embeds the given pkg/flag FlagSet into
+	//this Opts instance. Placing the flags defined in the FlagSet
+	//along side the configuration struct flags.
+	EmbedFlagSet(*flag.FlagSet) Opts
+	//EmbedGlobalFlagSet embeds the global pkg/flag.CommandLine
+	//FlagSet into this Opts instance.
+	EmbedGlobalFlagSet() Opts
+
+	//Summary adds an arbitrarily long string to below the usage text
 	Summary(summary string) Opts
+	//Repo sets the source repository of the program and is displayed
+	//at the bottom of the help text.
 	Repo(repo string) Opts
+	//Author sets the author of the program and is displayed
+	//at the bottom of the help text.
 	Author(author string) Opts
+	//PkgRepo automatically sets Repo using the struct's package path.
 	PkgRepo() Opts
+	//PkgAuthor automatically sets Author using the struct's package path.
 	PkgAuthor() Opts
-	DocBefore(target, newID, template string) Opts
-	DocAfter(target, newID, template string) Opts
+	//DocSet replaces an existing template.
 	DocSet(id, template string) Opts
+	//DocBefore inserts a new template before an existing template.
+	DocBefore(existingID, newID, template string) Opts
+	//DocAfter inserts a new template after an existing template.
+	DocAfter(existingID, newID, template string) Opts
+	//DisablePadAll removes the padding from the help text.
 	DisablePadAll() Opts
+	//SetPadWidth alters the padding to specific number of spaces.
+	//By default, pad width is 2.
 	SetPadWidth(padding int) Opts
+	//SetLineWidth alters the maximum number of characters in a
+	//line (excluding padding). By default, line width is 72.
 	SetLineWidth(width int) Opts
-	//import standard library flags
-	ImportFlagSet(*flag.FlagSet) Opts
-	ImportGlobalFlagSet() Opts
-	//subcommands
+
+	//AddCommand adds another Opts instance as a subcommand.
 	AddCommand(Opts) Opts
-	//Parse this opts node and its children
+	//Parse uses os.Args to parse the internal FlagSet and
+	//returns a ParsedOpts instance.
 	Parse() ParsedOpts
+	//ParseArgs uses a given set of args to to parse the
+	//internal FlagSet and returns a ParsedOpts instance.
 	ParseArgs(args []string) ParsedOpts
-	//private
-	parse([]string) error
 }
 
 type ParsedOpts interface {
-	//Display this node in the help-output form
+	//Help returns the final help text
 	Help() string
-	//Whether the Run method of the parsed command exists
+	//IsRunnable returns whether the matched command has a Run method
 	IsRunnable() bool
-	//Execute the Run method of the parsed command.
-	//The target Run method must be `Run() error` or `Run()`
+	//Run assumes the matched command is runnable and executes its Run method.
+	//The target Run method must be 'Run() error' or 'Run()'
 	Run() error
-	//Execute the Run method of the parsed command and
-	//exit(1) if an error is returned.
+	//RunFatal assumes the matched command is runnable and executes its Run method.
+	//However, any error will be printed, followed by an exit(1).
 	RunFatal()
 }
 
-//New creates a new Opts instance
+//New creates a new Opts instance using the given configuration
+//struct pointer.
 func New(config interface{}) Opts {
 	return newNode(reflect.ValueOf(config))
 }
 
-//NewNamed creates a new Opts instance with the given name.
-//It is shorthand for `New().Name(name)`
-func NewNamed(config interface{}, name string) Opts {
-	return New(config).Name(name)
-}
-
-//Parse is shorthand for `New(config).Parse()`
+//Parse is shorthand for
+//  opts.New(config).Parse()
 func Parse(config interface{}) ParsedOpts {
 	return New(config).Parse()
 }

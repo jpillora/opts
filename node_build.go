@@ -72,8 +72,6 @@ func (n *node) SetPadWidth(p int) Opts {
 	return n
 }
 
-//Disable auto-padding, which enables padding around the
-//help text (defaults to true)
 func (n *node) DisablePadAll() Opts {
 	n.padAll = false
 	return n
@@ -92,7 +90,12 @@ func (n *node) SetLineWidth(l int) Opts {
 //the structure of the provided config. Environment variables
 //override JSON Config variables.
 func (n *node) ConfigPath(path string) Opts {
-	n.cfgPath = path
+	n.internalOpts.ConfigPath = path
+	return n
+}
+
+func (n *node) UserConfigPath() Opts {
+	n.userCfgPath = true
 	return n
 }
 
@@ -148,13 +151,13 @@ func (n *node) docOffset(offset int, target, newID, template string) *node {
 	return n
 }
 
-func (n *node) ImportFlagSet(fs *flag.FlagSet) Opts {
+func (n *node) EmbedFlagSet(fs *flag.FlagSet) Opts {
 	n.flagsets = append(n.flagsets, fs)
 	return n
 }
 
-func (n *node) ImportGlobalFlagSet() Opts {
-	return n.ImportFlagSet(flag.CommandLine)
+func (n *node) EmbedGlobalFlagSet() Opts {
+	return n.EmbedFlagSet(flag.CommandLine)
 }
 
 func (n *node) flagGroup(name string) *itemGroup {

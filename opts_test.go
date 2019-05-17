@@ -17,7 +17,7 @@ func TestSimple(t *testing.T) {
 	}
 	c := &Config{}
 	//flag example parse
-	err := New(c).parse([]string{"--foo", "hello", "--bar", "world"})
+	err := testNew(c).parse([]string{"--foo", "hello", "--bar", "world"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestList(t *testing.T) {
 	}
 	c := &Config{}
 	//flag example parse
-	err := New(c).parse([]string{"--foo", "hello", "--foo", "world", "--bar", "ping", "--bar", "pong"})
+	err := testNew(c).parse([]string{"--foo", "hello", "--foo", "world", "--bar", "ping", "--bar", "pong"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestSubCommand(t *testing.T) {
 		} `type:"cmd"`
 	}
 	c := &Config{}
-	err := New(c).parse([]string{"bar", "--zip", "hello", "--zap", "world"})
+	err := testNew(c).parse([]string{"bar", "--zip", "hello", "--zap", "world"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestEmbed(t *testing.T) {
 		Bar
 	}
 	c := &Config{}
-	err := New(c).parse([]string{"--zip", "hello", "--pong", "world"})
+	err := testNew(c).parse([]string{"--zip", "hello", "--pong", "world"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestUnsupportedType(t *testing.T) {
 	}
 	c := Config{}
 	//flag example parse
-	err := New(&c).parse([]string{"--foo", "hello", "--bar", "world"})
+	err := testNew(&c).parse([]string{"--foo", "hello", "--bar", "world"})
 	if err == nil {
 		t.Fatal("Expected error")
 	}
@@ -124,7 +124,7 @@ func TestUnsupportedInterfaceType(t *testing.T) {
 	}
 	c := Config{}
 	//flag example parse
-	err := New(&c).parse([]string{"--foo", "hello", "--bar", "world"})
+	err := testNew(&c).parse([]string{"--foo", "hello", "--bar", "world"})
 	if err == nil {
 		t.Fatal("Expected error")
 	}
@@ -145,7 +145,9 @@ func TestEnv(t *testing.T) {
 	}
 	c := &Config{}
 	//flag example parse
-	if err := New(c).UseEnv().parse([]string{}); err != nil {
+	n := testNew(c)
+	n.UseEnv()
+	if err := n.parse([]string{}); err != nil {
 		t.Fatal(err)
 	}
 	os.Unsetenv("STR")
@@ -166,7 +168,7 @@ func TestArg(t *testing.T) {
 	}
 	c := &Config{}
 	//flag example parse
-	if err := New(c).UseEnv().parse([]string{"-b", "wld", "hel", "lo"}); err != nil {
+	if err := testNew(c).parse([]string{"-b", "wld", "hel", "lo"}); err != nil {
 		t.Fatal(err)
 	}
 	//check config is filled
@@ -184,7 +186,7 @@ func TestArgs(t *testing.T) {
 	}
 	c := &Config{}
 	//flag example parse
-	if err := New(c).UseEnv().parse([]string{"-b", "wld", "!!!", "hel", "lo"}); err != nil {
+	if err := testNew(c).parse([]string{"-b", "wld", "!!!", "hel", "lo"}); err != nil {
 		t.Fatal(err)
 	}
 	//check config is filled
@@ -201,7 +203,7 @@ func TestIgnoreUnexported(t *testing.T) {
 	}
 	c := &Config{}
 	//flag example parse
-	err := New(c).parse([]string{"-f", "1", "-b", "2"})
+	err := testNew(c).parse([]string{"-f", "1", "-b", "2"})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -369,4 +371,10 @@ func diffstr(a, b interface{}) (string, bool) {
 		}
 	}
 	return fmt.Sprintf("Diff on line %d char %d (%d)", line, char, diff), true
+}
+
+func testNew(config interface{}) *node {
+	o := New(config)
+	n := o.(*node)
+	return n
 }

@@ -10,7 +10,7 @@ import (
 )
 
 func camel2const(s string) string {
-	b := bytes.Buffer{}
+	b := strings.Builder{}
 	var c rune
 	start := 0
 	end := 0

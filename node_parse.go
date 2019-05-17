@@ -79,17 +79,6 @@ func (n *node) parse(args []string) error {
 	}
 	//find defaults from config's package
 	n.setPkgDefaults()
-	//first, set config via JSON file, unmarshal it into the struct
-	if n.cfgPath != "" {
-		b, err := ioutil.ReadFile(n.cfgPath)
-		if err == nil {
-			v := n.val.Interface() //*struct
-			err = json.Unmarshal(b, v)
-			if err != nil {
-				return fmt.Errorf("Invalid config file: %s", err)
-			}
-		}
-	}
 	//add shortnames where possible
 	for _, item := range n.flags() {
 		if item.shortName == "" && len(item.name) >= 3 {
@@ -113,7 +102,17 @@ func (n *node) parse(args []string) error {
 		n.err = err
 		n.internalOpts.Help = true
 	}
-	//loop through flags, applying env variables where necesseary
+	//handle help, version, install/uninstall
+	if n.internalOpts.Help {
+		return &exitError{n.Help()}
+	} else if n.internalOpts.Version {
+		return &exitError{n.version}
+	} else if n.internalOpts.Install {
+		return n.manageCompletion(false)
+	} else if n.internalOpts.Uninstall {
+		return n.manageCompletion(true)
+	}
+	//first round of defaults, applying env variables where necesseary
 	for _, item := range n.flags() {
 		k := item.envName
 		if item.set || k == "" {
@@ -128,15 +127,16 @@ func (n *node) parse(args []string) error {
 			return fmt.Errorf("flag '%s' cannot set invalid env var (%s): %s", item.name, k, err)
 		}
 	}
-	//internal opts
-	if n.internalOpts.Help {
-		return &exitError{n.Help()}
-	} else if n.internalOpts.Version {
-		return &exitError{n.version}
-	} else if n.internalOpts.Install {
-		return n.manageCompletion(false)
-	} else if n.internalOpts.Uninstall {
-		return n.manageCompletion(true)
+	//second round, unmarshal directly into the struct, overwrites envs and flags
+	if c := n.internalOpts.ConfigPath; c != "" {
+		b, err := ioutil.ReadFile(c)
+		if err == nil {
+			v := n.val.Addr().Interface() //*struct
+			err = json.Unmarshal(b, v)
+			if err != nil {
+				return fmt.Errorf("Invalid config file: %s", err)
+			}
+		}
 	}
 	//fill each individual arg
 	args = flagset.Args()
@@ -190,11 +190,9 @@ func (n *node) addStructFields(group string, sv reflect.Value) error {
 	if sv.Kind() != reflect.Struct {
 		return n.errorf("opts: %s should be a pointer to a struct (got %s)", sv.Type().Name(), sv.Kind())
 	}
-	//parse struct fields
 	for i := 0; i < sv.NumField(); i++ {
 		sf := sv.Type().Field(i)
 		val := sv.Field(i)
-		//add one field
 		if err := n.addStructField(group, sf, val); err != nil {
 			return fmt.Errorf("field '%s' %s", sf.Name, err)
 		}
@@ -205,7 +203,7 @@ func (n *node) addStructFields(group string, sv reflect.Value) error {
 func (n *node) addStructField(group string, sf reflect.StructField, val reflect.Value) error {
 	kv := newKV(sf.Tag.Get("opts"))
 	help := sf.Tag.Get("help")
-	mode := sf.Tag.Get("type") //legacy versions used "type"
+	mode := sf.Tag.Get("type") //legacy versions of this package used "type"
 	if m := sf.Tag.Get("mode"); m != "" {
 		mode = m //allow "mode" to be used directly, undocumented!
 	}
@@ -213,13 +211,13 @@ func (n *node) addStructField(group string, sf reflect.StructField, val reflect.
 		return err
 	}
 	if ks := kv.keys(); len(ks) > 0 {
-		return fmt.Errorf("unused opts keys: %v", ks)
+		return fmt.Errorf("unused opts keys: %s", strings.Join(ks, ", "))
 	}
 	return nil
 }
 
 func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.Value) error {
-	//ignore unaddressed unexported fields
+	//ignore unaddressed/unexported fields
 	if !val.CanSet() {
 		return nil
 	}
@@ -292,21 +290,23 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 			i.defstr = fmt.Sprintf("%v", v)
 		}
 	}
-	//set env var name to use
-	if e, ok := kv.take("env"); ok || n.useEnv {
-		explicit := true
-		if e == "" {
-			explicit = false
-			e = camel2const(i.name)
-		}
-		_, set := n.envNames[e]
-		if set && explicit {
-			return n.errorf("env name '%s' already in use", e)
-		}
-		if !set {
-			n.envNames[e] = true
-			i.envName = e
-			i.useEnv = true
+	//flags may set env var name to use
+	if mode == "flag" {
+		if e, ok := kv.take("env"); ok || n.useEnv {
+			explicit := true
+			if e == "" {
+				explicit = false
+				e = camel2const(i.name)
+			}
+			_, set := n.envNames[e]
+			if set && explicit {
+				return n.errorf("env name '%s' already in use", e)
+			}
+			if !set {
+				n.envNames[e] = true
+				i.envName = e
+				i.useEnv = true
+			}
 		}
 	}
 	//minimum number of items
@@ -418,7 +418,11 @@ func (n *node) addInternalFlags() error {
 			internal{name: "Uninstall", help: "uninstall " + s + "-completion", group: "Completion"},
 		)
 	}
-	//
+	if n.userCfgPath {
+		flags = append(flags,
+			internal{name: "ConfigPath", help: "path to a JSON file"},
+		)
+	}
 	for _, i := range flags {
 		sf, _ := g.Type().FieldByName(i.name)
 		val := g.FieldByName(i.name)

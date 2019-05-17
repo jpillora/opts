@@ -12,7 +12,6 @@ import (
 //data is only used for templating below
 type data struct {
 	datum        //data is also a datum
-	ArgList      *datum
 	FlagGroups   []*datumGroup
 	Args         []*datum
 	Cmds         []*datum
@@ -33,6 +32,8 @@ type datumGroup struct {
 	Flags []*datum
 }
 
+//DefaultOrder defines which templates get rendered in which order.
+//This list is referenced in the "help" template below.
 var DefaultOrder = []string{
 	"usage",
 	"summary",
@@ -52,42 +53,32 @@ func defaultOrder() []string {
 	return order
 }
 
+//DefaultTemplates define a set of individual templates
+//that get rendered in DefaultOrder. You can replace templates or insert templates before or after existing
+//templates using the DocSet, DocBefore and DocAfter methods. For example, you can insert a string after the
+//usage text with:
+//
+//  DocAfter("usage", "this is a string, and if it is very long, it will be wrapped")
+//
+//The entire help text is simply the "help" template listed below, which renders a set of these templates in
+//the order defined above. All templates can be referenced using the keys in this map:
 var DefaultTemplates = map[string]string{
-	//The root template simply loops through,
-	//the 'order' and renders each template by name
-	"help": `{{ $root := . }}` +
-		`{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
-	//sections, from top to bottom
-	"usage": `Usage: {{.Name }}` +
-		`{{template "usageoptions" .}}` +
-		`{{template "usageargs" .}}` +
-		`{{template "usagearglist" .}}` +
-		`{{template "usagecmd" .}}` + "\n",
-	"usageoptions": ` [options]`,
-	"usageargs":    `{{range .Args}} {{.Name}}{{end}}`,
-	"usagearglist": `{{if .ArgList}} {{.ArgList.Name}}{{end}}`,
-	"usagecmd":     `{{if .Cmds}} <command>{{end}}`,
-	//extra help text gets appended to option.Help
+	"help":          `{{ $root := . }}{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
+	"usage":         `Usage: {{.Name }} [options]{{template "usageargs" .}}{{template "usagecmd" .}}` + "\n",
+	"usageargs":     `{{range .Args}} {{.Name}}{{end}}`,
+	"usagecmd":      `{{if .Cmds}} <command>{{end}}`,
 	"extradefault":  `{{if .}}default {{.}}{{end}}`,
 	"extraenv":      `{{if .}}env {{.}}{{end}}`,
 	"extramultiple": `{{if .}}allows multiple{{end}}`,
-	//summary
-	"summary": "{{if .Summary}}\n{{ .Summary }}\n{{end}}", //Test
-	//args and arg section
-	"args":    `{{range .Args}}{{template "arg" .}}{{end}}`,
-	"arg":     "{{if .Help}}\n{{.Help}}\n{{end}}",
-	"arglist": "{{if .ArgList}}{{ if .ArgList.Help}}\n{{.ArgList.Help}}\n{{end}}{{end}}",
-	//flags
-	"flaggroups": `{{ range $opt := .FlagGroups}}{{template "flaggroup" $opt}}{{end}}`,
-	"flaggroup": `{{if .Flags}}` + "\n" +
-		"{{if .Name}}{{.Name}} options{{else}}Options{{end}}:\n" +
-		`{{ range $opt := .Flags}}{{template "flag" $opt}}{{end}}{{end}}`,
-	"flag": `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
-	//cmds
-	"cmds": "{{if .Cmds}}\nCommands:\n" +
-		`{{ range $sub := .Cmds}}{{template "cmd" $sub}}{{end}}{{end}}`,
-	"cmd": "· {{ .Name }}{{if .Help}} - {{ .Help }}{{end}}\n",
-	//extras
+	"summary":       "{{if .Summary}}\n{{ .Summary }}\n{{end}}",
+	"args":          `{{range .Args}}{{template "arg" .}}{{end}}`,
+	"arg":           "{{if .Help}}\n{{.Help}}\n{{end}}",
+	"flaggroups":    `{{ range $g := .FlagGroups}}{{template "flaggroup" $g}}{{end}}`,
+	"flaggroup": "{{if .Flags}}\n{{if .Name}}{{.Name}} options{{else}}Options{{end}}:\n" +
+		`{{ range $f := .Flags}}{{template "flag" $f}}{{end}}{{end}}`,
+	"flag":    `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
+	"cmds":    "{{if .Cmds}}\nCommands:\n" + `{{ range $sub := .Cmds}}{{template "cmd" $sub}}{{end}}{{end}}`,
+	"cmd":     "· {{ .Name }}{{if .Help}} - {{ .Help }}{{end}}\n",
 	"version": "{{if .Version}}\nVersion:\n{{.Pad}}{{.Version}}\n{{end}}",
 	"repo":    "{{if .Repo}}\nRead more:\n{{.Pad}}{{.Repo}}\n{{end}}",
 	"author":  "{{if .Author}}\nAuthor:\n{{.Pad}}{{.Author}}\n{{end}}",

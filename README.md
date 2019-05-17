@@ -18,12 +18,13 @@ import (
 )
 
 func main() {
-	config := struct {
+	type config struct {
 		File  string `opts:"help=file to load"`
 		Lines int    `opts:"help=number of lines to show"`
-	}{}
-	opts.Parse(&config)
-	log.Printf("%+v", config)
+	}
+	c := config{}
+	opts.Parse(&c)
+	log.Printf("%+v", c)
 }
 ```
 
@@ -117,13 +118,13 @@ Where **`key`** must be one of:
 
 #### flag-values:
 
-In general an opts _flag-value_ type aims to be any type that can be get and set using a `string`. Currently, `opts` supports the following types:
+In general an opts _flag-value_ type aims to be any type that can be get and set using a `string`. Currently, **opts** supports the following types:
 
 - `string`
 - `bool`
-- `int{8-64}`
-- `uint{8-64}`
-- `float{32-64}`
+- `int8`, `int16`, `int32`, `int64`
+- `uint8`, `uint16`, `uint32`, `uint64`
+- `float32`, `float64`
 - `time.Duration`
 - [`flag.Value`](https://golang.org/pkg/flag/#Value)
 - `encoding.TextMarshaler` and `encoding.TextUnmarshaler`
@@ -137,19 +138,7 @@ In addition, `flag`s and `arg`s can also be a slice of any _flag-value_ type. Sl
 
 By default, **opts** attempts to output well-formatted help text when the user provides the `--help` (`-h`) flag. The [examples/](./example) directory shows various combinations of this default help text, resulting from using various features above.
 
-Simple additions can be made by using the following methods:
-
-* `Summary(text)` - Adds a summary line below the usage text
-* `Version(text)` - Adds a version line below all options
-* `Author(text)` - Adds an author line below all options
-
-Simple formatting modifications can be made by using:
-
-* `PadWidth(int)`  TODO
-
-Advanced modifications be made customising the underlying [Go templates](https://golang.org/pkg/text/template/) found here [node_help.go#DefaultTemplates](https://github.com/jpillora/opts/blob/master/node_help.go#L55). You can edit each template by ID (map key) using the following methods:
-
-* `DocSet(id, template)` TODO
+Modifications be made by customising the underlying [Go templates](https://golang.org/pkg/text/template/) found here [DefaultTemplates](https://godoc.org/github.com/jpillora/opts#pkg-variables).
 
 ### Other projects
 

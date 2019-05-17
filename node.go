@@ -12,12 +12,12 @@ type node struct {
 	err error
 	//embed item since an node can also be an item
 	item
-	parent     *node
-	flagGroups []*itemGroup
-	flagNames  map[string]bool //flag namespace covers all groups in this node
-	args       []*item
-	envNames   map[string]bool
-	cfgPath    string
+	parent      *node
+	flagGroups  []*itemGroup
+	flagNames   map[string]bool //flag namespace covers all groups in this node
+	args        []*item
+	envNames    map[string]bool
+	userCfgPath bool
 	//external flagsets
 	flagsets []*flag.FlagSet
 	//subcommands
@@ -25,19 +25,20 @@ type node struct {
 	cmdname *string
 	cmds    map[string]*node
 	//help
-	order                       []string
-	templates                   map[string]string
+	order                          []string
+	templates                      map[string]string
 	repo, author, version, summary string
-	repoInfer, authorInfer      bool
-	lineWidth                   int
-	padAll                      bool
-	padWidth                    int
+	repoInfer, authorInfer         bool
+	lineWidth                      int
+	padAll                         bool
+	padWidth                       int
 	//pretend these are in the user struct :)
 	internalOpts struct {
-		Help      bool
-		Version   bool
-		Install   bool
-		Uninstall bool
+		Help       bool
+		Version    bool
+		Install    bool
+		Uninstall  bool
+		ConfigPath string
 	}
 	complete bool
 }
