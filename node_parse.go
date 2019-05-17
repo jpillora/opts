@@ -280,18 +280,19 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 	i.mode = mode
 	i.name = name
 	i.help = help
-	//set default text
-	if d, ok := kv.take("default"); ok {
-		i.defstr = d
-	} else if !i.slice {
-		v := val.Interface()
-		zero := v == reflect.Zero(val.Type()).Interface()
-		if !zero {
-			i.defstr = fmt.Sprintf("%v", v)
+	//insert either as flag or as argument
+	switch mode {
+	case "flag":
+		//set default text
+		if d, ok := kv.take("default"); ok {
+			i.defstr = d
+		} else if !i.slice {
+			v := val.Interface()
+			zero := v == reflect.Zero(val.Type()).Interface()
+			if !zero {
+				i.defstr = fmt.Sprintf("%v", v)
+			}
 		}
-	}
-	//flags may set env var name to use
-	if mode == "flag" {
 		if e, ok := kv.take("env"); ok || n.useEnv {
 			explicit := true
 			if e == "" {
@@ -308,20 +309,6 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 				i.useEnv = true
 			}
 		}
-	}
-	//minimum number of items
-	if i.slice {
-		if m, ok := kv.take("min"); ok {
-			min, err := strconv.Atoi(m)
-			if err != nil {
-				return n.errorf("min not an integer")
-			}
-			i.min = min
-		}
-	}
-	//insert either as flag or as argument
-	switch mode {
-	case "flag":
 		//cannot have duplicates
 		if n.flagNames[name] {
 			return n.errorf("flag '%s' already exists", name)
@@ -337,6 +324,16 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 		g := n.flagGroup(group)
 		g.flags = append(g.flags, i)
 	case "arg":
+		//minimum number of items
+		if i.slice {
+			if m, ok := kv.take("min"); ok {
+				min, err := strconv.Atoi(m)
+				if err != nil {
+					return n.errorf("min not an integer")
+				}
+				i.min = min
+			}
+		}
 		//validations
 		if group != "" {
 			return n.errorf("args cannot be placed into a group")
@@ -346,7 +343,7 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 		}
 		for _, item := range n.args {
 			if item.slice {
-				return n.errorf("cannot come after arg list '%s'", fName)
+				return n.errorf("cannot come after arg list '%s'", item.name)
 			}
 		}
 		//add to this command's arguments
@@ -410,7 +407,7 @@ func (n *node) addInternalFlags() error {
 	)
 	if n.complete {
 		s := "shell"
-		if bs := path.Base(os.Getenv("SHELL")); bs != "" {
+		if bs := path.Base(os.Getenv("SHELL")); bs == "bash" || bs == "fish" || bs == "zsh" {
 			s = bs
 		}
 		flags = append(flags,

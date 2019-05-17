@@ -38,7 +38,6 @@ var DefaultOrder = []string{
 	"usage",
 	"summary",
 	"args",
-	"arglist",
 	"flaggroups",
 	"cmds",
 	"author",
@@ -164,62 +163,30 @@ func convert(o *node) (*data, error) {
 		curr = curr.parent
 	}
 	name := strings.Join(names, " ")
-	//get item help, with optional default values and env names and
-	//constrain to a specific line width
-	keys := []string{"default", "env", "multiple"}
-	extras := make([]*template.Template, 3)
-	for i, k := range keys {
-		t, err := template.New("").Parse(o.templates["extra"+k])
-		if err != nil {
-			return nil, fmt.Errorf("template extra%s: %s", k, err)
-		}
-		extras[i] = t
-	}
-	itemHelp := func(i *item, width int) string {
-		vals := []interface{}{i.defstr, i.envName, i.slice}
-		outs := []string{}
-		for i, v := range vals {
-			b := strings.Builder{}
-			if err := extras[i].Execute(&b, v); err != nil {
-				log.Printf(">>> %s: %s", keys[i], err)
-			}
-			if b.Len() > 0 {
-				outs = append(outs, b.String())
-			}
-		}
-		help := i.help
-		extra := strings.Join(outs, ", ")
-		if help == "" {
-			help = extra
-		} else if extra != "" {
-			help += " (" + extra + ")"
-		}
-		return constrain(help, width)
-	}
 	args := make([]*datum, len(o.args))
 	for i, arg := range o.args {
-		//mark argument as required
+		//arguments are required
 		n := "<" + arg.name + ">"
-		if arg.defstr != "" { //or optional
-			n = "[" + arg.name + "]"
+		//unless...
+		if arg.slice {
+			p := []string{arg.name, arg.name}
+			for i, n := range p {
+				if i < arg.min {
+					//still required
+					n = "<" + n + ">"
+				} else {
+					//optional!
+					n = "[" + n + "]"
+				}
+				p[i] = n
+			}
+			n = strings.Join(p, " ") + " ..."
 		}
 		args[i] = &datum{
 			Name: n,
-			Help: itemHelp(arg, o.lineWidth),
+			Help: constrain(arg.help, o.lineWidth),
 		}
 	}
-	//TODO:
-	// var arglist *datum
-	// if o.arglist != nil {
-	// 	n := o.arglist.name + "..."
-	// 	if o.arglist.min == 0 { //optional
-	// 		n = "[" + n + "]"
-	// 	}
-	// 	arglist = &datum{
-	// 		Name: n,
-	// 		Help: itemHelp(&o.arglist.item, o.lineWidth),
-	// 	}
-	// }
 	flagGroups := make([]*datumGroup, len(o.flagGroups))
 	//initialise and calculate padding
 	max := 0
@@ -244,6 +211,18 @@ func convert(o *node) (*data, error) {
 			dg.Flags[i] = to
 		}
 	}
+	//get item help, with optional default values and env names and
+	//constrain to a specific line width
+	extras := make([]*template.Template, 3)
+	keys := []string{"default", "env", "multiple"}
+	for i, k := range keys {
+		t, err := template.New("").Parse(o.templates["extra"+k])
+		if err != nil {
+			return nil, fmt.Errorf("template extra%s: %s", k, err)
+		}
+		extras[i] = t
+	}
+	//calculate...
 	padsInOption := o.padWidth
 	optionNameWidth := max + padsInOption
 	spaces := nletters(' ', optionNameWidth)
@@ -255,8 +234,27 @@ func convert(o *node) (*data, error) {
 			to.Name += spaces[:max-len(to.Name)]
 			//constrain help text
 			item := o.flagGroups[i].flags[j]
-			help := itemHelp(item, helpWidth)
-			//add a margin
+			//render flag help string
+			vals := []interface{}{item.defstr, item.envName, item.slice}
+			outs := []string{}
+			for i, v := range vals {
+				b := strings.Builder{}
+				if err := extras[i].Execute(&b, v); err != nil {
+					return nil, err
+				}
+				if b.Len() > 0 {
+					outs = append(outs, b.String())
+				}
+			}
+			help := item.help
+			extra := strings.Join(outs, ", ")
+			if help == "" {
+				help = extra
+			} else if extra != "" {
+				help += " (" + extra + ")"
+			}
+			help = constrain(help, helpWidth)
+			//align each row after the flag
 			lines := strings.Split(help, "\n")
 			for i, l := range lines {
 				if i > 0 {
