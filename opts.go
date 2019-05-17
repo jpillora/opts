@@ -27,16 +27,16 @@ type Opts interface {
 	UseEnv() Opts
 	//Complete enables auto-completion for this command. When enabled, two extra
 	//flags are added (--install and --uninstall) which can be used to install
-	//this commands dynamic shell (bash, zsh, fish) completion. Internally, this
-	//just adds a stub file which calls this binary to auto-complete it own
+	//a dynamic shell (bash, zsh, fish) completion for this command. Internally,
+	//this adds a stub file which runs the Go binary to auto-complete its own
 	//command-line interface.
 	Complete() Opts
-	//EmbedFlagSet embeds the given pkg/flag FlagSet into
+	//EmbedFlagSet embeds the given pkg/flag.FlagSet into
 	//this Opts instance. Placing the flags defined in the FlagSet
 	//along side the configuration struct flags.
 	EmbedFlagSet(*flag.FlagSet) Opts
 	//EmbedGlobalFlagSet embeds the global pkg/flag.CommandLine
-	//FlagSet into this Opts instance.
+	//FlagSet variable into this Opts instance.
 	EmbedGlobalFlagSet() Opts
 
 	//Summary adds an arbitrarily long string to below the usage text

@@ -1,5 +1,5 @@
-//Package opts defines a reflection and struct-tag based API
-//to rapidly create command-line interfaces. For example:
+//Package opts defines a struct-tag based API for
+//rapidly building command-line interfaces. For example:
 //
 //  package main
 //
@@ -7,6 +7,7 @@
 //  	"log"
 //  	"github.com/jpillora/opts"
 //  )
+//
 //  func main() {
 //  	type config struct {
 //  		File  string `opts:"help=file to load"`
@@ -17,7 +18,7 @@
 //  	log.Printf("%+v", c)
 //  }
 //
-//Then build and run:
+//Build and run:
 //
 //  $ go build -o my-prog
 //  $ ./my-prog --help
