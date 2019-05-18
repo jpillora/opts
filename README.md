@@ -88,19 +88,9 @@ Where **`key`** must be one of:
 
 - `name` - Name is used to display the field in the help text. By default, the flag name is infered by converting the struct field name to lowercase and adding dashes between words.
 
-- `short` - One or two letters to be used a flag's "short" name. By default, the first letter of `name` will be used. It will remain unset if there is a duplicate short name. Only valid when `mode` is `flag`.
-
 - `help` - The help text used to summaryribe the field. It will be displayed next to the flag name in the help output.
 
 	**Note:** `help` is the only setting that can also be set as a stand-alone struct tag (i.e. `help:"my text goes here"`). You must use the stand-alone tag if you wish to use a comma `,` in your help string.
-
-- `group` - The name of the flag group to store the field. Defining this field will create a new group of flags in the help text (will appear as "`<group>` options"). The default flag group is the empty string (which will appear as "Options").
-
-	**Note:** `embedded` `struct`s implicitly set the group name to be the name of the struct field. You can explicitly unset the group name with `group=`.
-
-- `env` - An environent variable to use as the field's **default** value. It can always be overridden by providing the appropriate flag.
-
-	For example, `opts:"env=FOO"`. It can also be infered using the field name with simply `opts:"env"`. You can enable inference on all flags with the `opts.Opts` method `UseEnv()`.
 
 - `mode` - The **opts** mode assigned to the field. All fields will be given a `mode`. Where the `mode` **`value`** must be one of:
 
@@ -114,7 +104,17 @@ Where **`key`** must be one of:
 
 	* `cmdname` - A special mode which will assume the name of the selected command. The struct field must be a `string`.
 
-- `min` - A minimum length of a slice. Only valid when `mode` is `flag` or `arg`, and when the field type is a slice.
+- `short` - One or two letters to be used a flag's "short" name. By default, the first letter of `name` will be used. It will remain unset if there is a duplicate short name. Only valid when `mode` is `flag`.
+
+- `group` - The name of the flag group to store the field. Defining this field will create a new group of flags in the help text (will appear as "`<group>` options"). The default flag group is the empty string (which will appear as "Options"). Only valid when `mode` is `flag` or `embedded`.
+
+	**Note:** `embedded` `struct`s implicitly set the group name to be the name of the struct field. You can explicitly unset the group name with `group=`.
+
+- `env` - An environent variable to use as the field's **default** value. It can always be overridden by providing the appropriate flag. Only valid when `mode` is `flag`.
+
+	For example, `opts:"env=FOO"`. It can also be infered using the field name with simply `opts:"env"`. You can enable inference on all flags with the `opts.Opts` method `UseEnv()`.
+
+- `min` - A minimum length of a slice. Only valid when `mode` is `arg`, *and* the struct field is a slice.
 
 #### flag-values:
 
@@ -122,7 +122,7 @@ In general an opts _flag-value_ type aims to be any type that can be get and set
 
 - `string`
 - `bool`
-- `int8`, `int16`, `int32`, `int64`
+- `int`, `int8`, `int16`, `int32`, `int64`
 - `uint8`, `uint16`, `uint32`, `uint64`
 - `float32`, `float64`
 - `time.Duration`
