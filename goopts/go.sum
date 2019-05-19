@@ -6,4 +6,3 @@ github.com/jpillora/opts v1.0.0 h1:HrSoX1EK118+dI4mMER+2zYr3ybP4v3Io/L2ajcmG74=
 github.com/jpillora/opts v1.0.0/go.mod h1:9CwarOXfgQBIdG1wc0EfXSbS14ky0BlFqeGmIsyZvvE=
 github.com/posener/complete v1.2.1 h1:LrvDIY//XNo65Lq84G/akBuMGlawHvGBABv8f/ZN6DI=
 github.com/posener/complete v1.2.1/go.mod h1:6gapUrK/U1TAN7ciCoNRIdVC5sbdBTUh1DKN0g6uH7E=
-github.com/wxio/wxb v0.0.1 h1:0lNsziQCBF6ql2ZV7htf5dwquMjDNJAwFEiwEp0Hv8g=
