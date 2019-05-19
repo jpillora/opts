@@ -28,10 +28,10 @@
 //    Options:
 //    --file, -f   file to load
 //    --lines, -l  number of lines to show
-//    --help, -h
+//    --help, -h   display help
 //
-//  $ ./my-prog -f foo -l 12
-//  {File:foo Lines:42}
+//  $ ./my-prog -f foo.txt -l 42
+//  {File:foo.txt Lines:42}
 //
-//See https://github.com/jpillora/opts for more information.
+//See https://github.com/jpillora/opts for more information, or https://play.golang.org/p/EiGcXtPBAcI try it out now.
 package opts

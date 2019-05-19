@@ -2,11 +2,28 @@ package opts
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/posener/complete"
 	"github.com/posener/complete/cmd/install"
 )
+
+//NOTE: Currently completion internally uses posener/complete.
+//in future this may change to another implementation.
+
+//Completer represents a shell-completion implementation
+//for a single field. By default, all fields will auto-complete
+//files and directories. Use a field type which implements this
+//Completer interface to override this behaviour.
+type Completer interface {
+	//Complete is given user's input and should
+	//return a corresponding set of valid inputs.
+	//Note: all result strings must be prefixed
+	//with the user's input.
+	Complete(user string) []string
+}
 
 //Complete enables shell-completion for this command and
 //its subcommands
@@ -50,13 +67,20 @@ func (n *node) nodeCompletion() complete.Command {
 	//prepare flags
 	for _, item := range n.flags() {
 		//item's predictor
-		p := item.predictor
-		//default predictor
-		if p == nil {
-			if item.noarg {
-				p = complete.PredictNothing
-			} else {
-				p = complete.Predictor(complete.PredictAnything)
+		var p complete.Predictor
+		//choose a predictor
+		if item.noarg {
+			//disable
+			p = complete.PredictNothing
+		} else if item.completer != nil {
+			//user completer
+			p = &completerWrapper{
+				compl: item.completer,
+			}
+		} else {
+			//by default, predicts files and directories
+			p = &completerWrapper{
+				compl: &completerFS{},
 			}
 		}
 		//add to completion flags set
@@ -74,4 +98,44 @@ func (n *node) nodeCompletion() complete.Command {
 		c.Sub[name] = subn.nodeCompletion() //recurse
 	}
 	return c
+}
+
+type completerWrapper struct {
+	compl Completer
+}
+
+func (w *completerWrapper) Predict(args complete.Args) []string {
+	user := args.Last
+	valid := w.compl.Complete(user)
+	debugf("'%s' => %v", user, valid)
+	return valid
+}
+
+type completerFS struct{}
+
+func (*completerFS) Complete(user string) []string {
+	home := os.Getenv("HOME")
+	if home != "" && strings.HasPrefix(user, "~/") {
+		user = home + "/" + strings.TrimPrefix(user, "~/")
+	}
+	completed := []string{}
+	matches, _ := filepath.Glob(user + "*")
+	for _, m := range matches {
+		if home != "" && strings.HasPrefix(m, home) {
+			m = "~" + strings.TrimPrefix(m, home)
+		}
+		if !strings.HasPrefix(m, user) {
+			continue
+		}
+		completed = append(completed, m)
+	}
+	return matches
+}
+
+func debugf(f string, a ...interface{}) {
+	l, err := os.OpenFile("/tmp/complete.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err == nil {
+		fmt.Fprintf(l, f+"\n", a...)
+		l.Close()
+	}
 }

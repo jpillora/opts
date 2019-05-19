@@ -9,8 +9,9 @@ import (
 //in a tree of commands. Use the AddCommand method to add subcommands (child nodes)
 //to this command instance.
 type Opts interface {
-	//Name of the command. For the root command, Name defaults to the executable
-	//base name, whereas for subcommands, Name defaults to the package name.
+	//Name of the command. For the root command, Name defaults to the executable's
+	//base name. For subcommands, Name defaults to the package name, unless its the
+	//main package, then it defaults to the struct name.
 	Name(name string) Opts
 	//Version of the command. Commonly set using a package main variable at compile
 	//time using ldflags (for example, go build -ldflags -X main.version=42).
@@ -23,13 +24,14 @@ type Opts interface {
 	//is added to this Opts instance to give the user control of the filepath.
 	UserConfigPath() Opts
 	//UseEnv enables the default environment variables on all fields. This is
-	//equivalent to adding the opts tag "env" on all struct fields.
+	//equivalent to adding the opts tag "env" on all flag fields.
 	UseEnv() Opts
 	//Complete enables auto-completion for this command. When enabled, two extra
 	//flags are added (--install and --uninstall) which can be used to install
 	//a dynamic shell (bash, zsh, fish) completion for this command. Internally,
 	//this adds a stub file which runs the Go binary to auto-complete its own
-	//command-line interface.
+	//command-line interface. Note, the absolute path returned from os.Executable()
+	//is used to reference to the Go binary.
 	Complete() Opts
 	//EmbedFlagSet embeds the given pkg/flag.FlagSet into
 	//this Opts instance. Placing the flags defined in the FlagSet
@@ -65,6 +67,11 @@ type Opts interface {
 	//SetLineWidth alters the maximum number of characters in a
 	//line (excluding padding). By default, line width is 72.
 	SetLineWidth(width int) Opts
+	//Call the given function with this instance of Opts.
+	//This allows a registration pattern where the callee
+	//can add multiple commands, adjust the documentation,
+	//and more. See the "eg-commands-register" example.
+	Call(func(Opts)) Opts
 
 	//AddCommand adds another Opts instance as a subcommand.
 	AddCommand(Opts) Opts
@@ -99,4 +106,10 @@ func New(config interface{}) Opts {
 //  opts.New(config).Parse()
 func Parse(config interface{}) ParsedOpts {
 	return New(config).Parse()
+}
+
+//Setter is any type which can be set from a string.
+//This includes flag.Value.
+type Setter interface {
+	Set(string) error
 }

@@ -6,21 +6,23 @@ import (
 	"strings"
 )
 
-//AddCommand to this opts instance
 func (n *node) AddCommand(cmd Opts) Opts {
 	sub, ok := cmd.(*node)
 	if !ok {
 		panic("another implementation of opts???")
 	}
-	//default subcommand name is struct name
-	if sub.name == "" {
-		sub.name = camel2dash(sub.item.val.Type().Name())
-	}
-	//fallback default name is package name
-	pkgPath := sub.item.val.Type().PkgPath()
-	if sub.name == "" && pkgPath != "" {
+	//default name should be package name,
+	//unless its in the main package, then
+	//the default becomes the struct name
+	structType := sub.item.val.Type()
+	pkgPath := structType.PkgPath()
+	if sub.name == "" && pkgPath != "main" && pkgPath != "" {
 		parts := strings.Split(pkgPath, "/")
 		sub.name = parts[len(parts)-1]
+	}
+	structName := structType.Name()
+	if sub.name == "" && structName != "" {
+		sub.name = camel2dash(structName)
 	}
 	//if still no name, needs to be manually set
 	if sub.name == "" {
@@ -31,8 +33,8 @@ func (n *node) AddCommand(cmd Opts) Opts {
 		n.errorf("cannot add command, '%s' already exists", sub.name)
 		return n
 	}
-	n.cmds[sub.name] = sub
 	sub.parent = n
+	n.cmds[sub.name] = sub
 	return n
 }
 

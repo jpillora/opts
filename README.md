@@ -1,7 +1,12 @@
 <p align="center">
-  <img width="443" alt="logo" src="https://user-images.githubusercontent.com/633843/57529538-84a22780-7378-11e9-9235-312633dc125e.png"><br>
-  <b>A low friction command-line interface library for Go (golang)</b><br><br>
-  <a href="https://godoc.org/github.com/jpillora/opts" rel="nofollow"><img src="https://camo.githubusercontent.com/42566bdba17f1a0c86c1a1de859d6ab70bde1457/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f6a70696c6c6f72612f6f7074733f7374617475732e737667" alt="GoDoc" data-canonical-src="https://godoc.org/github.com/jpillora/opts?status.svg" style="max-width:100%;"></a> <a href="https://circleci.com/gh/jpillora/opts" rel="nofollow"><img src="https://camo.githubusercontent.com/34202387888c6b05f640653a29bb1e204f5a9e19/68747470733a2f2f636972636c6563692e636f6d2f67682f6a70696c6c6f72612f6f7074732e7376673f7374796c653d736869656c6426636972636c652d746f6b656e3d36396566396336616330643863656263623335346262383563333737656365666637376266623162" alt="CircleCI" data-canonical-src="https://circleci.com/gh/jpillora/opts.svg?style=shield&amp;circle-token=69ef9c6ac0d8cebcb354bb85c377eceff77bfb1b" style="max-width:100%;"></a>
+<img width="443" alt="logo" src="https://user-images.githubusercontent.com/633843/57529538-84a22780-7378-11e9-9235-312633dc125e.png"><br>
+<b>A low friction command-line interface package for Go (golang)</b><br><br>
+<a href="https://godoc.org/github.com/jpillora/opts#Opts" rel="nofollow">
+	<img src="https://camo.githubusercontent.com/42566bdba17f1a0c86c1a1de859d6ab70bde1457/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f6a70696c6c6f72612f6f7074733f7374617475732e737667" alt="GoDoc" data-canonical-src="https://godoc.org/github.com/jpillora/opts?status.svg" style="max-width:100%;">
+</a>
+<a href="https://circleci.com/gh/jpillora/opts" rel="nofollow">
+	<img src="https://camo.githubusercontent.com/34202387888c6b05f640653a29bb1e204f5a9e19/68747470733a2f2f636972636c6563692e636f6d2f67682f6a70696c6c6f72612f6f7074732e7376673f7374796c653d736869656c6426636972636c652d746f6b656e3d36396566396336616330643863656263623335346262383563333737656365666637376266623162" alt="CircleCI" data-canonical-src="https://circleci.com/gh/jpillora/opts.svg?style=shield&amp;circle-token=69ef9c6ac0d8cebcb354bb85c377eceff77bfb1b" style="max-width:100%;">
+</a>
 </p>
 
 ---
@@ -37,14 +42,16 @@ $ ./my-prog --help
   Options:
   --file, -f   file to load
   --lines, -l  number of lines to show
-  --help, -h
+  --help, -h   display help
 
 ```
 
 ```sh
-$ ./my-prog -f foo -l 12
-{File:foo Lines:42}
+$ ./my-prog -f foo.txt -l 42
+{File:foo.txt Lines:42}
 ```
+
+*Try it out https://go-sandbox.com/#/EiGcXtPBAcI*
 
 ### Features (with examples)
 
@@ -55,11 +62,11 @@ $ ./my-prog -f foo -l 12
 - Default values from a JSON config file, unmarshalled via your config struct ([eg-config](https://github.com/jpillora/opts-examples/tree/master/eg-config/))
 - Default values from environment, defined by your field names ([eg-env](https://github.com/jpillora/opts-examples/tree/master/eg-env/))
 - Group your flags in the help output ([eg-groups](https://github.com/jpillora/opts-examples/tree/master/eg-groups/))
-- Sub-commands by nesting structs
-- Sub-commands by providing child `Opts`
+- Sub-commands by nesting structs ([eg-commands-inline](https://github.com/jpillora/opts-examples/tree/master/eg-commands-inline/))
+- Sub-commands by providing child `Opts` ([eg-commands-main](https://github.com/jpillora/opts-examples/tree/master/eg-commands-main/))
 - Infers program name from executable name
 - Infers command names from struct or package name
-- Define custom flags types via `flag.Value` ([eg-customtypes](https://github.com/jpillora/opts-examples/tree/master/eg-customtypes/))
+- Define custom flags types via `opts.Setter` or `flag.Value` ([eg-custom-flag](https://github.com/jpillora/opts-examples/tree/master/eg-custom-flag/))
 - Customizable help text by modifying the default templates ([eg-customhelp](https://github.com/jpillora/opts-examples/tree/master/eg-customhelp/))
 - Built-in shell auto-completion ([eg-complete](https://github.com/jpillora/opts-examples/tree/master/eg-complete))
 
@@ -67,7 +74,7 @@ Find these examples and more in the [`example/`](https://github.com/jpillora/opt
 
 ### Package API
 
-See https://godoc.org/github.com/jpillora/opts
+See https://godoc.org/github.com/jpillora/opts#Opts
 
 [![GoDoc](https://godoc.org/github.com/jpillora/opts?status.svg)](https://godoc.org/github.com/jpillora/opts)
 
@@ -123,16 +130,19 @@ In general an opts _flag-value_ type aims to be any type that can be get and set
 - `string`
 - `bool`
 - `int`, `int8`, `int16`, `int32`, `int64`
-- `uint8`, `uint16`, `uint32`, `uint64`
+- `uint`, `uint8`, `uint16`, `uint32`, `uint64`
 - `float32`, `float64`
-- `time.Duration`
+- [`opts.Setter`](https://godoc.org/github.com/jpillora/opts#Setter)
+	- *The interface `func Set(string) error`*
 - [`flag.Value`](https://golang.org/pkg/flag/#Value)
-- `encoding.TextMarshaler` and `encoding.TextUnmarshaler`
-	- `time.Time`
-- `encoding.BinaryMarshaler` and `encoding.BinaryUnmarshaler`
-	- `url.URL`
+	- *Is an `opts.Setter`*
+- `time.Duration`
+- `encoding.TextMarshaler`
+	- *Includes `time.Time` and `net.IP`*
+- `encoding.BinaryMarshaler`
+	- *Includes `url.URL`*
 
-In addition, `flag`s and `arg`s can also be a slice of any _flag-value_ type. Slices allow multiple flags/args. For example, a struct field `Foo []int` could be set with `--foo 1 --foo 2` and would result in `[]int{1,2}`.
+In addition, `flag`s and `arg`s can also be a slice of any _flag-value_ type. Slices allow multiple flags/args. For example, a struct field flag `Foo []int` could be set with `--foo 1 --foo 2`, and would result in `[]int{1,2}`.
 
 ### Help text
 
@@ -142,7 +152,7 @@ Modifications be made by customising the underlying [Go templates](https://golan
 
 ### Other projects
 
-Other related projects which infer flags from struct tags:
+Other related projects which infer flags from struct tags but aren't as feature-complete:
 
 - https://github.com/alexflint/go-arg
 - https://github.com/jessevdk/go-flags

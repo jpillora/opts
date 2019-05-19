@@ -160,6 +160,11 @@ func (n *node) EmbedGlobalFlagSet() Opts {
 	return n.EmbedFlagSet(flag.CommandLine)
 }
 
+func (n *node) Call(fn func(o Opts)) Opts {
+	fn(n)
+	return n
+}
+
 func (n *node) flagGroup(name string) *itemGroup {
 	//NOTE: the default group is the empty string
 	//get existing group

@@ -15,21 +15,19 @@ import (
 
 //Parse with os.Args
 func (n *node) Parse() ParsedOpts {
-	return n.ParseArgs(os.Args[1:])
+	return n.ParseArgs(os.Args)
 }
 
 //ParseArgs with the provided arguments
 func (n *node) ParseArgs(args []string) ParsedOpts {
 	//shell-completion?
-	if n.complete {
-		if cl := os.Getenv("COMP_LINE"); cl != "" {
-			args := strings.Split(cl, " ")
-			n.parse(args[1:]) //ignore error
-			if ok := n.doCompletion(); !ok {
-				os.Exit(1)
-			}
-			os.Exit(0)
+	if cl := os.Getenv("COMP_LINE"); n.complete && cl != "" {
+		args := strings.Split(cl, " ")
+		n.parse(args) //ignore error
+		if ok := n.doCompletion(); !ok {
+			os.Exit(1)
 		}
+		os.Exit(0)
 	}
 	//use built state to perform parse
 	if err := n.parse(args); err != nil {
@@ -59,10 +57,21 @@ func (n *node) parse(args []string) error {
 	if n.err != nil {
 		return n.err
 	}
-	//find default name for root-node
-	if n.item.name == "" && n.parent == nil {
-		if exe, err := os.Executable(); err == nil {
-			_, n.item.name = path.Split(exe)
+	//root node? take program from the arg list
+	if n.parent == nil {
+		prog := ""
+		if len(args) > 0 {
+			prog = args[0]
+			args = args[1:]
+		}
+		//find default name for root-node
+		if n.item.name == "" {
+			if exe, err := os.Executable(); err == nil && exe != "" {
+				//TODO: use filepath.EvalSymlinks first?
+				_, n.item.name = path.Split(exe)
+			} else if prog != "" {
+				_, n.item.name = path.Split(prog)
+			}
 		}
 	}
 	//add this node and its fields (recurses if has sub-commands)
@@ -73,7 +82,7 @@ func (n *node) parse(args []string) error {
 	if err := n.addFlagsets(); err != nil {
 		return err
 	}
-	//add help flag
+	//add help, version, etc flags
 	if err := n.addInternalFlags(); err != nil {
 		return err
 	}
@@ -81,7 +90,7 @@ func (n *node) parse(args []string) error {
 	n.setPkgDefaults()
 	//add shortnames where possible
 	for _, item := range n.flags() {
-		if item.shortName == "" && len(item.name) >= 3 {
+		if item.shortName == "" && len(item.name) >= 2 {
 			if s := item.name[0:1]; !n.flagNames[s] {
 				item.shortName = s
 				n.flagNames[s] = true
@@ -138,33 +147,33 @@ func (n *node) parse(args []string) error {
 			}
 		}
 	}
-	//fill each individual arg
-	args = flagset.Args()
+	//get remaining args after extracting flags
+	remaining := flagset.Args()
 	i := 0
 	for {
 		if len(n.args) == i {
 			break
 		}
 		item := n.args[i]
-		if len(args) == 0 && !item.set && !item.slice {
+		if len(remaining) == 0 && !item.set && !item.slice {
 			return fmt.Errorf("argument '%s' is missing", item.name)
 		}
-		if len(args) == 0 {
+		if len(remaining) == 0 {
 			break
 		}
-		s := args[0]
+		s := remaining[0]
 		if err := item.Set(s); err != nil {
 			return fmt.Errorf("argument '%s' is invalid: %s", item.name, err)
 		}
-		args = args[1:]
+		remaining = remaining[1:]
 		//use next arg?
 		if !item.slice {
 			i++
 		}
 	}
-	//use command? peek at args
-	if len(n.cmds) > 0 && len(args) > 0 {
-		a := args[0]
+	//use command? next arg can optionally match command
+	if len(n.cmds) > 0 && len(remaining) > 0 {
+		a := remaining[0]
 		//matching command, use it
 		if sub, exists := n.cmds[a]; exists {
 			//store matched command
@@ -173,15 +182,15 @@ func (n *node) parse(args []string) error {
 			if n.cmdname != nil {
 				*n.cmdname = a
 			}
-			//recurse!
-			return sub.parse(args[1:])
+			//tail recurse!
+			return sub.parse(remaining[1:])
 		}
 	}
 	//we *should* have consumed all args at this point.
 	//this prevents:  ./foo --bar 42 -z 21 ping --pong 7
 	//where --pong 7 is ignored
-	if len(args) != 0 {
-		return fmt.Errorf("Unexpected arguments: %+v", args)
+	if len(remaining) != 0 {
+		return fmt.Errorf("Unexpected arguments: %s", strings.Join(remaining, " "))
 	}
 	return nil
 }
@@ -288,7 +297,9 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 			i.defstr = d
 		} else if !i.slice {
 			v := val.Interface()
-			zero := v == reflect.Zero(val.Type()).Interface()
+			t := val.Type()
+			z := reflect.Zero(t)
+			zero := reflect.DeepEqual(v, z.Interface())
 			if !zero {
 				i.defstr = fmt.Sprintf("%v", v)
 			}
@@ -315,8 +326,11 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 		}
 		//flags can also set short names
 		if short, ok := kv.take("short"); ok {
+			if len(short) != 1 {
+				return n.errorf("short name '%s' on flag '%s' must be a single character", short, name)
+			}
 			if n.flagNames[short] {
-				return n.errorf("flag '%s' (%s) already exists", short, name)
+				return n.errorf("short name '%s' on flag '%s' already exists", short, name)
 			}
 			i.shortName = short
 		}

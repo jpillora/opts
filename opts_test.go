@@ -17,7 +17,7 @@ func TestSimple(t *testing.T) {
 	}
 	c := &Config{}
 	//flag example parse
-	err := testNew(c).parse([]string{"--foo", "hello", "--bar", "world"})
+	err := testNew(c).parse([]string{"/bin/prog", "--foo", "hello", "--bar", "world"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestList(t *testing.T) {
 	}
 	c := &Config{}
 	//flag example parse
-	err := testNew(c).parse([]string{"--foo", "hello", "--foo", "world", "--bar", "ping", "--bar", "pong"})
+	err := testNew(c).parse([]string{"/bin/prog", "--foo", "hello", "--foo", "world", "--bar", "ping", "--bar", "pong"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,17 +51,17 @@ func TestSubCommand(t *testing.T) {
 	}
 	//config
 	type Config struct {
-		Cmd string `type:"cmdname"`
+		Cmd string `opts:"mode=cmdname"`
 		//command (external struct)
-		Foo FooConfig `type:"cmd"`
+		Foo FooConfig `opts:"mode=cmd"`
 		//command (inline struct)
 		Bar struct {
 			Zip string
 			Zap string
-		} `type:"cmd"`
+		} `opts:"mode=cmd"`
 	}
 	c := &Config{}
-	err := testNew(c).parse([]string{"bar", "--zip", "hello", "--zap", "world"})
+	err := testNew(c).parse([]string{"/bin/prog", "bar", "--zip", "hello", "--zap", "world"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestEmbed(t *testing.T) {
 		Bar
 	}
 	c := &Config{}
-	err := testNew(c).parse([]string{"--zip", "hello", "--pong", "world"})
+	err := testNew(c).parse([]string{"/bin/prog", "--zip", "hello", "--pong", "world"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestUnsupportedType(t *testing.T) {
 	}
 	c := Config{}
 	//flag example parse
-	err := testNew(&c).parse([]string{"--foo", "hello", "--bar", "world"})
+	err := testNew(&c).parse([]string{"/bin/prog", "--foo", "hello", "--bar", "world"})
 	if err == nil {
 		t.Fatal("Expected error")
 	}
@@ -124,7 +124,7 @@ func TestUnsupportedInterfaceType(t *testing.T) {
 	}
 	c := Config{}
 	//flag example parse
-	err := testNew(&c).parse([]string{"--foo", "hello", "--bar", "world"})
+	err := testNew(&c).parse([]string{"/bin/prog", "--foo", "hello", "--bar", "world"})
 	if err == nil {
 		t.Fatal("Expected error")
 	}
@@ -162,13 +162,13 @@ func TestEnv(t *testing.T) {
 func TestArg(t *testing.T) {
 	//config
 	type Config struct {
-		Foo string `type:"arg"`
-		Zip string `type:"arg"`
+		Foo string `opts:"mode=arg"`
+		Zip string `opts:"mode=arg"`
 		Bar string
 	}
 	c := &Config{}
 	//flag example parse
-	if err := testNew(c).parse([]string{"-b", "wld", "hel", "lo"}); err != nil {
+	if err := testNew(c).parse([]string{"/bin/prog", "-b", "wld", "hel", "lo"}); err != nil {
 		t.Fatal(err)
 	}
 	//check config is filled
@@ -180,13 +180,13 @@ func TestArg(t *testing.T) {
 func TestArgs(t *testing.T) {
 	//config
 	type Config struct {
-		Zip string   `type:"arg"`
-		Foo []string `type:"arg"`
+		Zip string   `opts:"mode=arg"`
+		Foo []string `opts:"mode=arg"`
 		Bar string
 	}
 	c := &Config{}
 	//flag example parse
-	if err := testNew(c).parse([]string{"-b", "wld", "!!!", "hel", "lo"}); err != nil {
+	if err := testNew(c).parse([]string{"/bin/prog", "-b", "wld", "!!!", "hel", "lo"}); err != nil {
 		t.Fatal(err)
 	}
 	//check config is filled
@@ -203,7 +203,7 @@ func TestIgnoreUnexported(t *testing.T) {
 	}
 	c := &Config{}
 	//flag example parse
-	err := testNew(c).parse([]string{"-f", "1", "-b", "2"})
+	err := testNew(c).parse([]string{"/bin/prog", "-f", "1", "-b", "2"})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -270,7 +270,7 @@ func TestDocGroups(t *testing.T) {
 	}
 	c := &Config{}
 	//flag example parse
-	o := New(c).Name("groups").ParseArgs([]string{})
+	o := New(c).Name("groups").ParseArgs(nil)
 	check(t, o.Help(), `
   Usage: groups [options]
 
@@ -289,13 +289,19 @@ func TestDocGroups(t *testing.T) {
 func TestDocArgList(t *testing.T) {
 	//config
 	type Config struct {
-		Foo string   `type:"arg"`
-		Bar []string `type:"arg"`
+		Foo string   `opts:"mode=arg"`
+		Bar []string `opts:"mode=arg"`
 	}
 	c := &Config{}
 	//flag example parse
-	o := New(c).Name("").ParseArgs([]string{"zzz"})
-	check(t, o.Help(), `TODO`)
+	o := New(c).Name("docargs").ParseArgs([]string{"/bin/prog", "zzz"})
+	check(t, o.Help(), `
+  Usage: docargs [options] <foo> [bar] [bar] ...
+
+  Options:
+  --help, -h  display help
+
+`)
 }
 
 func TestSubCommandMap(t *testing.T) {

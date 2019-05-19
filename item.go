@@ -3,12 +3,9 @@ package opts
 import (
 	"encoding"
 	"errors"
-	"flag"
 	"fmt"
 	"reflect"
 	"time"
-
-	"github.com/posener/complete"
 )
 
 //item group represents a single "Options" block
@@ -35,7 +32,7 @@ type item struct {
 	slice     bool
 	min       int //valid if slice
 	noarg     bool
-	predictor complete.Predictor
+	completer Completer
 	set       bool
 }
 
@@ -45,37 +42,34 @@ func newItem(val reflect.Value) (*item, error) {
 	}
 	i := &item{}
 	supported := false
-	//take interface value, and attempt to
-	//make it (or pointer to it) a flag.Value
+	//take interface value V
 	v := val.Interface()
 	pv := interface{}(nil)
 	if val.CanAddr() {
 		pv = val.Addr().Interface()
 	}
-	//convert other types into a flag value:
-	if t, ok := v.(texter); ok {
-		v = &textValue{t}
-	} else if t, ok := pv.(texter); ok {
-		v = &textValue{t}
-	} else if t, ok := v.(binaryer); ok {
-		v = &binaryValue{t}
-	} else if t, ok := pv.(binaryer); ok {
-		v = &binaryValue{t}
-	} else if d, ok := pv.(*time.Duration); ok {
-		v = newDurationValue(d)
-	} else if fv, ok := pv.(flag.Value); ok {
-		v = fv
+	//convert V or &V into a setter:
+	for _, t := range []interface{}{v, pv} {
+		if tm, ok := t.(encoding.TextUnmarshaler); ok {
+			v = &textValue{tm}
+		} else if bm, ok := t.(encoding.BinaryUnmarshaler); ok {
+			v = &binaryValue{bm}
+		} else if d, ok := t.(*time.Duration); ok {
+			v = newDurationValue(d)
+		} else if s, ok := t.(Setter); ok {
+			v = s
+		}
 	}
-	//implements flag value?
-	if fv, ok := v.(flag.Value); ok {
+	//implements setter (flag.Value)?
+	if s, ok := v.(Setter); ok {
 		supported = true
 		//NOTE: replacing val removes our ability to set
 		//the value, resolved by flag.Value handling all Set calls.
-		val = reflect.ValueOf(fv)
+		val = reflect.ValueOf(s)
 	}
-	//implements predictor?
-	if p, ok := v.(complete.Predictor); ok {
-		i.predictor = p
+	//implements completer?
+	if c, ok := v.(Completer); ok {
+		i.completer = c
 	}
 	//val must be concrete at this point
 	if val.Kind() == reflect.Ptr {
@@ -126,7 +120,11 @@ func (i *item) String() string {
 	if !i.val.IsValid() {
 		return ""
 	}
-	return fmt.Sprintf("%v", i.val.Interface())
+	v := i.val.Interface()
+	if s, ok := v.(fmt.Stringer); ok {
+		return s.String()
+	}
+	return fmt.Sprintf("%v", v)
 }
 
 func (i *item) Set(s string) error {
@@ -141,19 +139,19 @@ func (i *item) Set(s string) error {
 	if i.slice {
 		elem = reflect.New(i.elemType()) //ptr
 	} else if i.val.CanAddr() {
-		elem = i.val.Addr() //ptr
+		elem = i.val.Addr() //pointer to concrete type
 	} else {
-		elem = i.val //possibly a flag.Value
+		elem = i.val //possibly interface type
 	}
 	v := elem.Interface()
 	//convert string into value
-	if fv, ok := v.(flag.Value); ok {
+	if fv, ok := v.(Setter); ok {
 		//addr implements set
 		if err := fv.Set(s); err != nil {
 			return err
 		}
 	} else if elem.Kind() == reflect.Ptr {
-		//set addr with scan
+		//magic set with scanf
 		n, err := fmt.Sscanf(s, "%v", v)
 		if err != nil {
 			return err
@@ -197,44 +195,18 @@ func (noopValueType) Set(s string) error {
 	return nil
 }
 
-//textValue wraps [un]marshaller into a flag value
+//textValue wraps marshaller into a setter
 type textValue struct {
-	texter
-}
-
-type texter interface {
-	encoding.TextMarshaler
 	encoding.TextUnmarshaler
-}
-
-func (t textValue) String() string {
-	b, err := t.MarshalText()
-	if err == nil {
-		return string(b)
-	}
-	return ""
 }
 
 func (t textValue) Set(s string) error {
 	return t.UnmarshalText([]byte(s))
 }
 
-//binaryValue wraps [un]marshaller into a flag value
+//binaryValue wraps marshaller into a setter
 type binaryValue struct {
-	binaryer
-}
-
-type binaryer interface {
-	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
-}
-
-func (t binaryValue) String() string {
-	b, err := t.MarshalBinary()
-	if err == nil {
-		return string(b)
-	}
-	return ""
 }
 
 func (t binaryValue) Set(s string) error {
@@ -255,12 +227,4 @@ func (d *durationValue) Set(s string) error {
 	}
 	*d = durationValue(v)
 	return nil
-}
-
-func (d *durationValue) Get() interface{} {
-	return time.Duration(*d)
-}
-
-func (d *durationValue) String() string {
-	return (*time.Duration)(d).String()
 }
