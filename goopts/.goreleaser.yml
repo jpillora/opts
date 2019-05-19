@@ -4,9 +4,9 @@ project_name: goopts
 release:
   github:
     owner: millergarym 
-    name: gopts
+    name: opts
   name_template: '{{.Tag}}'
-  disable: true
+  # disable: true
 
 builds:
 - 
