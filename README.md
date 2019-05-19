@@ -51,7 +51,7 @@ $ ./my-prog -f foo.txt -l 42
 {File:foo.txt Lines:42}
 ```
 
-*Try it out https://go-sandbox.com/#/EiGcXtPBAcI*
+*Try it out https://play.golang.org/p/2CIffHjYM7g*
 
 ### Features (with examples)
 
@@ -67,7 +67,7 @@ $ ./my-prog -f foo.txt -l 42
 - Infers program name from executable name
 - Infers command names from struct or package name
 - Define custom flags types via `opts.Setter` or `flag.Value` ([eg-custom-flag](https://github.com/jpillora/opts-examples/tree/master/eg-custom-flag/))
-- Customizable help text by modifying the default templates ([eg-customhelp](https://github.com/jpillora/opts-examples/tree/master/eg-customhelp/))
+- Customizable help text by modifying the default templates ([eg-help](https://github.com/jpillora/opts-examples/tree/master/eg-help/))
 - Built-in shell auto-completion ([eg-complete](https://github.com/jpillora/opts-examples/tree/master/eg-complete))
 
 Find these examples and more in the [`example/`](https://github.com/jpillora/opts-examples) directory.
@@ -111,7 +111,7 @@ Where **`key`** must be one of:
 
 	* `cmdname` - A special mode which will assume the name of the selected command. The struct field must be a `string`.
 
-- `short` - One or two letters to be used a flag's "short" name. By default, the first letter of `name` will be used. It will remain unset if there is a duplicate short name. Only valid when `mode` is `flag`.
+- `short` - One letter to be used a flag's "short" name. By default, the first letter of `name` will be used. It will remain unset if there is a duplicate short name. Only valid when `mode` is `flag`.
 
 - `group` - The name of the flag group to store the field. Defining this field will create a new group of flags in the help text (will appear as "`<group>` options"). The default flag group is the empty string (which will appear as "Options"). Only valid when `mode` is `flag` or `embedded`.
 

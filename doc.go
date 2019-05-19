@@ -33,5 +33,5 @@
 //  $ ./my-prog -f foo.txt -l 42
 //  {File:foo.txt Lines:42}
 //
-//See https://github.com/jpillora/opts for more information, or https://play.golang.org/p/EiGcXtPBAcI try it out now.
+//See https://github.com/jpillora/opts for more information and more examples.
 package opts
