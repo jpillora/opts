@@ -1,6 +1,6 @@
 <p align="center">
 <img width="443" alt="logo" src="https://user-images.githubusercontent.com/633843/57529538-84a22780-7378-11e9-9235-312633dc125e.png"><br>
-<b>A low friction command-line interface package for Go (golang)</b><br><br>
+<b>A Go (golang) package for building productive command-line interfaces</b><br><br>
 <a href="https://godoc.org/github.com/jpillora/opts#Opts" rel="nofollow">
 	<img src="https://camo.githubusercontent.com/42566bdba17f1a0c86c1a1de859d6ab70bde1457/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f6a70696c6c6f72612f6f7074733f7374617475732e737667" alt="GoDoc" data-canonical-src="https://godoc.org/github.com/jpillora/opts?status.svg" style="max-width:100%;">
 </a>
