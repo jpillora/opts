@@ -15,6 +15,19 @@ func (n *node) errorf(format string, args ...interface{}) error {
 	return err
 }
 
+//parseErrorf
+func (n *node) parseErrorf(format string, args ...interface{}) error {
+	err := &parseError{
+		msg: fmt.Sprintf(format, args...),
+		n:   n,
+	}
+	//only store the first error
+	if n.err == nil {
+		n.err = err
+	}
+	return err
+}
+
 //Name sets the name of the program
 func (n *node) Name(name string) Opts {
 	n.name = name
@@ -193,6 +206,15 @@ type authorError struct {
 
 func (o *authorError) Error() string {
 	return o.err
+}
+
+type parseError struct {
+	msg string
+	n   *node
+}
+
+func (o *parseError) Error() string {
+	return o.msg
 }
 
 type exitError struct {

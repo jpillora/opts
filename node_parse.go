@@ -41,6 +41,11 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 			fmt.Fprintf(os.Stderr, "opts usage error: %s\n", ae.err)
 			os.Exit(1)
 		}
+		//unexpected exit (1) print message to programmer
+		if pe, ok := err.(*parseError); ok {
+			fmt.Fprintf(os.Stderr, pe.n.Help())
+			os.Exit(1)
+		}
 		//unexpected exit (1) embed message in help to user
 		n.err = err
 		fmt.Fprintf(os.Stderr, n.Help())
@@ -133,7 +138,7 @@ func (n *node) parse(args []string) error {
 		}
 		err := item.Set(v)
 		if err != nil {
-			return fmt.Errorf("flag '%s' cannot set invalid env var (%s): %s", item.name, k, err)
+			return n.parseErrorf("flag '%s' cannot set invalid env var (%s): %s", item.name, k, err)
 		}
 	}
 	//second round, unmarshal directly into the struct, overwrites envs and flags
@@ -143,7 +148,7 @@ func (n *node) parse(args []string) error {
 			v := n.val.Addr().Interface() //*struct
 			err = json.Unmarshal(b, v)
 			if err != nil {
-				return fmt.Errorf("Invalid config file: %s", err)
+				return n.parseErrorf("Invalid config file: %s", err)
 			}
 		}
 	}
@@ -156,14 +161,14 @@ func (n *node) parse(args []string) error {
 		}
 		item := n.args[i]
 		if len(remaining) == 0 && !item.set && !item.slice {
-			return fmt.Errorf("argument '%s' is missing", item.name)
+			return n.parseErrorf("argument '%s' is missing", item.name)
 		}
 		if len(remaining) == 0 {
 			break
 		}
 		s := remaining[0]
 		if err := item.Set(s); err != nil {
-			return fmt.Errorf("argument '%s' is invalid: %s", item.name, err)
+			return n.parseErrorf("argument '%s' is invalid: %s", item.name, err)
 		}
 		remaining = remaining[1:]
 		//use next arg?
@@ -190,7 +195,7 @@ func (n *node) parse(args []string) error {
 	//this prevents:  ./foo --bar 42 -z 21 ping --pong 7
 	//where --pong 7 is ignored
 	if len(remaining) != 0 {
-		return fmt.Errorf("Unexpected arguments: %s", strings.Join(remaining, " "))
+		return n.parseErrorf("Unexpected arguments: %s", strings.Join(remaining, " "))
 	}
 	return nil
 }
@@ -203,7 +208,7 @@ func (n *node) addStructFields(group string, sv reflect.Value) error {
 		sf := sv.Type().Field(i)
 		val := sv.Field(i)
 		if err := n.addStructField(group, sf, val); err != nil {
-			return fmt.Errorf("field '%s' %s", sf.Name, err)
+			return n.errorf("field '%s' %s", sf.Name, err)
 		}
 	}
 	return nil
@@ -220,7 +225,7 @@ func (n *node) addStructField(group string, sf reflect.StructField, val reflect.
 		return err
 	}
 	if ks := kv.keys(); len(ks) > 0 {
-		return fmt.Errorf("unused opts keys: %s", strings.Join(ks, ", "))
+		return n.errorf("unused opts keys: %s", strings.Join(ks, ", "))
 	}
 	return nil
 }
@@ -280,6 +285,13 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 	//inline sub-command
 	if mode == "cmd" {
 		return n.addInlineCmd(name, help, val)
+	}
+	if mode == "parsedOpts" {
+		if fmt.Sprintf("%#+v", val) != "opts.ParsedOpts(nil)" {
+			return n.errorf("not of type opts.ParsedOpts")
+		}
+		val.Set(reflect.ValueOf(n))
+		return nil
 	}
 	//from this point, we must have a flag or an arg
 	i, err := newItem(val)
@@ -363,7 +375,7 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 		//add to this command's arguments
 		n.args = append(n.args, i)
 	default:
-		return fmt.Errorf("invalid opts mode '%s'", mode)
+		return n.errorf("invalid opts mode '%s'", mode)
 	}
 	return nil
 }
@@ -438,7 +450,7 @@ func (n *node) addInternalFlags() error {
 		sf, _ := g.Type().FieldByName(i.name)
 		val := g.FieldByName(i.name)
 		if err := n.addKVField(nil, sf.Name, i.help, "flag", i.group, val); err != nil {
-			return fmt.Errorf("error adding internal flag: %s: %s", i.name, err)
+			return n.errorf("error adding internal flag: %s: %s", i.name, err)
 		}
 	}
 	return nil
