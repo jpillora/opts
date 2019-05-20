@@ -43,7 +43,6 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 		}
 		//unexpected exit (1) print message to programmer
 		if pe, ok := err.(*parseError); ok {
-			fmt.Fprintf(os.Stderr, "  Error : %v\n", pe.msg)
 			fmt.Fprintf(os.Stderr, pe.n.Help())
 			os.Exit(1)
 		}
@@ -139,11 +138,7 @@ func (n *node) parse(args []string) error {
 		}
 		err := item.Set(v)
 		if err != nil {
-			return &parseError{
-				msg: fmt.Sprintf("flag '%s' cannot set invalid env var (%s): %s", item.name, k, err),
-				n:   n,
-			}
-
+			return n.parseErrorf("flag '%s' cannot set invalid env var (%s): %s", item.name, k, err)
 		}
 	}
 	//second round, unmarshal directly into the struct, overwrites envs and flags
@@ -153,10 +148,7 @@ func (n *node) parse(args []string) error {
 			v := n.val.Addr().Interface() //*struct
 			err = json.Unmarshal(b, v)
 			if err != nil {
-				return &parseError{
-					msg: fmt.Sprintf("Invalid config file: %s", err),
-					n:   n,
-				}
+				return n.parseErrorf("Invalid config file: %s", err)
 			}
 		}
 	}
@@ -169,20 +161,14 @@ func (n *node) parse(args []string) error {
 		}
 		item := n.args[i]
 		if len(remaining) == 0 && !item.set && !item.slice {
-			return &parseError{
-				msg: fmt.Sprintf("argument '%s' is missing", item.name),
-				n:   n,
-			}
+			return n.parseErrorf("argument '%s' is missing", item.name)
 		}
 		if len(remaining) == 0 {
 			break
 		}
 		s := remaining[0]
 		if err := item.Set(s); err != nil {
-			return &parseError{
-				msg: fmt.Sprintf("argument '%s' is invalid: %s", item.name, err),
-				n:   n,
-			}
+			return n.parseErrorf("argument '%s' is invalid: %s", item.name, err)
 		}
 		remaining = remaining[1:]
 		//use next arg?
@@ -209,10 +195,7 @@ func (n *node) parse(args []string) error {
 	//this prevents:  ./foo --bar 42 -z 21 ping --pong 7
 	//where --pong 7 is ignored
 	if len(remaining) != 0 {
-		return &parseError{
-			msg: fmt.Sprintf("Unexpected arguments: %s", strings.Join(remaining, " ")),
-			n:   n,
-		}
+		return n.parseErrorf("Unexpected arguments: %s", strings.Join(remaining, " "))
 	}
 	return nil
 }
