@@ -304,21 +304,10 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 		return n.addInlineCmd(name, help, val)
 	}
 	if mode == "parsedOpts" {
-		// if _, ok := val.Interface().(ParsedOpts); !ok {
-		// 	return n.errorf("not of type opts.ParsedOpts")
-		// }
-		ok := true
-		func() {
-			defer func() {
-				if recover() != nil {
-					ok = false
-				}
-			}()
-			val.Set(reflect.ValueOf(n))
-		}()
-		if !ok {
+		if fmt.Sprintf("%#+v", val) != "opts.ParsedOpts(nil)" {
 			return n.errorf("not of type opts.ParsedOpts")
 		}
+		val.Set(reflect.ValueOf(n))
 		return nil
 	}
 	//from this point, we must have a flag or an arg
