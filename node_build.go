@@ -195,6 +195,15 @@ func (o *authorError) Error() string {
 	return o.err
 }
 
+type parseError struct {
+	msg string
+	n   *node
+}
+
+func (o *parseError) Error() string {
+	return o.msg
+}
+
 type exitError struct {
 	msg string
 }
