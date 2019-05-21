@@ -33,23 +33,22 @@ func (n *node) Complete() Opts {
 }
 
 func (n *node) manageCompletion(uninstall bool) error {
-	e := &exitError{}
+	msg := ""
 	fn := install.Install
 	if uninstall {
 		fn = install.Uninstall
 	}
 	if err := fn(n.name); err != nil {
 		w := err.(interface{ WrappedErrors() []error })
-		e.msg = ""
 		for _, w := range w.WrappedErrors() {
-			e.msg += strings.TrimPrefix(fmt.Sprintf("%s\n", w), "does ")
+			msg += strings.TrimPrefix(fmt.Sprintf("%s\n", w), "does ")
 		}
 	} else if uninstall {
-		e.msg = "Uninstalled"
+		msg = "Uninstalled"
 	} else {
-		e.msg = "Installed"
+		msg = "Installed"
 	}
-	return e //always exit
+	return exitError(msg) //always exit
 }
 
 func (n *node) doCompletion() bool {

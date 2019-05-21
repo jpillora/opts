@@ -7,7 +7,7 @@ import (
 
 //errorf to be stored until parse-time
 func (n *node) errorf(format string, args ...interface{}) error {
-	err := &authorError{fmt.Sprintf(format, args...)}
+	err := authorError(fmt.Sprintf(format, args...))
 	//only store the first error
 	if n.err == nil {
 		n.err = err
@@ -187,18 +187,14 @@ func (n *node) flags() []*item {
 	return flags
 }
 
-type authorError struct {
-	err string
+type authorError string
+
+func (e authorError) Error() string {
+	return string(e)
 }
 
-func (o *authorError) Error() string {
-	return o.err
-}
+type exitError string
 
-type exitError struct {
-	msg string
-}
-
-func (o *exitError) Error() string {
-	return o.msg
+func (e exitError) Error() string {
+	return string(e)
 }

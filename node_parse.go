@@ -32,13 +32,13 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 	//use built state to perform parse
 	if err := n.parse(args); err != nil {
 		//expected exit (0) print message as-is
-		if ee, ok := err.(*exitError); ok {
-			fmt.Fprintf(os.Stderr, ee.msg)
+		if ee, ok := err.(exitError); ok {
+			fmt.Fprint(os.Stderr, string(ee))
 			os.Exit(0)
 		}
 		//unexpected exit (1) print message to programmer
-		if ae, ok := err.(*authorError); ok {
-			fmt.Fprintf(os.Stderr, "opts usage error: %s\n", ae.err)
+		if ae, ok := err.(authorError); ok {
+			fmt.Fprintf(os.Stderr, "opts usage error: %s\n", ae)
 			os.Exit(1)
 		}
 		//unexpected exit (1) embed message in help to user
@@ -71,6 +71,12 @@ func (n *node) parse(args []string) error {
 				_, n.item.name = path.Split(exe)
 			} else if prog != "" {
 				_, n.item.name = path.Split(prog)
+			}
+			//looks like weve been go-run, use package name?
+			if n.item.name == "main" {
+				if pkgPath := n.item.val.Type().PkgPath(); pkgPath != "" {
+					_, n.item.name = path.Split(pkgPath)
+				}
 			}
 		}
 	}
@@ -113,9 +119,9 @@ func (n *node) parse(args []string) error {
 	}
 	//handle help, version, install/uninstall
 	if n.internalOpts.Help {
-		return &exitError{n.Help()}
+		return exitError(n.Help())
 	} else if n.internalOpts.Version {
-		return &exitError{n.version}
+		return exitError(n.version)
 	} else if n.internalOpts.Install {
 		return n.manageCompletion(false)
 	} else if n.internalOpts.Uninstall {

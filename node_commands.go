@@ -2,8 +2,8 @@ package opts
 
 import (
 	"fmt"
-	"log"
-	"strings"
+	"os"
+	"path"
 )
 
 func (n *node) AddCommand(cmd Opts) Opts {
@@ -17,8 +17,7 @@ func (n *node) AddCommand(cmd Opts) Opts {
 	structType := sub.item.val.Type()
 	pkgPath := structType.PkgPath()
 	if sub.name == "" && pkgPath != "main" && pkgPath != "" {
-		parts := strings.Split(pkgPath, "/")
-		sub.name = parts[len(parts)-1]
+		_, sub.name = path.Split(pkgPath)
 	}
 	structName := structType.Name()
 	if sub.name == "" && structName != "" {
@@ -80,12 +79,22 @@ func (n *node) run(test bool) (bool, error) {
 		r2.Run()
 		return true, nil
 	}
+	if len(m.cmds) > 0 {
+		//if matched command has no run,
+		//but has commands, show help instead
+		return false, exitError(m.Help())
+	}
 	return false, fmt.Errorf("command '%s' is not runnable", m.name)
 }
 
 //Run the parsed configuration
 func (n *node) RunFatal() {
 	if err := n.Run(); err != nil {
-		log.Fatal(err)
+		if e, ok := err.(exitError); ok {
+			fmt.Fprint(os.Stderr, string(e))
+			os.Exit(0)
+		}
+		fmt.Fprint(os.Stderr, err.Error())
+		os.Exit(1)
 	}
 }

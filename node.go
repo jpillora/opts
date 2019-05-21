@@ -54,7 +54,7 @@ func newNode(val reflect.Value) *node {
 		order:     defaultOrder(),
 		templates: map[string]string{},
 		//public defaults
-		lineWidth: 72,
+		lineWidth: 96,
 		padAll:    true,
 		padWidth:  2,
 	}

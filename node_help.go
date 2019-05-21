@@ -77,7 +77,7 @@ var DefaultTemplates = map[string]string{
 		`{{ range $f := .Flags}}{{template "flag" $f}}{{end}}{{end}}`,
 	"flag":    `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
 	"cmds":    "{{if .Cmds}}\nCommands:\n" + `{{ range $sub := .Cmds}}{{template "cmd" $sub}}{{end}}{{end}}`,
-	"cmd":     "· {{ .Name }}{{if .Help}} - {{ .Help }}{{end}}\n",
+	"cmd":     "· {{ .Name }}{{if .Help}}{{.Pad}}  {{ .Help }}{{end}}\n",
 	"version": "{{if .Version}}\nVersion:\n{{.Pad}}{{.Version}}\n{{end}}",
 	"repo":    "{{if .Repo}}\nRead more:\n{{.Pad}}{{.Repo}}\n{{end}}",
 	"author":  "{{if .Author}}\nAuthor:\n{{.Pad}}{{.Author}}\n{{end}}",
@@ -265,13 +265,24 @@ func convert(o *node) (*data, error) {
 		}
 	}
 	//commands
+	max = 0
+	for _, s := range o.cmds {
+		if l := len(s.name); l > max {
+			max = l
+		}
+	}
 	subs := make([]*datum, len(o.cmds))
 	i := 0
 	for _, s := range o.cmds {
+		h := s.help
+		if h == "" {
+			h = s.summary
+		}
+
 		subs[i] = &datum{
 			Name: s.name,
-			Help: s.help,
-			Pad:  pad,
+			Help: h,
+			Pad:  nletters(' ', max-len(s.name)),
 		}
 		i++
 	}

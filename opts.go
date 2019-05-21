@@ -41,7 +41,7 @@ type Opts interface {
 	//FlagSet variable into this Opts instance.
 	EmbedGlobalFlagSet() Opts
 
-	//Summary adds an arbitrarily long string to below the usage text
+	//Summary adds a short sentence below the usage text
 	Summary(summary string) Opts
 	//Repo sets the source repository of the program and is displayed
 	//at the bottom of the help text.
@@ -65,7 +65,7 @@ type Opts interface {
 	//By default, pad width is 2.
 	SetPadWidth(padding int) Opts
 	//SetLineWidth alters the maximum number of characters in a
-	//line (excluding padding). By default, line width is 72.
+	//line (excluding padding). By default, line width is 96.
 	SetLineWidth(width int) Opts
 
 	//AddCommand adds another Opts instance as a subcommand.
