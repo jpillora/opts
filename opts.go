@@ -67,11 +67,6 @@ type Opts interface {
 	//SetLineWidth alters the maximum number of characters in a
 	//line (excluding padding). By default, line width is 72.
 	SetLineWidth(width int) Opts
-	//Call the given function with this instance of Opts.
-	//This allows a registration pattern where the callee
-	//can add multiple commands, adjust the documentation,
-	//and more. See the "eg-commands-register" example.
-	Call(func(Opts)) Opts
 
 	//AddCommand adds another Opts instance as a subcommand.
 	AddCommand(Opts) Opts
