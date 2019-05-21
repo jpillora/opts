@@ -124,7 +124,7 @@ func (n *node) parse(args []string) error {
 	//first round of defaults, applying env variables where necesseary
 	for _, item := range n.flags() {
 		k := item.envName
-		if item.set || k == "" {
+		if item.set() || k == "" {
 			continue
 		}
 		v := os.Getenv(k)
@@ -155,7 +155,7 @@ func (n *node) parse(args []string) error {
 			break
 		}
 		item := n.args[i]
-		if len(remaining) == 0 && !item.set && !item.slice {
+		if len(remaining) == 0 && !item.set() && !item.slice {
 			return fmt.Errorf("argument '%s' is missing", item.name)
 		}
 		if len(remaining) == 0 {
@@ -169,6 +169,15 @@ func (n *node) parse(args []string) error {
 		//use next arg?
 		if !item.slice {
 			i++
+		}
+	}
+	//check min
+	for _, item := range n.args {
+		if item.slice && item.sets < item.min {
+			return fmt.Errorf("argument '%s' has too few args (%d/%d)", item.name, item.sets, item.min)
+		}
+		if item.slice && item.max != 0 && item.sets > item.max {
+			return fmt.Errorf("argument '%s' has too many args (%d/%d)", item.name, item.sets, item.max)
 		}
 	}
 	//use command? next arg can optionally match command
@@ -262,9 +271,6 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 	//use the specified group
 	if g, ok := kv.take("group"); ok {
 		group = g
-	} else if mode == "embedded" {
-		//if unset, embedded structs use the field name
-		group = camel2title(fName)
 	}
 	//special cases
 	if mode == "embedded" {
@@ -346,6 +352,13 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 					return n.errorf("min not an integer")
 				}
 				i.min = min
+			}
+			if m, ok := kv.take("max"); ok {
+				max, err := strconv.Atoi(m)
+				if err != nil {
+					return n.errorf("max not an integer")
+				}
+				i.max = max
 			}
 		}
 		//validations

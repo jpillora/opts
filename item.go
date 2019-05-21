@@ -30,10 +30,10 @@ type item struct {
 	help      string
 	defstr    string
 	slice     bool
-	min       int //valid if slice
+	min, max  int //valid if slice
 	noarg     bool
 	completer Completer
-	set       bool
+	sets      int
 }
 
 func newItem(val reflect.Value) (*item, error) {
@@ -108,6 +108,10 @@ func newItem(val reflect.Value) (*item, error) {
 	return i, nil
 }
 
+func (i *item) set() bool {
+	return i.sets != 0
+}
+
 func (i *item) elemType() reflect.Type {
 	t := i.val.Type()
 	if i.slice {
@@ -129,7 +133,7 @@ func (i *item) String() string {
 
 func (i *item) Set(s string) error {
 	//can only set singles once
-	if i.set && !i.slice {
+	if i.sets != 0 && !i.slice {
 		return errors.New("already set")
 	}
 	//set has two modes, slice and inplace.
@@ -171,7 +175,7 @@ func (i *item) Set(s string) error {
 		i.val.Set(reflect.Append(i.val, elem))
 	}
 	//mark item as set!
-	i.set = true
+	i.sets++
 	//done
 	return nil
 }

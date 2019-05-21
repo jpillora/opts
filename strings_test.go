@@ -22,6 +22,10 @@ func TestKVMap(t *testing.T) {
 			"ping=,,pong==,,",
 			map[string]string{"ping": "", "pong": "="},
 		},
+		{
+			"nospace=,,  leadingspace==,  trailingspace  ,",
+			map[string]string{"nospace": "", "leadingspace": "=", "trailingspace  ": ""},
+		},
 	} {
 		kv := newKV(testcase.input)
 		m := kv.m

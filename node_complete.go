@@ -91,7 +91,9 @@ func (n *node) nodeCompletion() complete.Command {
 	}
 	//prepare args
 	if len(n.args) > 0 {
-		c.Args = complete.PredictAnything
+		c.Args = &completerWrapper{
+			compl: &completerFS{},
+		}
 	}
 	//prepare sub-commands
 	for name, subn := range n.cmds {
@@ -106,9 +108,11 @@ type completerWrapper struct {
 
 func (w *completerWrapper) Predict(args complete.Args) []string {
 	user := args.Last
-	valid := w.compl.Complete(user)
-	debugf("'%s' => %v", user, valid)
-	return valid
+	results := w.compl.Complete(user)
+	if os.Getenv("OPTS_DEBUG") == "1" {
+		debugf("'%s' => %v", user, results)
+	}
+	return results
 }
 
 type completerFS struct{}
@@ -133,7 +137,7 @@ func (*completerFS) Complete(user string) []string {
 }
 
 func debugf(f string, a ...interface{}) {
-	l, err := os.OpenFile("/tmp/complete.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	l, err := os.OpenFile("/tmp/opts.debug", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err == nil {
 		fmt.Fprintf(l, f+"\n", a...)
 		l.Close()

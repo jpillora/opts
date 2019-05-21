@@ -1,6 +1,6 @@
 <p align="center">
 <img width="443" alt="logo" src="https://user-images.githubusercontent.com/633843/57529538-84a22780-7378-11e9-9235-312633dc125e.png"><br>
-<b>A Go (golang) package for building productive command-line interfaces</b><br><br>
+<b>A Go (golang) package for building frictionless command-line interfaces</b><br><br>
 <a href="https://godoc.org/github.com/jpillora/opts#Opts" rel="nofollow">
 	<img src="https://camo.githubusercontent.com/42566bdba17f1a0c86c1a1de859d6ab70bde1457/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f6a70696c6c6f72612f6f7074733f7374617475732e737667" alt="GoDoc" data-canonical-src="https://godoc.org/github.com/jpillora/opts?status.svg" style="max-width:100%;">
 </a>
@@ -97,7 +97,7 @@ Where **`key`** must be one of:
 
 - `help` - The help text used to summaryribe the field. It will be displayed next to the flag name in the help output.
 
-	**Note:** `help` is the only setting that can also be set as a stand-alone struct tag (i.e. `help:"my text goes here"`). You must use the stand-alone tag if you wish to use a comma `,` in your help string.
+	*Note:* `help` can also be set as a stand-alone struct tag (i.e. `help:"my text goes here"`). You must use the stand-alone tag if you wish to use a comma `,` in your help string.
 
 - `mode` - The **opts** mode assigned to the field. All fields will be given a `mode`. Where the `mode` **`value`** must be one of:
 
@@ -105,7 +105,7 @@ Where **`key`** must be one of:
 
 	* `arg` - The field will be treated as an argument: a required, positional, unamed, configurable field. Set using `./program <argument-value>`. The struct field must be a [*flag-value*](#flag-values) type.
 
-	* `embedded` - A special mode which causes the fields of struct to be used in the current struct. Useful if you want to split your command-line options across multiple files (default for `struct` fields). The struct field must be a `struct`. `embedded` is the default `mode` for a `struct`.
+	* `embedded` - A special mode which causes the fields of struct to be used in the current struct. Useful if you want to split your command-line options across multiple files (default for `struct` fields). The struct field must be a `struct`. `embedded` is the default `mode` for a `struct`. *Tip* You can play group all fields together placing an `group` tag on the struct field.
 
 	* `cmd` - A inline command, shorthand for `.AddCommmand(opts.New(&field))`, which also implies the struct field must be a `struct`.
 
@@ -115,13 +115,11 @@ Where **`key`** must be one of:
 
 - `group` - The name of the flag group to store the field. Defining this field will create a new group of flags in the help text (will appear as "`<group>` options"). The default flag group is the empty string (which will appear as "Options"). Only valid when `mode` is `flag` or `embedded`.
 
-	**Note:** `embedded` `struct`s implicitly set the group name to be the name of the struct field. You can explicitly unset the group name with `group=`.
-
 - `env` - An environent variable to use as the field's **default** value. It can always be overridden by providing the appropriate flag. Only valid when `mode` is `flag`.
 
 	For example, `opts:"env=FOO"`. It can also be infered using the field name with simply `opts:"env"`. You can enable inference on all flags with the `opts.Opts` method `UseEnv()`.
 
-- `min` - A minimum length of a slice. Only valid when `mode` is `arg`, *and* the struct field is a slice.
+- `min` `max` - A minimum or maximum length of a slice. Only valid when `mode` is `arg`, *and* the struct field is a slice.
 
 #### flag-values:
 
@@ -146,7 +144,7 @@ In addition, `flag`s and `arg`s can also be a slice of any _flag-value_ type. Sl
 
 ### Help text
 
-By default, **opts** attempts to output well-formatted help text when the user provides the `--help` (`-h`) flag. The [examples/](./example) directory shows various combinations of this default help text, resulting from using various features above.
+By default, **opts** attempts to output well-formatted help text when the user provides the `--help` (`-h`) flag. The [examples](https://github.com/jpillora/opts-examples) repositories shows various combinations of this default help text, resulting from using various features above.
 
 Modifications be made by customising the underlying [Go templates](https://golang.org/pkg/text/template/) found here [DefaultTemplates](https://godoc.org/github.com/jpillora/opts#pkg-variables).
 

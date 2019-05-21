@@ -281,6 +281,9 @@ func newKV(s string) *kv {
 	}
 	for _, r := range s {
 		//key done
+		if keying && sb.Len() == 0 && r == ' ' {
+			continue //drop leading spaces
+		}
 		if keying && r == '=' {
 			key = sb.String()
 			sb.Reset()
