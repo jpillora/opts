@@ -15,43 +15,31 @@ func (n *node) errorf(format string, args ...interface{}) error {
 	return err
 }
 
-//Name sets the name of the program
 func (n *node) Name(name string) Opts {
 	n.name = name
 	return n
 }
 
-//Version sets the version of the program
-//and renders the 'version' template in the help text
 func (n *node) Version(version string) Opts {
 	n.version = version
 	return n
 }
 
-//Summary sets the text summary of the program,
-//which, by default, is inserted below the usage text
 func (n *node) Summary(summary string) Opts {
 	n.summary = summary
 	return n
 }
 
-//Repo sets the repository link of the program
-//and renders the 'repo' template in the help text
 func (n *node) Repo(repo string) Opts {
 	n.repo = repo
 	return n
 }
 
-//PkgRepo infers the repository link of the program
-//from the package import path of the struct (Note:
-//this will not work for 'main' packages)
 func (n *node) PkgRepo() Opts {
 	n.repoInfer = true
 	return n
 }
 
-//Author sets the author of the program
-//and renders the 'author' template in the help text
 func (n *node) Author(author string) Opts {
 	n.author = author
 	return n
@@ -77,18 +65,11 @@ func (n *node) DisablePadAll() Opts {
 	return n
 }
 
-//Set the line width (defaults to 72),
-//which defines where new-lines
-//are inserted into the help text
-//(defaults to 42)
 func (n *node) SetLineWidth(l int) Opts {
 	n.lineWidth = l
 	return n
 }
 
-//ConfigPath defines a path to a JSON file which matches
-//the structure of the provided config. Environment variables
-//override JSON Config variables.
 func (n *node) ConfigPath(path string) Opts {
 	n.internalOpts.ConfigPath = path
 	return n
@@ -99,10 +80,6 @@ func (n *node) UserConfigPath() Opts {
 	return n
 }
 
-//UseEnv enables an implicit "env" struct tag option on
-//all struct fields, the name of the field is converted
-//into an environment variable with the transform
-//`FooBar` -> `FOO_BAR`.
 func (n *node) UseEnv() Opts {
 	n.useEnv = true
 	return n

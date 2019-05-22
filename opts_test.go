@@ -2,7 +2,9 @@ package opts
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -157,6 +159,60 @@ func TestEnv(t *testing.T) {
 	check(t, c.Str, `helloworld`)
 	check(t, c.Num, 42)
 	check(t, c.Bool, true)
+}
+
+func TestLongClash(t *testing.T) {
+	type Config struct {
+		Foo string
+		Fee string `opts:"name=foo"`
+	}
+	c := &Config{}
+	//flag example parse
+	n := testNew(c)
+	if err := n.parse([]string{}); err == nil {
+		t.Fatal("expected error")
+	} else if !strings.Contains(err.Error(), "already exists") {
+		t.Fatal("expected already exists error")
+	}
+}
+
+func TestShortClash(t *testing.T) {
+	type Config struct {
+		Foo string `opts:"short=f"`
+		Fee string `opts:"short=f"`
+	}
+	c := &Config{}
+	//flag example parse
+	n := testNew(c)
+	if err := n.parse([]string{}); err == nil {
+		t.Fatal("expected error")
+	} else if !strings.Contains(err.Error(), "already exists") {
+		t.Fatal("expected already exists error")
+	}
+}
+
+func TestJSON(t *testing.T) {
+	//insert a config file
+	p := filepath.Join(os.TempDir(), "opts.json")
+	b := []byte(`{"foo":"hello", "bar":7}`)
+	if err := ioutil.WriteFile(p, b, 0755); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(p)
+	//parse flags
+	type Config struct {
+		Foo string
+		Bar int
+	}
+	c := &Config{}
+	//flag example parse
+	n := testNew(c)
+	n.ConfigPath(p)
+	if err := n.parse([]string{"/bin/prog", "--bar", "8"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Foo, `hello`)
+	check(t, c.Bar, 7) //currently uses JSON value... might change...
 }
 
 func TestArg(t *testing.T) {

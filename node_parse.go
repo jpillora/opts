@@ -57,7 +57,7 @@ func (n *node) parse(args []string) error {
 	if n.err != nil {
 		return n.err
 	}
-	//root node? take program from the arg list
+	//root node? take program from the arg list (assumes os.Args format)
 	if n.parent == nil {
 		prog := ""
 		if len(args) > 0 {
@@ -197,7 +197,7 @@ func (n *node) parse(args []string) error {
 			if n.cmdname != nil {
 				*n.cmdname = a
 			}
-			//tail recurse!
+			//tail recurse! if only...
 			return sub.parse(remaining[1:])
 		}
 	}
@@ -344,9 +344,11 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 			if n.flagNames[short] {
 				return n.errorf("short name '%s' on flag '%s' already exists", short, name)
 			}
+			n.flagNames[short] = true
 			i.shortName = short
 		}
 		//add to this command's flags
+		n.flagNames[name] = true
 		g := n.flagGroup(group)
 		g.flags = append(g.flags, i)
 	case "arg":

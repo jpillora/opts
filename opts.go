@@ -22,6 +22,7 @@ type Opts interface {
 	ConfigPath(path string) Opts
 	//UserConfigPath is the same as ConfigPath however an extra flag (--config-path)
 	//is added to this Opts instance to give the user control of the filepath.
+	//Configuration unmarshalling occurs after flag parsing.
 	UserConfigPath() Opts
 	//UseEnv enables the default environment variables on all fields. This is
 	//equivalent to adding the opts tag "env" on all flag fields.
@@ -50,8 +51,10 @@ type Opts interface {
 	//at the bottom of the help text.
 	Author(author string) Opts
 	//PkgRepo automatically sets Repo using the struct's package path.
+	//This does not work for types defined in the main package.
 	PkgRepo() Opts
 	//PkgAuthor automatically sets Author using the struct's package path.
+	//This does not work for types defined in the main package.
 	PkgAuthor() Opts
 	//DocSet replaces an existing template.
 	DocSet(id, template string) Opts
@@ -70,11 +73,11 @@ type Opts interface {
 
 	//AddCommand adds another Opts instance as a subcommand.
 	AddCommand(Opts) Opts
-	//Parse uses os.Args to parse the internal FlagSet and
-	//returns a ParsedOpts instance.
+	//Parse uses os.Args to parse the current flags and args.
 	Parse() ParsedOpts
 	//ParseArgs uses a given set of args to to parse the
-	//internal FlagSet and returns a ParsedOpts instance.
+	//current flags and args. Assumes the executed program is
+	//the first arg.
 	ParseArgs(args []string) ParsedOpts
 }
 
