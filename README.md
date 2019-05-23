@@ -51,7 +51,7 @@ $ ./my-prog -f foo.txt -l 42
 {File:foo.txt Lines:42}
 ```
 
-*Try it out https://play.golang.org/p/2CIffHjYM7g*
+*Try it out https://play.golang.org/p/D0jWFwmxRgt*
 
 ### Features (with examples)
 
@@ -61,6 +61,7 @@ $ ./my-prog -f foo.txt -l 42
 - Default values by modifying the struct prior to `Parse()` ([eg-defaults](https://github.com/jpillora/opts-examples/tree/master/eg-defaults/))
 - Default values from a JSON config file, unmarshalled via your config struct ([eg-config](https://github.com/jpillora/opts-examples/tree/master/eg-config/))
 - Default values from environment, defined by your field names ([eg-env](https://github.com/jpillora/opts-examples/tree/master/eg-env/))
+- Repeated flags using slices ([eg-repeated-flag](https://github.com/jpillora/opts-examples/tree/master/eg-repeated-flag/))
 - Group your flags in the help output ([eg-groups](https://github.com/jpillora/opts-examples/tree/master/eg-groups/))
 - Sub-commands by nesting structs ([eg-commands-inline](https://github.com/jpillora/opts-examples/tree/master/eg-commands-inline/))
 - Sub-commands by providing child `Opts` ([eg-commands-main](https://github.com/jpillora/opts-examples/tree/master/eg-commands-main/))
@@ -70,7 +71,7 @@ $ ./my-prog -f foo.txt -l 42
 - Customizable help text by modifying the default templates ([eg-help](https://github.com/jpillora/opts-examples/tree/master/eg-help/))
 - Built-in shell auto-completion ([eg-complete](https://github.com/jpillora/opts-examples/tree/master/eg-complete))
 
-Find these examples and more in the [`example/`](https://github.com/jpillora/opts-examples) directory.
+Find these examples and more in the [`opts-examples`](https://github.com/jpillora/opts-examples) repository.
 
 ### Package API
 
@@ -147,6 +148,10 @@ In addition, `flag`s and `arg`s can also be a slice of any _flag-value_ type. Sl
 By default, **opts** attempts to output well-formatted help text when the user provides the `--help` (`-h`) flag. The [examples](https://github.com/jpillora/opts-examples) repositories shows various combinations of this default help text, resulting from using various features above.
 
 Modifications be made by customising the underlying [Go templates](https://golang.org/pkg/text/template/) found here [DefaultTemplates](https://godoc.org/github.com/jpillora/opts#pkg-variables).
+
+### Talk
+
+I gave a talk on **opts** at the Go Meetup Sydney (golang-syd) on the 23rd of May, 2019. You can find the slides here https://github.com/jpillora/opts-talk.
 
 ### Other projects
 
