@@ -136,9 +136,9 @@ In general an opts _flag-value_ type aims to be any type that can be get and set
 - [`flag.Value`](https://golang.org/pkg/flag/#Value)
 	- *Is an `opts.Setter`*
 - `time.Duration`
-- `encoding.TextMarshaler`
+- `encoding.TextUnmarshaler`
 	- *Includes `time.Time` and `net.IP`*
-- `encoding.BinaryMarshaler`
+- `encoding.BinaryUnmarshaler`
 	- *Includes `url.URL`*
 
 In addition, `flag`s and `arg`s can also be a slice of any _flag-value_ type. Slices allow multiple flags/args. For example, a struct field flag `Foo []int` could be set with `--foo 1 --foo 2`, and would result in `[]int{1,2}`.
