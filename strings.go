@@ -25,7 +25,7 @@ func camel2const(s string) string {
 	}
 	//write remaining string
 	b.WriteString(strings.ToTitle(s[start : end+1]))
-	return b.String()
+	return strings.ReplaceAll(b.String(), "-", "_")
 }
 
 func nletters(r rune, n int) string {

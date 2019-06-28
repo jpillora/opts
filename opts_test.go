@@ -139,11 +139,13 @@ func TestEnv(t *testing.T) {
 	os.Setenv("STR", "helloworld")
 	os.Setenv("NUM", "42")
 	os.Setenv("BOOL", "true")
+	os.Setenv("ANOTHER_NUM", "21")
 	//config
 	type Config struct {
-		Str  string
-		Num  int
-		Bool bool
+		Str        string
+		Num        int
+		Bool       bool
+		AnotherNum int64
 	}
 	c := &Config{}
 	//flag example parse
@@ -159,6 +161,7 @@ func TestEnv(t *testing.T) {
 	check(t, c.Str, `helloworld`)
 	check(t, c.Num, 42)
 	check(t, c.Bool, true)
+	check(t, c.AnotherNum, int64(21))
 }
 
 func TestLongClash(t *testing.T) {
