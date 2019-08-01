@@ -8,9 +8,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 //Parse with os.Args
@@ -144,12 +147,27 @@ func (n *node) parse(args []string) error {
 	}
 	//second round, unmarshal directly into the struct, overwrites envs and flags
 	if c := n.internalOpts.ConfigPath; c != "" {
-		b, err := ioutil.ReadFile(c)
-		if err == nil {
-			v := n.val.Addr().Interface() //*struct
-			err = json.Unmarshal(b, v)
-			if err != nil {
-				return fmt.Errorf("Invalid config file: %s", err)
+		if abs, err := filepath.Abs(os.ExpandEnv(c)); err != nil {
+			// problem with file
+		} else {
+			if b, err := ioutil.ReadFile(abs); err != nil {
+				// problem with file
+			} else {
+				v := n.val.Addr().Interface() //*struct
+				switch {
+				case strings.HasSuffix(c, ".yml") || strings.HasSuffix(c, ".yaml"):
+					err = yaml.Unmarshal(b, v)
+					if err != nil {
+						return fmt.Errorf("Invalid config file: %s err: %s", c, err)
+					}
+				case strings.HasSuffix(c, ".json"):
+					err = json.Unmarshal(b, v)
+					if err != nil {
+						return fmt.Errorf("Invalid config file: %s err: %s", c, err)
+					}
+				default:
+					return fmt.Errorf("Invalid config file, only .yaml, .yml and .json accepted : %s", c)
+				}
 			}
 		}
 	}
