@@ -34,13 +34,19 @@ type node struct {
 	padWidth                       int
 	//pretend these are in the user struct :)
 	internalOpts struct {
-		Help       bool
-		Version    bool
-		Install    bool
-		Uninstall  bool
-		ConfigPath string
+		Help         bool
+		Version      bool
+		Install      bool
+		Uninstall    bool
+		ConfigPath   string
+		FieldConfigs []fieldConfig
 	}
 	complete bool
+}
+
+type fieldConfig struct {
+	path string
+	obj  interface{}
 }
 
 func newNode(val reflect.Value) *node {
