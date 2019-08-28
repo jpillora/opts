@@ -84,11 +84,15 @@ func newItem(val reflect.Value) (*item, error) {
 	}
 	//type checks
 	t := i.elemType()
-	// if t.Kind() == reflect.Ptr {
-	// 	return nil, fmt.Errorf("slice elem (%s) cannot be a pointer", t.Kind())
-	// } else if i.slice && t.Kind() == reflect.Bool {
-	// 	return nil, fmt.Errorf("slice of bools not supported")
-	// }
+	// vv issues for Proto generated struct
+	if t.Kind() == reflect.Ptr {
+		// supported = true
+		return nil, fmt.Errorf("slice elem (%s) cannot be a pointer", t.Kind())
+	} else if i.slice && t.Kind() == reflect.Bool {
+		// supported = true
+		return nil, fmt.Errorf("slice of bools not supported")
+	}
+	// ^^ issues for Proto generated struct
 	switch t.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
 		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
@@ -103,9 +107,9 @@ func newItem(val reflect.Value) (*item, error) {
 		i.noarg = true
 	}
 	_ = supported
-	// if !supported {
-	// 	return nil, fmt.Errorf("field type not supported: %s", t.Kind())
-	// }
+	if !supported {
+		return nil, fmt.Errorf("field type not supported: %s", t.Kind())
+	}
 	return i, nil
 }
 
