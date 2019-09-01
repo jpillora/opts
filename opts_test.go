@@ -28,6 +28,23 @@ func TestSimple(t *testing.T) {
 	check(t, c.Bar, "world")
 }
 
+func TestSimple2(t *testing.T) {
+	//config
+	type Config struct {
+		Foo string
+		Bar string
+	}
+	c := &Config{}
+	//flag example parse
+	err := testNew(c).parse([]string{"/bin/prog", "--foo", "hello", "--bar", "world with spaces"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	//check config is filled
+	check(t, c.Foo, "hello")
+	check(t, c.Bar, "world with spaces")
+}
+
 func TestList(t *testing.T) {
 	//config
 	type Config struct {
