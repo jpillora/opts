@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestSimple(t *testing.T) {
+func TestStrings(t *testing.T) {
 	//config
 	type Config struct {
 		Foo string
@@ -28,7 +28,7 @@ func TestSimple(t *testing.T) {
 	check(t, c.Bar, "world")
 }
 
-func TestSimple2(t *testing.T) {
+func TestStrings2(t *testing.T) {
 	//config
 	type Config struct {
 		Foo string
@@ -43,6 +43,24 @@ func TestSimple2(t *testing.T) {
 	//check config is filled
 	check(t, c.Foo, "hello")
 	check(t, c.Bar, "world with spaces")
+}
+
+func TestStrings3(t *testing.T) {
+	type MyString string
+	//config
+	type Config struct {
+		Foo string
+		Bar MyString
+	}
+	c := &Config{}
+	//flag example parse
+	err := testNew(c).parse([]string{"/bin/prog", "--foo", "hello", "--bar", "world with spaces"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	//check config is filled
+	check(t, c.Foo, "hello")
+	check(t, c.Bar, MyString("world with spaces"))
 }
 
 func TestList(t *testing.T) {
@@ -421,7 +439,7 @@ func check(t *testing.T, a, b interface{}) {
 			stra = "'" + stra + "'"
 			strb = "'" + strb + "'"
 		}
-		t.Fatalf("got %s (%s), expected %s (%s)%s", stra, typea.Kind(), strb, typeb.Kind(), extra)
+		t.Fatalf("got %s (%s), expected %s (%s)%s", stra, typea.Type(), strb, typeb.Type(), extra)
 	}
 }
 

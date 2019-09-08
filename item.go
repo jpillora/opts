@@ -155,8 +155,19 @@ func (i *item) Set(s string) error {
 			return err
 		}
 	} else if elem.Kind() == reflect.Ptr && elem.Elem().Kind() == reflect.String {
-		vs := v.(*string)
-		*vs = s
+		src := reflect.ValueOf(s)
+		dst := elem.Elem()
+		//convert custom string types
+		st := src.Type()
+		dt := dst.Type()
+		if !st.AssignableTo(dt) {
+			//should always be convertable since kind==string
+			if !st.ConvertibleTo(dt) {
+				return fmt.Errorf("cannot convert %s to %s", st, dt)
+			}
+			src = src.Convert(dt)
+		}
+		dst.Set(src)
 	} else if elem.Kind() == reflect.Ptr {
 		//magic set with scanf
 		n, err := fmt.Sscanf(s, "%v", v)
