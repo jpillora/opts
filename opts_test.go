@@ -340,7 +340,7 @@ func TestJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	check(t, c.Foo, `hello`)
-	check(t, c.Bar, 7) //currently uses JSON value... might change...
+	check(t, c.Bar, 8) // JSON value overridden by command-line option parameter
 }
 
 func TestArg(t *testing.T) {
