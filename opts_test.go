@@ -336,11 +336,11 @@ func TestJSON(t *testing.T) {
 	//flag example parse
 	n := testNew(c)
 	n.ConfigPath(p)
-	if err := n.parse([]string{"/bin/prog", "--bar", "8"}); err != nil {
+	if err := n.parse([]string{"/bin/prog", "--bar", "181"}); err != nil {
 		t.Fatal(err)
 	}
 	check(t, c.Foo, `hello`)
-	check(t, c.Bar, 8) // JSON value overridden by command-line option parameter
+	check(t, c.Bar, 181) // JSON value overridden by command-line option parameter
 }
 
 func TestArg(t *testing.T) {
