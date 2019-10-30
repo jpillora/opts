@@ -322,7 +322,7 @@ func TestShortSkipInternal(t *testing.T) {
 func TestJSON(t *testing.T) {
 	//insert a config file
 	p := filepath.Join(os.TempDir(), "opts.json")
-	b := []byte(`{"foo":"hello", "bar":7}`)
+	b := []byte(`{"foo":"hello", "bar":7, "faz":2, "boz": "test"}`)
 	if err := ioutil.WriteFile(p, b, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -331,16 +331,20 @@ func TestJSON(t *testing.T) {
 	type Config struct {
 		Foo string
 		Bar int
+		Faz int
+		Boz string
 	}
 	c := &Config{}
 	//flag example parse
 	n := testNew(c)
 	n.ConfigPath(p)
-	if err := n.parse([]string{"/bin/prog", "--bar", "181"}); err != nil {
+	if err := n.parse([]string{"/bin/prog", "--bar", "181", "--faz", "0", "--boz", ""}); err != nil {
 		t.Fatal(err)
 	}
 	check(t, c.Foo, `hello`)
 	check(t, c.Bar, 181) // JSON value overridden by command-line option parameter
+	check(t, c.Faz, 0)
+	check(t, c.Boz, ``)
 }
 
 func TestArg(t *testing.T) {
