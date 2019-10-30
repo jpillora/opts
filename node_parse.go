@@ -170,6 +170,12 @@ func (n *node) parse(args []string) error {
 			}
 		}
 	}
+	// Restore overrident values
+
+	for _, item := range n.flags() {
+		item.RestoreSet()
+	}
+
 	//get remaining args after extracting flags
 	remaining := flagset.Args()
 	i := 0

@@ -22,6 +22,7 @@ const defaultGroup = ""
 //generically using reflect.
 type item struct {
 	val       reflect.Value
+	valcpy    string
 	mode      string
 	name      string
 	shortName string
@@ -136,6 +137,7 @@ func (i *item) Set(s string) error {
 	if i.sets != 0 && !i.slice {
 		return errors.New("already set")
 	}
+	i.valcpy = s
 	//set has two modes, slice and inplace.
 	// when slice, create a new zero value, scan into it, append to slice
 	// when inplace, take pointer, scan into it
@@ -192,6 +194,16 @@ func (i *item) Set(s string) error {
 	i.sets++
 	//done
 	return nil
+}
+
+func (i *item) RestoreSet() {
+	if !i.set() {
+		return
+	}
+	icpy := i.sets
+	i.sets = 0
+	i.Set(i.valcpy)
+	i.sets = icpy
 }
 
 //IsBoolFlag implements the hidden interface
