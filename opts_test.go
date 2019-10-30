@@ -338,9 +338,12 @@ func TestJSON(t *testing.T) {
 	//flag example parse
 	n := testNew(c)
 	n.ConfigPath(p)
-	if err := n.parse([]string{"/bin/prog", "--bar", "181", "--faz", "0", "--boz", ""}); err != nil {
+	os.Setenv("FAZ", "0")
+	n.UseEnv()
+	if err := n.parse([]string{"/bin/prog", "--bar", "181", "--boz", ""}); err != nil {
 		t.Fatal(err)
 	}
+	os.Unsetenv("FAZ")
 	check(t, c.Foo, `hello`)
 	check(t, c.Bar, 181) // JSON value overridden by command-line option parameter
 	check(t, c.Faz, 0)
