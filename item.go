@@ -23,6 +23,7 @@ const defaultGroup = ""
 type item struct {
 	val       reflect.Value
 	valcpy    string
+	valcpyl   []string
 	mode      string
 	name      string
 	shortName string
@@ -42,6 +43,7 @@ func newItem(val reflect.Value) (*item, error) {
 		return nil, fmt.Errorf("invalid value")
 	}
 	i := &item{}
+	i.valcpyl = []string{}
 	supported := false
 	//take interface value V
 	v := val.Interface()
@@ -137,6 +139,9 @@ func (i *item) Set(s string) error {
 	if i.sets != 0 && !i.slice {
 		return errors.New("already set")
 	}
+	if i.slice {
+		i.valcpyl = append(i.valcpyl, s)
+	}
 	i.valcpy = s
 	//set has two modes, slice and inplace.
 	// when slice, create a new zero value, scan into it, append to slice
@@ -196,14 +201,29 @@ func (i *item) Set(s string) error {
 	return nil
 }
 
-func (i *item) RestoreSet() {
+func (i *item) RestoreSet() error {
 	if !i.set() {
-		return
+		return nil
 	}
 	icpy := i.sets
 	i.sets = 0
-	i.Set(i.valcpy)
+	if !i.slice {
+		if err := i.Set(i.valcpy); err != nil {
+			return fmt.Errorf("argument '%s' is not restored with '%s': %s\n", i.name, i.valcpy, err)
+		}
+	} else {
+		// https://stackoverflow.com/questions/38818915/creating-slice-from-reflected-type
+		v := reflect.MakeSlice(reflect.SliceOf(i.elemType()), 0, i.val.Cap())
+		// https://stackoverflow.com/questions/44882827/how-to-remove-all-the-element-in-the-slice-with-reflect-package-in-golang
+		i.val.Set(v)
+		for j, s := range i.valcpyl {
+			if err := i.Set(s); err != nil {
+				return fmt.Errorf("argument number %d '%s' is not restored with slice value '%s': %s", j, i.name, i.valcpy, err)
+			}
+		}
+	}
 	i.sets = icpy
+	return nil
 }
 
 //IsBoolFlag implements the hidden interface
