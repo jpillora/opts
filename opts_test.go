@@ -398,6 +398,48 @@ func TestDocArgList(t *testing.T) {
 `)
 }
 
+func TestDocBrackets(t *testing.T) {
+	//config
+	type Config struct {
+		Foo string `opts:"help=a message (submessage)"`
+	}
+	c := &Config{
+		Foo: "bar",
+	}
+	//flag example parse
+	o, _ := New(c).Name("docbrackets").ParseArgsError([]string{"/bin/prog", "--help"})
+	check(t, o.Help(), `
+  Usage: docbrackets [options]
+
+  Options:
+  --foo, -f   a message (submessage, default bar)
+  --help, -h  display help
+
+`)
+}
+
+func TestDocUseEnv(t *testing.T) {
+	//config
+	type Config struct {
+		Foo string `opts:"help=a message"`
+	}
+	c := &Config{}
+	//flag example parse
+	o, _ := New(c).UseEnv().Version("1.2.3").Name("docuseenv").ParseArgsError([]string{"/bin/prog", "--help"})
+	check(t, o.Help(), `
+  Usage: docuseenv [options]
+
+  Options:
+  --foo, -f      a message (env FOO)
+  --version, -v  display version
+  --help, -h     display help
+
+  Version:
+    1.2.3
+
+`)
+}
+
 func TestSubCommandMap(t *testing.T) {
 	//config
 	type Config struct {

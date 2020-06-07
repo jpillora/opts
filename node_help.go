@@ -84,7 +84,10 @@ var DefaultTemplates = map[string]string{
 	"errmsg":  "{{if .ErrMsg}}\nError:\n{{.Pad}}{{.ErrMsg}}\n{{end}}",
 }
 
-var trailingSpaces = regexp.MustCompile(`(?m)\ +$`)
+var (
+	trailingSpaces   = regexp.MustCompile(`(?m)\ +$`)
+	trailingBrackets = regexp.MustCompile(`^(.+)\(([^\)]+)\)$`)
+)
 
 //Help renders the help text as a string
 func (o *node) Help() string {
@@ -248,10 +251,15 @@ func convert(o *node) (*data, error) {
 			}
 			help := item.help
 			extra := strings.Join(outs, ", ")
-			if help == "" {
-				help = extra
-			} else if extra != "" {
-				help += " (" + extra + ")"
+			if extra != "" {
+				if help == "" {
+					help = extra
+				} else if trailingBrackets.MatchString(help) {
+					m := trailingBrackets.FindStringSubmatch(help)
+					help = m[1] + "(" + m[2] + ", " + extra + ")"
+				} else {
+					help += " (" + extra + ")"
+				}
 			}
 			help = constrain(help, helpWidth)
 			//align each row after the flag

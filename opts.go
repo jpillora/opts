@@ -73,12 +73,15 @@ type Opts interface {
 
 	//AddCommand adds another Opts instance as a subcommand.
 	AddCommand(Opts) Opts
-	//Parse uses os.Args to parse the current flags and args.
+	//Parse calls ParseArgs(os.Args).
 	Parse() ParsedOpts
-	//ParseArgs uses a given set of args to to parse the
-	//current flags and args. Assumes the executed program is
-	//the first arg.
+	//ParseArgs parses the given strings and stores the results
+	//in your provided struct. Assumes the executed program is
+	//the first arg. Parse failures will call os.Exit.
 	ParseArgs(args []string) ParsedOpts
+	//ParseArgsError is the same as ParseArgs except you can
+	//handle the error.
+	ParseArgsError(args []string) (ParsedOpts, error)
 }
 
 type ParsedOpts interface {

@@ -90,10 +90,6 @@ func (n *node) run(test bool) (bool, error) {
 //Run the parsed configuration
 func (n *node) RunFatal() {
 	if err := n.Run(); err != nil {
-		if e, ok := err.(exitError); ok {
-			fmt.Fprint(os.Stderr, string(e))
-			os.Exit(0)
-		}
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}
