@@ -228,8 +228,18 @@ func (n *node) parse(args []string) error {
 }
 
 func (n *node) addStructFields(group string, sv reflect.Value) error {
+	if sv.Kind() == reflect.Interface {
+		sv = sv.Elem()
+	}
+	if sv.Kind() == reflect.Ptr {
+		sv = sv.Elem()
+	}
 	if sv.Kind() != reflect.Struct {
-		return n.errorf("opts: %s should be a pointer to a struct (got %s)", sv.Type().Name(), sv.Kind())
+		name := ""
+		if sv.IsValid() {
+			name = sv.Type().Name()
+		}
+		return n.errorf("opts: %s should be a pointer to a struct (got %s)", name, sv.Kind())
 	}
 	for i := 0; i < sv.NumField(); i++ {
 		sf := sv.Type().Field(i)

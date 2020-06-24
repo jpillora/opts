@@ -3,6 +3,7 @@ package opts
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -450,6 +451,28 @@ func TestSubCommandMap(t *testing.T) {
 		Foo: "foo",
 	}
 	New(&c)
+}
+
+func TestCustomFlags(t *testing.T) {
+	//config
+	type Config struct {
+		Foo *url.URL `opts:"help=my url"`
+		Bar *url.URL `opts:"help=another url"`
+	}
+	c := Config{
+		Foo: &url.URL{},
+	}
+	//flag example parse
+	n := testNew(&c)
+	if err := n.parse([]string{"/bin/prog", "-f", "http://foo.com"}); err != nil {
+		t.Fatal(err)
+	}
+	if c.Foo == nil || c.Foo.String() != "http://foo.com" {
+		t.Fatalf("incorrect foo: %v", c.Foo)
+	}
+	if c.Bar != nil {
+		t.Fatal("bar should be nil")
+	}
 }
 
 var spaces = regexp.MustCompile(`\ `)
