@@ -81,6 +81,23 @@ func TestList(t *testing.T) {
 	check(t, c.Bar, []string{"ping", "pong"})
 }
 
+func TestBool(t *testing.T) {
+	//config
+	type Config struct {
+		Foo string
+		Bar bool
+	}
+	c := &Config{}
+	//flag example parse
+	err := testNew(c).parse([]string{"/bin/prog", "--foo", "hello", "--bar"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	//check config is filled
+	check(t, c.Foo, "hello")
+	check(t, c.Bar, true)
+}
+
 func TestSubCommand(t *testing.T) {
 	//subconfig
 	type FooConfig struct {
