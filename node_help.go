@@ -203,7 +203,7 @@ func convert(o *node) (*data, error) {
 		for i, item := range g.flags {
 			to := &datum{Pad: pad}
 			to.Name = "--" + item.name
-			if item.shortName != "" {
+			if item.shortName != "" && item.shortName != "-" {
 				to.Name += ", -" + item.shortName
 			}
 			l := len(to.Name)

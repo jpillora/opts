@@ -112,7 +112,7 @@ Where **`key`** must be one of:
 
 	* `cmdname` - A special mode which will assume the name of the selected command. The struct field must be a `string`.
 
-- `short` - One letter to be used a flag's "short" name. By default, the first letter of `name` will be used. It will remain unset if there is a duplicate short name. Only valid when `mode` is `flag`.
+- `short` - One letter to be used a flag's "short" name. By default, the first letter of `name` will be used. It will remain unset if there is a duplicate short name or if `opts:"short=-"`. Only valid when `mode` is `flag`.
 
 - `group` - The name of the flag group to store the field. Defining this field will create a new group of flags in the help text (will appear as "`<group>` options"). The default flag group is the empty string (which will appear as "Options"). Only valid when `mode` is `flag` or `embedded`.
 
