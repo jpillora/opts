@@ -247,6 +247,78 @@ func TestShortClash(t *testing.T) {
 	}
 }
 
+func TestShortSkip(t *testing.T) {
+	type Config struct {
+		Foo    string `opts:"short=f"`
+		Bar    string `opts:"short=-"`
+		Lalala string
+	}
+	c := &Config{}
+	o, _ := New(c).Version("1.2.3").Name("skipshort").ParseArgsError([]string{"/bin/prog", "--help"})
+	check(t, o.Help(), `
+  Usage: skipshort [options]
+
+  Options:
+  --foo, -f
+  --bar
+  --lalala, -l
+  --version, -v  display version
+  --help, -h     display help
+
+  Version:
+    1.2.3
+
+`)
+}
+
+func TestShortSkipConflictHelp(t *testing.T) {
+	type Config struct {
+		Foo    string `opts:"short=f"`
+		Bar    string `opts:"short=-"`
+		Hahaha string
+	}
+	c := &Config{}
+	o, _ := New(c).Version("1.2.3").Name("skipshort").ParseArgsError([]string{"/bin/prog", "--help"})
+	check(t, o.Help(), `
+  Usage: skipshort [options]
+
+  Options:
+  --foo, -f
+  --bar
+  --hahaha, -h
+  --version, -v  display version
+  --help         display help
+
+  Version:
+    1.2.3
+
+`)
+}
+
+func TestShortSkipInternal(t *testing.T) {
+	type Config struct {
+		Foo    string `opts:"short=f"`
+		Bar    string `opts:"short=-"`
+		Hahaha string `opts:"short=-"`
+	}
+	c := &Config{}
+	o, _ := New(c).Version("1.2.3").Name("skipshort").ParseArgsError([]string{"/bin/prog", "--help"})
+	check(t, o.Help(), `
+  Usage: skipshort [options]
+
+  Options:
+  --foo, -f
+  --bar
+  --hahaha
+  --version, -v  display version
+  --help, -h     display help
+
+  Version:
+    1.2.3
+
+`)
+}
+
 func TestJSON(t *testing.T) {
 	//insert a config file
 	p := filepath.Join(os.TempDir(), "opts.json")
