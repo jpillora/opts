@@ -88,10 +88,10 @@ type ParsedOpts interface {
 	//Help returns the final help text
 	Help() string
 	//IsRunnable returns whether the matched command has a Run method
-	IsRunnable() bool
+	IsRunnable() (ParsedOpts, bool)
 	//Run assumes the matched command is runnable and executes its Run method.
 	//The target Run method must be 'Run() error' or 'Run()'
-	Run() error
+	Run() (ParsedOpts, error)
 	//RunFatal assumes the matched command is runnable and executes its Run method.
 	//However, any error will be printed, followed by an exit(1).
 	RunFatal()

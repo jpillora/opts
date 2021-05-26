@@ -45,15 +45,15 @@ func (n *node) matchedCommand() *node {
 }
 
 //IsRunnable
-func (n *node) IsRunnable() bool {
-	ok, _ := n.run(true)
-	return ok
+func (n *node) IsRunnable() (ParsedOpts, bool) {
+	m, ok, _ := n.run(true)
+	return m, ok
 }
 
 //Run the parsed configuration
-func (n *node) Run() error {
-	_, err := n.run(false)
-	return err
+func (n *node) Run() (ParsedOpts, error) {
+	m, _, err := n.run(false)
+	return m, err
 }
 
 type runner1 interface {
@@ -64,32 +64,32 @@ type runner2 interface {
 	Run()
 }
 
-func (n *node) run(test bool) (bool, error) {
+func (n *node) run(test bool) (ParsedOpts, bool, error) {
 	m := n.matchedCommand()
 	v := m.val.Addr().Interface()
 	r1, ok1 := v.(runner1)
 	r2, ok2 := v.(runner2)
 	if test {
-		return ok1 || ok2, nil
+		return m, ok1 || ok2, nil
 	}
 	if ok1 {
-		return true, r1.Run()
+		return m, true, r1.Run()
 	}
 	if ok2 {
 		r2.Run()
-		return true, nil
+		return m, true, nil
 	}
 	if len(m.cmds) > 0 {
 		//if matched command has no run,
 		//but has commands, show help instead
-		return false, exitError(m.Help())
+		return m, false, exitError(m.Help())
 	}
-	return false, fmt.Errorf("command '%s' is not runnable", m.name)
+	return m, false, fmt.Errorf("command '%s' is not runnable", m.name)
 }
 
 //Run the parsed configuration
 func (n *node) RunFatal() {
-	if err := n.Run(); err != nil {
+	if _, err := n.Run(); err != nil {
 		fmt.Fprint(os.Stderr, err.Error())
 		os.Exit(1)
 	}
