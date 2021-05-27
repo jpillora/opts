@@ -113,7 +113,7 @@ func (n *node) parse(args []string) error {
 	n.setPkgDefaults()
 	//add shortnames where possible
 	for _, item := range n.flags() {
-		if item.shortName == "" && len(item.name) >= 2 {
+		if !n.flagSkipShort[item.name] && item.shortName == "" && len(item.name) >= 2 {
 			if s := item.name[0:1]; !n.flagNames[s] {
 				item.shortName = s
 				n.flagNames[s] = true
@@ -125,7 +125,7 @@ func (n *node) parse(args []string) error {
 	flagset.SetOutput(ioutil.Discard)
 	for _, item := range n.flags() {
 		flagset.Var(item, item.name, "")
-		if sn := item.shortName; sn != "" {
+		if sn := item.shortName; sn != "" && sn != "-" {
 			flagset.Var(item, sn, "")
 		}
 	}
@@ -362,19 +362,21 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 			}
 		}
 		//cannot have duplicates
-		if n.flagNames[name] {
+		if _, ok := n.flagNames[name]; ok {
 			return n.errorf("flag '%s' already exists", name)
 		}
 		//flags can also set short names
 		if short, ok := kv.take("short"); ok {
-			if len(short) != 1 {
+			if short == "-" {
+				n.flagSkipShort[name] = true
+			} else if len(short) != 1 {
 				return n.errorf("short name '%s' on flag '%s' must be a single character", short, name)
-			}
-			if n.flagNames[short] {
+			} else if _, ok2 := n.flagNames[short]; ok2 {
 				return n.errorf("short name '%s' on flag '%s' already exists", short, name)
+			} else {
+				n.flagNames[short] = true
+				i.shortName = short
 			}
-			n.flagNames[short] = true
-			i.shortName = short
 		}
 		//add to this command's flags
 		n.flagNames[name] = true
@@ -511,7 +513,7 @@ func (n *node) addFlagsets() error {
 			i.defstr = f.DefValue
 			i.help = f.Usage
 			//cannot have duplicates
-			if n.flagNames[i.name] {
+			if _, ok := n.flagNames[i.name]; ok {
 				err = n.errorf("imported flag '%s' already exists", i.name)
 				return
 			}
