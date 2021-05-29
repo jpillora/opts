@@ -20,6 +20,7 @@ type Opts interface {
 	//global paths like /etc/my-prog.json. For a user-specified path. Use the
 	//UserConfigPath method.
 	ConfigPath(path string) Opts
+	FieldConfigPath(path string, obj interface{}) Opts
 	//UserConfigPath is the same as ConfigPath however an extra flag (--config-path)
 	//is added to this Opts instance to give the user control of the filepath.
 	//Configuration unmarshalling occurs after flag parsing.

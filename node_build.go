@@ -70,6 +70,11 @@ func (n *node) SetLineWidth(l int) Opts {
 	return n
 }
 
+func (n *node) FieldConfigPath(path string, obj interface{}) Opts {
+	n.internalOpts.FieldConfigs = append(n.internalOpts.FieldConfigs, fieldConfig{path, obj})
+	return n
+}
+
 func (n *node) ConfigPath(path string) Opts {
 	n.internalOpts.ConfigPath = path
 	return n
