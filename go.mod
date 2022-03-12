@@ -1,4 +1,4 @@
-module github.com/jpillora/opts
+module github.com/VonC/opts
 
 go 1.12
 
