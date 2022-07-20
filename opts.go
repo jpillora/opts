@@ -95,6 +95,8 @@ type ParsedOpts interface {
 	//RunFatal assumes the matched command is runnable and executes its Run method.
 	//However, any error will be printed, followed by an exit(1).
 	RunFatal()
+	//Selected returns the subcommand picked when parsing the command line
+	Selected() ParsedOpts
 }
 
 //New creates a new Opts instance using the given configuration
