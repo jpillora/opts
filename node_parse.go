@@ -144,7 +144,7 @@ func (n *node) parse(args []string) error {
 	} else if n.internalOpts.Uninstall {
 		return n.manageCompletion(true)
 	}
-	//first round of defaults, applying env variables where necesseary
+	//first round of defaults, applying env variables where necessary
 	for _, item := range n.flags() {
 		k := item.envName
 		if item.set() || k == "" {

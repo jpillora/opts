@@ -39,14 +39,18 @@ func (n *node) manageCompletion(uninstall bool) error {
 		fn = install.Uninstall
 	}
 	if err := fn(n.name); err != nil {
-		w := err.(interface{ WrappedErrors() []error })
-		for _, w := range w.WrappedErrors() {
-			msg += strings.TrimPrefix(fmt.Sprintf("%s\n", w), "does ")
+		w, ok := err.(interface{ WrappedErrors() []error })
+		if ok {
+			for _, w := range w.WrappedErrors() {
+				msg += strings.TrimPrefix(fmt.Sprintf("%s\n", w), "does ")
+			}
+		} else {
+			msg = fmt.Sprintf("%v\n", err)
 		}
 	} else if uninstall {
-		msg = "Uninstalled"
+		msg = "Uninstalled\n"
 	} else {
-		msg = "Installed"
+		msg = "Installed\n"
 	}
 	return exitError(msg) //always exit
 }
