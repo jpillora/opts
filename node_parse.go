@@ -8,9 +8,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/golang/protobuf/proto"
+	"gopkg.in/yaml.v2"
 )
 
 //Parse with os.Args
@@ -160,14 +164,15 @@ func (n *node) parse(args []string) error {
 		}
 	}
 	//second round, unmarshal directly into the struct, overwrites envs and flags
+	for _, fg := range n.internalOpts.FieldConfigs {
+		if err := stuffConfig(fg.path, fg.obj); err != nil {
+			return err
+		}
+	}
 	if c := n.internalOpts.ConfigPath; c != "" {
-		b, err := ioutil.ReadFile(c)
-		if err == nil {
-			v := n.val.Addr().Interface() //*struct
-			err = json.Unmarshal(b, v)
-			if err != nil {
-				return fmt.Errorf("Invalid config file: %s", err)
-			}
+		v := n.val.Addr().Interface() //*struct
+		if err := stuffConfig(c, v); err != nil {
+			return err
 		}
 	}
 	//get remaining args after extracting flags
@@ -223,6 +228,40 @@ func (n *node) parse(args []string) error {
 	//where --pong 7 is ignored
 	if len(remaining) != 0 {
 		return fmt.Errorf("Unexpected arguments: %s", strings.Join(remaining, " "))
+	}
+	return nil
+}
+
+func stuffConfig(path string, obj interface{}) error {
+	//second round, unmarshal directly into the struct, overwrites envs and flags
+	if abs, err := filepath.Abs(os.ExpandEnv(path)); err != nil {
+		// problem with file
+		return err
+	} else {
+		if b, err := ioutil.ReadFile(abs); err != nil {
+			// problem with file
+			return err
+		} else {
+			switch {
+			case strings.HasSuffix(path, ".yml") || strings.HasSuffix(path, ".yaml"):
+				err = yaml.Unmarshal(b, obj)
+				if err != nil {
+					return fmt.Errorf("Invalid config file: %s err: %s", path, err)
+				}
+			case strings.HasSuffix(path, ".json"):
+				err = json.Unmarshal(b, obj)
+				if err != nil {
+					return fmt.Errorf("Invalid config file: %s err: %s", path, err)
+				}
+			case strings.HasSuffix(path, ".ptron"):
+				err := proto.UnmarshalText(string(b), obj.(proto.Message))
+				if err != nil {
+					return fmt.Errorf("Invalid config file: %s err: %s", path, err)
+				}
+			default:
+				return fmt.Errorf("Invalid config file, only .yaml, .yml and .json accepted : %s", path)
+			}
+		}
 	}
 	return nil
 }
