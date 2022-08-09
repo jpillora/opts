@@ -16,6 +16,13 @@ type subCmdHolder struct{}
 
 func (subCmdHolder) isSubCmdHolder() {}
 
+//NewPlaceholder creates a placeholder subcommand to be used in AddCommand
+func NewPlaceholder(name string) Opts {
+	sub := newNode(reflect.ValueOf(&subCmdHolder{}))
+	sub.name = name
+	return sub
+}
+
 //NewStruct adds multiple Opts instances under the sub-command name.
 //The name can be a slash separated path.
 func NewStruct(path string, subs ...Opts) Opts {
