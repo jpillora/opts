@@ -44,6 +44,14 @@ func (n *node) matchedCommand() *node {
 	return n
 }
 
+func (n *node) Children() map[string]Opts {
+	result := make(map[string]Opts)
+	for name, cmd := range n.cmds {
+		result[name] = cmd
+	}
+	return result
+}
+
 //IsRunnable
 func (n *node) IsRunnable() bool {
 	_, ok, _ := n.run(true)
