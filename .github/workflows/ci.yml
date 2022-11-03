@@ -9,17 +9,17 @@ jobs:
     name: Test
     strategy:
       matrix:
-        go-version: [1.12.x, 1.13.x, 1.14.x]
+        go-version: [1.17.x, 1.18.x, 1.19.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ matrix.go-version }}
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Build
-        run: go build -v .
+        run: go build -v -o /dev/null
       - name: Test
         run: go test -v ./...
