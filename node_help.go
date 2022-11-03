@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"text/template"
 )
 
-//data is only used for templating below
+// data is only used for templating below
 type data struct {
 	datum        //data is also a datum
 	FlagGroups   []*datumGroup
@@ -32,8 +34,8 @@ type datumGroup struct {
 	Flags []*datum
 }
 
-//DefaultOrder defines which templates get rendered in which order.
-//This list is referenced in the "help" template below.
+// DefaultOrder defines which templates get rendered in which order.
+// This list is referenced in the "help" template below.
 var DefaultOrder = []string{
 	"usage",
 	"summary",
@@ -52,15 +54,15 @@ func defaultOrder() []string {
 	return order
 }
 
-//DefaultTemplates define a set of individual templates
-//that get rendered in DefaultOrder. You can replace templates or insert templates before or after existing
-//templates using the DocSet, DocBefore and DocAfter methods. For example, you can insert a string after the
-//usage text with:
+// DefaultTemplates define a set of individual templates
+// that get rendered in DefaultOrder. You can replace templates or insert templates before or after existing
+// templates using the DocSet, DocBefore and DocAfter methods. For example, you can insert a string after the
+// usage text with:
 //
-//  DocAfter("usage", "this is a string, and if it is very long, it will be wrapped")
+//	DocAfter("usage", "this is a string, and if it is very long, it will be wrapped")
 //
-//The entire help text is simply the "help" template listed below, which renders a set of these templates in
-//the order defined above. All templates can be referenced using the keys in this map:
+// The entire help text is simply the "help" template listed below, which renders a set of these templates in
+// the order defined above. All templates can be referenced using the keys in this map:
 var DefaultTemplates = map[string]string{
 	"help":          `{{ $root := . }}{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
 	"usage":         `Usage: {{.Name }} [options]{{template "usageargs" .}}{{template "usagecmd" .}}` + "\n",
@@ -89,7 +91,7 @@ var (
 	trailingBrackets = regexp.MustCompile(`^(.+)\(([^\)]+)\)$`)
 )
 
-//Help renders the help text as a string
+// Help renders the help text as a string
 func (o *node) Help() string {
 	h, err := renderHelp(o)
 	if err != nil {
@@ -281,12 +283,26 @@ func convert(o *node) (*data, error) {
 	}
 	subs := make([]*datum, len(o.cmds))
 	i := 0
+	cmdNames := []string{}
 	for _, s := range o.cmds {
+		cmdNames = append(cmdNames, s.name)
+	}
+	sort.Strings(cmdNames)
+	for _, name := range cmdNames {
+		s := o.cmds[name]
 		h := s.help
 		if h == "" {
 			h = s.summary
 		}
-
+		explicitMatch := o.cmdname != nil && *o.cmdname == s.name
+		envMatch := o.cmdnameEnv != "" && os.Getenv(o.cmdnameEnv) == s.name
+		if explicitMatch || envMatch {
+			if h == "" {
+				h = "default"
+			} else {
+				h += " (default)"
+			}
+		}
 		subs[i] = &datum{
 			Name: s.name,
 			Help: h,

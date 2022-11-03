@@ -5,9 +5,9 @@ import (
 	"reflect"
 )
 
-//node is the main class, it contains
-//all parsing state for a single set of
-//arguments
+// node is the main class, it contains
+// all parsing state for a single set of
+// arguments
 type node struct {
 	err error
 	//embed item since an node can also be an item
@@ -22,9 +22,10 @@ type node struct {
 	//external flagsets
 	flagsets []*flag.FlagSet
 	//subcommands
-	cmd     *node
-	cmdname *string
-	cmds    map[string]*node
+	cmd        *node
+	cmdname    *string
+	cmdnameEnv string
+	cmds       map[string]*node
 	//help
 	order                          []string
 	templates                      map[string]string

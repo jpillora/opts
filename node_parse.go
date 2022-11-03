@@ -13,15 +13,15 @@ import (
 	"strings"
 )
 
-//Parse with os.Args
+// Parse with os.Args
 func (n *node) Parse() ParsedOpts {
 	return n.ParseArgs(os.Args)
 }
 
-//ParseArgs with the provided arguments and os.Exit on
-//any parse failure, or when handling shell completion.
-//Use ParseArgsError if you need to handle failure in
-//your application.
+// ParseArgs with the provided arguments and os.Exit on
+// any parse failure, or when handling shell completion.
+// Use ParseArgsError if you need to handle failure in
+// your application.
 func (n *node) ParseArgs(args []string) ParsedOpts {
 	o, err := n.ParseArgsError(args)
 	if err != nil {
@@ -36,14 +36,14 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 			os.Exit(1)
 		}
 		//unexpected exit (1) embed message in help to user
-		fmt.Fprintf(os.Stderr, n.Help())
+		fmt.Fprint(os.Stderr, n.Help())
 		os.Exit(1)
 	}
 	//success
 	return o
 }
 
-//ParseArgsError with the provided arguments
+// ParseArgsError with the provided arguments
 func (n *node) ParseArgsError(args []string) (ParsedOpts, error) {
 	//shell-completion?
 	if cl := os.Getenv("COMP_LINE"); n.complete && cl != "" {
@@ -67,8 +67,8 @@ func (n *node) ParseArgsError(args []string) (ParsedOpts, error) {
 	return n, nil
 }
 
-//parse validates and initialises all internal items
-//and then passes the args through, setting them items required
+// parse validates and initialises all internal items
+// and then passes the args through, setting them items required
 func (n *node) parse(args []string) error {
 	//return the stored error
 	if n.err != nil {
@@ -166,7 +166,7 @@ func (n *node) parse(args []string) error {
 			v := n.val.Addr().Interface() //*struct
 			err = json.Unmarshal(b, v)
 			if err != nil {
-				return fmt.Errorf("Invalid config file: %s", err)
+				return fmt.Errorf("invalid config file: %s", err)
 			}
 		}
 	}
@@ -204,25 +204,47 @@ func (n *node) parse(args []string) error {
 		}
 	}
 	//use command? next arg can optionally match command
-	if len(n.cmds) > 0 && len(remaining) > 0 {
-		a := remaining[0]
-		//matching command, use it
-		if sub, exists := n.cmds[a]; exists {
-			//store matched command
-			n.cmd = sub
-			//user wants command name to be set on their struct?
-			if n.cmdname != nil {
-				*n.cmdname = a
+	if len(n.cmds) > 0 {
+		// use next arg as command
+		args := remaining
+		cmd := ""
+		must := false
+		if len(args) > 0 {
+			cmd = args[0]
+			args = args[1:]
+		}
+		// fallback to pre-initialised cmdname
+		if cmd == "" {
+			if n.cmdnameEnv != "" && os.Getenv(n.cmdnameEnv) != "" {
+				cmd = os.Getenv(n.cmdnameEnv)
+			} else if n.cmdname != nil && *n.cmdname != "" {
+				cmd = *n.cmdname
 			}
-			//tail recurse! if only...
-			return sub.parse(remaining[1:])
+			must = true
+		}
+		//matching command
+		if cmd != "" {
+			sub, exists := n.cmds[cmd]
+			if must && !exists {
+				return fmt.Errorf("command '%s' does not exist", cmd)
+			}
+			if exists {
+				//store matched command
+				n.cmd = sub
+				//user wants command name to be set on their struct?
+				if n.cmdname != nil {
+					*n.cmdname = cmd
+				}
+				//tail recurse! if only...
+				return sub.parse(args)
+			}
 		}
 	}
 	//we *should* have consumed all args at this point.
 	//this prevents:  ./foo --bar 42 -z 21 ping --pong 7
 	//where --pong 7 is ignored
 	if len(remaining) != 0 {
-		return fmt.Errorf("Unexpected arguments: %s", strings.Join(remaining, " "))
+		return fmt.Errorf("unexpected arguments: %s", strings.Join(remaining, " "))
 	}
 	return nil
 }
@@ -311,7 +333,15 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 	if mode == "embedded" {
 		return n.addStructFields(group, val) //recurse!
 	}
+	//special cmdname to define a default command, or
+	//to access the matched command name
 	if mode == "cmdname" {
+		if name, ok := kv.take("env"); ok {
+			if name == "" {
+				name = camel2const(fName)
+			}
+			n.cmdnameEnv = name
+		}
 		return n.setCmdName(val)
 	}
 	//new kv help defs supercede legacy defs

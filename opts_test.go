@@ -142,16 +142,58 @@ func TestEmbed(t *testing.T) {
 		Foo
 		Bar
 	}
-	c := &Config{}
+	c := &Config{
+		Bar: Bar{
+			Zap: "default",
+		},
+	}
 	err := testNew(c).parse([]string{"/bin/prog", "--zip", "hello", "--pong", "world"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	//check config is filled
-	check(t, c.Bar.Zap, "")
+	check(t, c.Bar.Zap, "default")
 	check(t, c.Bar.Zip, "hello")
 	check(t, c.Foo.Ping, "")
 	check(t, c.Foo.Pong, "world")
+}
+
+func TestDefaultCommand(t *testing.T) {
+	os.Setenv("CMD", "bar")
+	os.Setenv("PING", "ignored")
+	os.Setenv("ZAP", "helloworld")
+	defer os.Unsetenv("CMD")
+	defer os.Unsetenv("ZAP")
+	type Foo struct {
+		Ping string `opts:"env"`
+		Pong string
+	}
+	type Bar struct {
+		Zip string
+		Zap string `opts:"env"`
+	}
+	//config
+	type Config struct {
+		Cmd string `opts:"mode=cmdname, env"`
+		Foo `opts:"mode=cmd"`
+		Bar `opts:"mode=cmd"`
+	}
+	c := &Config{
+		Bar: Bar{
+			Zap: "default",
+		},
+	}
+	//no args
+	err := testNew(c).parse([]string{"/bin/prog"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	//should default to "bar" and use env to fill Zap
+	check(t, c.Cmd, "bar")
+	check(t, c.Bar.Zap, "helloworld")
+	check(t, c.Bar.Zip, "")
+	check(t, c.Foo.Ping, "")
+	check(t, c.Foo.Pong, "")
 }
 
 func TestUnsupportedType(t *testing.T) {
@@ -193,6 +235,9 @@ func TestEnv(t *testing.T) {
 	os.Setenv("NUM", "42")
 	os.Setenv("BOOL", "true")
 	os.Setenv("ANOTHER_NUM", "21")
+	defer os.Unsetenv("STR")
+	defer os.Unsetenv("NUM")
+	defer os.Unsetenv("BOOL")
 	//config
 	type Config struct {
 		Str        string
@@ -207,9 +252,6 @@ func TestEnv(t *testing.T) {
 	if err := n.parse([]string{}); err != nil {
 		t.Fatal(err)
 	}
-	os.Unsetenv("STR")
-	os.Unsetenv("NUM")
-	os.Unsetenv("BOOL")
 	//check config is filled
 	check(t, c.Str, `helloworld`)
 	check(t, c.Num, 42)
@@ -528,18 +570,6 @@ func TestDocUseEnv(t *testing.T) {
     1.2.3
 
 `)
-}
-
-func TestSubCommandMap(t *testing.T) {
-	//config
-	type Config struct {
-		Foo string
-		bar string
-	}
-	c := Config{
-		Foo: "foo",
-	}
-	New(&c)
 }
 
 func TestCustomFlags(t *testing.T) {
