@@ -364,7 +364,7 @@ func TestShortSkipInternal(t *testing.T) {
 func TestJSON(t *testing.T) {
 	//insert a config file
 	p := filepath.Join(os.TempDir(), "opts.json")
-	b := []byte(`{"foo":"hello", "bar":7}`)
+	b := []byte(`{"foo":"hello", "bar":7, "baz":2, "foz": "test", "bip": 42}`)
 	if err := ioutil.WriteFile(p, b, 0755); err != nil {
 		t.Fatal(err)
 	}
@@ -373,16 +373,26 @@ func TestJSON(t *testing.T) {
 	type Config struct {
 		Foo string
 		Bar int
+		Baz int
+		Foz string
+		Bip int
 	}
 	c := &Config{}
 	//flag example parse
 	n := testNew(c)
 	n.ConfigPath(p)
-	if err := n.parse([]string{"/bin/prog", "--bar", "8"}); err != nil {
+	os.Setenv("BAZ", "0")
+	os.Setenv("BIP", "24")
+	n.UseEnv()
+	if err := n.parse([]string{"/bin/prog", "--bar", "181", "--foz", "", "--bip", "5"}); err != nil {
 		t.Fatal(err)
 	}
+	os.Unsetenv("FAZ")
 	check(t, c.Foo, `hello`)
-	check(t, c.Bar, 7) //currently uses JSON value... might change...
+	check(t, c.Bar, 181) // JSON value overridden by command-line option parameter
+	check(t, c.Baz, 0)   // JSON value overridden by env variable, if not set by command-line
+	check(t, c.Foz, ``)  // JSON value overridden by command-line option parameter with an empty value ""
+	check(t, c.Bip, 5)   // JSON value *and* env variable overridden by command-line option parameter
 }
 
 func TestArg(t *testing.T) {
