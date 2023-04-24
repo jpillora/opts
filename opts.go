@@ -97,6 +97,8 @@ type ParsedOpts interface {
 	RunFatal()
 	//Selected returns the subcommand picked when parsing the command line
 	Selected() ParsedOpts
+	//Children returns the subcommands of this command
+	Children() map[string]Opts
 }
 
 //New creates a new Opts instance using the given configuration
