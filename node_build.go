@@ -142,6 +142,10 @@ func (n *node) Call(fn func(o Opts)) Opts {
 	return n
 }
 
+func (n *node) End() Opts {
+	return n
+}
+
 func (n *node) flagGroup(name string) *itemGroup {
 	//NOTE: the default group is the empty string
 	//get existing group

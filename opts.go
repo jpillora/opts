@@ -70,9 +70,14 @@ type Opts interface {
 	//SetLineWidth alters the maximum number of characters in a
 	//line (excluding padding). By default, line width is 96.
 	SetLineWidth(width int) Opts
-
 	//AddCommand adds another Opts instance as a subcommand.
 	AddCommand(Opts) Opts
+	//AddStruct adds multiple Opts instances under the sub-command name.
+	//The name can be a slash separated path.
+	AddStruct(name string, subs ...Opts) Opts
+	//End is a noop, it is simply to there enable nice layout when using the api.
+	End() Opts
+
 	//Parse calls ParseArgs(os.Args).
 	Parse() ParsedOpts
 	//ParseArgs parses the given strings and stores the results
