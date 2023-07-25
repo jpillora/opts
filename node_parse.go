@@ -147,7 +147,13 @@ func (n *node) parse(args []string) error {
 	//first round of defaults, applying env variables where necessary
 	for _, item := range n.flags() {
 		k := item.envName
-		if item.set() || k == "" {
+		if item.set() {
+			continue
+		}
+		if k == "" {
+			if item.defstr != "" {
+				item.Set(item.defstr)
+			}
 			continue
 		}
 		v := os.Getenv(k)
