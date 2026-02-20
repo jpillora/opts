@@ -15,6 +15,13 @@ type itemGroup struct {
 	flags []*item
 }
 
+//cmdGroupEntry represents a single "Commands" block
+//in the help text output
+type cmdGroupEntry struct {
+	name string
+	cmds []*node
+}
+
 const defaultGroup = ""
 
 //item is the structure representing a

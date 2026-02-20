@@ -26,6 +26,8 @@ type node struct {
 	cmdname    *string
 	cmdnameEnv string
 	cmds       map[string]*node
+	cmdGroup   string             //group name this node belongs to as a subcommand
+	cmdGroups  []*cmdGroupEntry   //ordered list of command groups on this node
 	//help
 	order                          []string
 	templates                      map[string]string

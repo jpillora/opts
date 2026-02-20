@@ -142,6 +142,22 @@ func (n *node) Call(fn func(o Opts)) Opts {
 	return n
 }
 
+func (n *node) Group(name string) Opts {
+	n.cmdGroup = name
+	return n
+}
+
+func (n *node) cmdGroupHelper(name string) *cmdGroupEntry {
+	for _, g := range n.cmdGroups {
+		if g.name == name {
+			return g
+		}
+	}
+	g := &cmdGroupEntry{name: name}
+	n.cmdGroups = append(n.cmdGroups, g)
+	return g
+}
+
 func (n *node) flagGroup(name string) *itemGroup {
 	//NOTE: the default group is the empty string
 	//get existing group

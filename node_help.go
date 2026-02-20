@@ -16,7 +16,7 @@ type data struct {
 	datum        //data is also a datum
 	FlagGroups   []*datumGroup
 	Args         []*datum
-	Cmds         []*datum
+	CmdGroups    []*datumGroup
 	Order        []string
 	Parents      string
 	Version      string
@@ -67,7 +67,7 @@ var DefaultTemplates = map[string]string{
 	"help":          `{{ $root := . }}{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
 	"usage":         `Usage: {{.Name }} [options]{{template "usageargs" .}}{{template "usagecmd" .}}` + "\n",
 	"usageargs":     `{{range .Args}} {{.Name}}{{end}}`,
-	"usagecmd":      `{{if .Cmds}} <command>{{end}}`,
+	"usagecmd":      `{{if .CmdGroups}} <command>{{end}}`,
 	"extradefault":  `{{if .}}default {{.}}{{end}}`,
 	"extraenv":      `{{if .}}env {{.}}{{end}}`,
 	"extramultiple": `{{if .}}allows multiple{{end}}`,
@@ -78,8 +78,10 @@ var DefaultTemplates = map[string]string{
 	"flaggroup": "{{if .Flags}}\n{{if .Name}}{{.Name}} options{{else}}Options{{end}}:\n" +
 		`{{ range $f := .Flags}}{{template "flag" $f}}{{end}}{{end}}`,
 	"flag":    `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
-	"cmds":    "{{if .Cmds}}\nCommands:\n" + `{{ range $sub := .Cmds}}{{template "cmd" $sub}}{{end}}{{end}}`,
-	"cmd":     "· {{ .Name }}{{if .Help}}{{.Pad}}  {{ .Help }}{{end}}\n",
+	"cmds":     `{{ range $g := .CmdGroups}}{{template "cmdgroup" $g}}{{end}}`,
+	"cmdgroup": "{{if .Flags}}\n{{if .Name}}{{.Name}} commands{{else}}Commands{{end}}:\n" +
+		`{{ range $sub := .Flags}}{{template "cmd" $sub}}{{end}}{{end}}`,
+	"cmd": "· {{ .Name }}{{if .Help}}{{.Pad}}  {{ .Help }}{{end}}\n",
 	"version": "{{if .Version}}\nVersion:\n{{.Pad}}{{.Version}}\n{{end}}",
 	"repo":    "{{if .Repo}}\nRead more:\n{{.Pad}}{{.Repo}}\n{{end}}",
 	"author":  "{{if .Author}}\nAuthor:\n{{.Pad}}{{.Author}}\n{{end}}",
@@ -274,41 +276,48 @@ func convert(o *node) (*data, error) {
 			to.Help = strings.Join(lines, "\n")
 		}
 	}
-	//commands
+	//commands - find max name length across all groups
 	max = 0
 	for _, s := range o.cmds {
 		if l := len(s.name); l > max {
 			max = l
 		}
 	}
-	subs := make([]*datum, len(o.cmds))
-	i := 0
-	cmdNames := []string{}
-	for _, s := range o.cmds {
-		cmdNames = append(cmdNames, s.name)
-	}
-	sort.Strings(cmdNames)
-	for _, name := range cmdNames {
-		s := o.cmds[name]
-		h := s.help
-		if h == "" {
-			h = s.summary
+	//build command groups from o.cmdGroups (ordered)
+	cmdGroups := make([]*datumGroup, len(o.cmdGroups))
+	for gi, cg := range o.cmdGroups {
+		//sort commands within each group alphabetically
+		sorted := make([]*node, len(cg.cmds))
+		copy(sorted, cg.cmds)
+		sort.Slice(sorted, func(i, j int) bool {
+			return sorted[i].name < sorted[j].name
+		})
+		dg := &datumGroup{
+			Name:  cg.name,
+			Flags: make([]*datum, len(sorted)),
 		}
-		explicitMatch := o.cmdname != nil && *o.cmdname == s.name
-		envMatch := o.cmdnameEnv != "" && os.Getenv(o.cmdnameEnv) == s.name
-		if explicitMatch || envMatch {
+		for i, s := range sorted {
+			h := s.help
 			if h == "" {
-				h = "default"
-			} else {
-				h += " (default)"
+				h = s.summary
 			}
+			explicitMatch := o.cmdname != nil && *o.cmdname == s.name
+			envMatch := o.cmdnameEnv != "" && os.Getenv(o.cmdnameEnv) == s.name
+			if explicitMatch || envMatch {
+				if h == "" {
+					h = "default"
+				} else {
+					h += " (default)"
+				}
+			}
+			d := &datum{
+				Name: s.name,
+				Help: h,
+				Pad:  nletters(' ', max-len(s.name)),
+			}
+			dg.Flags[i] = d
 		}
-		subs[i] = &datum{
-			Name: s.name,
-			Help: h,
-			Pad:  nletters(' ', max-len(s.name)),
-		}
-		i++
+		cmdGroups[gi] = dg
 	}
 	//convert error to string
 	err := ""
@@ -323,7 +332,7 @@ func convert(o *node) (*data, error) {
 		},
 		Args:       args,
 		FlagGroups: flagGroups,
-		Cmds:       subs,
+		CmdGroups:  cmdGroups,
 		Order:      o.order,
 		Version:    o.version,
 		Summary:    constrain(o.summary, o.lineWidth),

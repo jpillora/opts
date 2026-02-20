@@ -34,6 +34,8 @@ func (n *node) AddCommand(cmd Opts) Opts {
 	}
 	sub.parent = n
 	n.cmds[sub.name] = sub
+	g := n.cmdGroupHelper(sub.cmdGroup)
+	g.cmds = append(g.cmds, sub)
 	return n
 }
 

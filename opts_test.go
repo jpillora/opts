@@ -657,6 +657,99 @@ func diffstr(a, b interface{}) (string, bool) {
 	return fmt.Sprintf("Diff on line %d char %d (%d)", line, char, diff), true
 }
 
+func TestCmdGroupStructTag(t *testing.T) {
+	type Config struct {
+		Cmd   string `opts:"mode=cmdname"`
+		Start struct {
+			Port int
+		} `opts:"mode=cmd, help=start the server"`
+		Stop struct{} `opts:"mode=cmd, help=stop the server"`
+		Backup struct{} `opts:"mode=cmd, group=Admin, help=create a backup"`
+		Reset  struct{} `opts:"mode=cmd, group=Admin, help=factory reset"`
+	}
+	c := &Config{}
+	o, _ := New(c).Name("myapp").ParseArgsError([]string{"/bin/prog", "--help"})
+	check(t, o.Help(), `
+  Usage: myapp [options] <command>
+
+  Options:
+  --help, -h  display help
+
+  Commands:
+  · start   start the server
+  · stop    stop the server
+
+  Admin commands:
+  · backup  create a backup
+  · reset   factory reset
+
+`)
+}
+
+func TestCmdGroupBuilder(t *testing.T) {
+	type ServerConfig struct {
+		Port int
+	}
+	type BackupConfig struct {
+		Path string
+	}
+	c := &struct{}{}
+	o, _ := New(c).Name("myapp").
+		AddCommand(New(&ServerConfig{}).Name("start").Summary("start the server")).
+		AddCommand(New(&BackupConfig{}).Name("backup").Group("Database").Summary("create a backup")).
+		ParseArgsError([]string{"/bin/prog", "--help"})
+	check(t, o.Help(), `
+  Usage: myapp [options] <command>
+
+  Options:
+  --help, -h  display help
+
+  Commands:
+  · start   start the server
+
+  Database commands:
+  · backup  create a backup
+
+`)
+}
+
+func TestCmdGroupRootValidation(t *testing.T) {
+	type Config struct {
+		Foo string
+	}
+	c := &Config{}
+	n := New(c).Name("myapp").Group("Bad")
+	_, err := n.ParseArgsError([]string{"/bin/prog"})
+	if err == nil {
+		t.Fatal("expected error for Group on root")
+	}
+	if _, ok := err.(authorError); !ok {
+		t.Fatalf("expected authorError, got: %T: %s", err, err)
+	}
+}
+
+func TestCmdGroupBackwardCompat(t *testing.T) {
+	//commands with no group should render as "Commands:" exactly as before
+	type Config struct {
+		Cmd string `opts:"mode=cmdname"`
+		Foo struct{} `opts:"mode=cmd, help=do foo"`
+		Bar struct{} `opts:"mode=cmd, help=do bar"`
+	}
+	c := &Config{}
+	o, _ := New(c).Name("myapp").ParseArgsError([]string{"/bin/prog", "--help"})
+	check(t, o.Help(), `
+  Usage: myapp [options] <command>
+
+  Options:
+  --help, -h  display help
+
+  Commands:
+  · bar  do bar
+  · foo  do foo
+
+`)
+}
+
 func testNew(config interface{}) *node {
 	o := New(config)
 	n := o.(*node)

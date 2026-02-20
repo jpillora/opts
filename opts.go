@@ -73,6 +73,11 @@ type Opts interface {
 
 	//AddCommand adds another Opts instance as a subcommand.
 	AddCommand(Opts) Opts
+	//Group sets the command group name for this subcommand.
+	//When help is rendered, this command will appear under a named
+	//group heading (e.g. "Admin commands:") instead of the default
+	//"Commands:" heading. Must only be used on subcommands (not root).
+	Group(name string) Opts
 	//Parse calls ParseArgs(os.Args).
 	Parse() ParsedOpts
 	//ParseArgs parses the given strings and stores the results
