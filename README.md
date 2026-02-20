@@ -63,6 +63,7 @@ $ ./my-prog -f foo.txt -l 42
 - Default values from environment, defined by your field names ([eg-env](https://github.com/jpillora/opts-examples/tree/master/eg-env/))
 - Repeated flags using slices ([eg-repeated-flag](https://github.com/jpillora/opts-examples/tree/master/eg-repeated-flag/))
 - Group your flags in the help output ([eg-groups](https://github.com/jpillora/opts-examples/tree/master/eg-groups/))
+- Group your commands in the help output via `group` struct tag or `Group()` builder method
 - Sub-commands by nesting structs ([eg-commands-inline](https://github.com/jpillora/opts-examples/tree/master/eg-commands-inline/))
 - Sub-commands by providing child `Opts` ([eg-commands-main](https://github.com/jpillora/opts-examples/tree/master/eg-commands-main/))
 - Infers program name from executable name
@@ -114,7 +115,7 @@ Where **`key`** must be one of:
 
 - `short` - One letter to be used a flag's "short" name. By default, the first letter of `name` will be used. It will remain unset if there is a duplicate short name or if `opts:"short=-"`. Only valid when `mode` is `flag`.
 
-- `group` - The name of the flag group to store the field. Defining this field will create a new group of flags in the help text (will appear as "`<group>` options"). The default flag group is the empty string (which will appear as "Options"). Only valid when `mode` is `flag` or `embedded`.
+- `group` - The name of the group to store the field. When `mode` is `flag` or `embedded`, this creates a group of flags in the help text (will appear as "`<group>` options"). When `mode` is `cmd`, this creates a group of commands (will appear as "`<group>` commands"). The default group is the empty string (which will appear as "Options" or "Commands"). Valid when `mode` is `flag`, `embedded`, or `cmd`.
 
 - `env` - An environent variable to use as the field's **default** value. It can always be overridden by providing the appropriate flag. Only valid when `mode` is `flag`.
 
