@@ -2,4 +2,8 @@ module github.com/jpillora/opts
 
 go 1.12
 
-require github.com/posener/complete v1.2.2-0.20190308074557-af07aa5181b3
+require (
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/posener/complete v1.2.3
+)
