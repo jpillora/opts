@@ -5,7 +5,7 @@
 //
 //  import (
 //  	"log"
-//  	"github.com/jpillora/opts"
+//  	"github.com/VonC/opts"
 //  )
 //
 //  func main() {
@@ -33,5 +33,5 @@
 //  $ ./my-prog -f foo.txt -l 42
 //  {File:foo.txt Lines:42}
 //
-//See https://github.com/jpillora/opts for more information and more examples.
+//See https://github.com/VonC/opts for more information and more examples.
 package opts
