@@ -52,6 +52,38 @@ func TestCamel2Dash(t *testing.T) {
 			"WordACRONYMAnotherWord",
 			"word-acronym-another-word",
 		},
+		{
+			"IDs",
+			"ids",
+		},
+		{
+			"URLs",
+			"urls",
+		},
+		{
+			"HTTPServer",
+			"http-server",
+		},
+		{
+			"GetURLPath",
+			"get-url-path",
+		},
+		{
+			"APIKey",
+			"api-key",
+		},
+		{
+			"GetUIElement",
+			"get-ui-element",
+		},
+		{
+			"ID",
+			"id",
+		},
+		{
+			"MyDBs",
+			"my-dbs",
+		},
 	} {
 		got := camel2dash(testcase.input)
 		if testcase.output != got {
