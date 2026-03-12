@@ -142,11 +142,6 @@ func (n *node) Call(fn func(o Opts)) Opts {
 	return n
 }
 
-func (n *node) Intersperse() Opts {
-	n.intersperse = true
-	return n
-}
-
 func (n *node) Group(name string) Opts {
 	n.cmdGroup = name
 	return n

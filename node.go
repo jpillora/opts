@@ -44,8 +44,7 @@ type node struct {
 		Uninstall  bool
 		ConfigPath string
 	}
-	complete    bool
-	intersperse bool
+	complete bool
 }
 
 func newNode(val reflect.Value) *node {

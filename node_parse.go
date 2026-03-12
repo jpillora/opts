@@ -132,8 +132,7 @@ func (n *node) parse(args []string) error {
 			flagMap[sn] = item
 		}
 	}
-	stopAtNonFlag := len(n.cmds) > 0 || !n.intersperse
-	remaining, parseErr := parseFlags(flagMap, args, stopAtNonFlag)
+	remaining, parseErr := parseFlags(flagMap, args, len(n.cmds) > 0)
 	if parseErr != nil {
 		n.err = parseErr
 		n.internalOpts.Help = true
@@ -351,11 +350,9 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 	if h, ok := kv.take("help"); ok {
 		help = h
 	}
-	//check for intersperse tag (consumed before addInlineCmd)
-	_, intersperse := kv.take("intersperse")
 	//inline sub-command
 	if mode == "cmd" {
-		return n.addInlineCmd(name, help, group, intersperse, val)
+		return n.addInlineCmd(name, help, group, val)
 	}
 	//from this point, we must have a flag or an arg
 	i, err := newItem(val)
@@ -467,7 +464,7 @@ func (n *node) setCmdName(val reflect.Value) error {
 	return nil
 }
 
-func (n *node) addInlineCmd(name, help, group string, intersperse bool, val reflect.Value) error {
+func (n *node) addInlineCmd(name, help, group string, val reflect.Value) error {
 	vt := val.Type()
 	if vt.Kind() == reflect.Ptr {
 		vt = vt.Elem()
@@ -491,7 +488,6 @@ func (n *node) addInlineCmd(name, help, group string, intersperse bool, val refl
 	sub.Summary(help)
 	sub.parent = n
 	sub.cmdGroup = group
-	sub.intersperse = intersperse
 	n.cmds[name] = sub
 	g := n.cmdGroupHelper(group)
 	g.cmds = append(g.cmds, sub)
