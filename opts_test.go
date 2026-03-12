@@ -882,6 +882,44 @@ func TestSubcommandStopsEvenWithIntersperse(t *testing.T) {
 	check(t, c.Sub.Zip, "hello")
 }
 
+func TestInterspersedStructTag(t *testing.T) {
+	type Config struct {
+		Cmd string `opts:"mode=cmdname"`
+		Add struct {
+			Args  []string `opts:"mode=arg,min=0"`
+			Title string
+			Draft bool
+		} `opts:"mode=cmd,intersperse" help:"Add a task"`
+	}
+	c := &Config{}
+	// flags and args interspersed within the subcommand
+	if err := testNew(c).parse([]string{"/bin/prog", "add", "--title", "hello", "foo", "--draft", "bar"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Cmd, "add")
+	check(t, c.Add.Title, "hello")
+	check(t, c.Add.Draft, true)
+	check(t, c.Add.Args, []string{"foo", "bar"})
+}
+
+func TestInterspersedStructTagDefault(t *testing.T) {
+	type Config struct {
+		Cmd string `opts:"mode=cmdname"`
+		Add struct {
+			Args  []string `opts:"mode=arg,min=0"`
+			Title string
+		} `opts:"mode=cmd" help:"Add a task"`
+	}
+	c := &Config{}
+	// without intersperse tag, --title after positional "foo" is NOT parsed as a flag
+	if err := testNew(c).parse([]string{"/bin/prog", "add", "foo", "--title", "hello"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Cmd, "add")
+	check(t, c.Add.Title, "")                                  // not set as flag
+	check(t, c.Add.Args, []string{"foo", "--title", "hello"})  // all treated as args
+}
+
 func testNew(config interface{}) *node {
 	o := New(config)
 	n := o.(*node)
