@@ -750,6 +750,138 @@ func TestCmdGroupBackwardCompat(t *testing.T) {
 `)
 }
 
+func TestDefaultStopsAtFirstNonFlag(t *testing.T) {
+	type Config struct {
+		Foo string `opts:"mode=arg"`
+		Bar string
+	}
+	c := &Config{}
+	// default mode: first non-flag "hello" stops flag parsing,
+	// so "--bar" is treated as a second positional arg, which is unexpected
+	err := testNew(c).parse([]string{"/bin/prog", "hello", "--bar", "wld"})
+	if err == nil {
+		t.Fatal("expected error in default mode with interspersed args")
+	}
+}
+
+func TestDefaultFlagsBeforeArgs(t *testing.T) {
+	type Config struct {
+		Foo string `opts:"mode=arg"`
+		Zip string `opts:"mode=arg"`
+		Bar string
+	}
+	c := &Config{}
+	// default mode: flags before args works fine
+	if err := testNew(c).parse([]string{"/bin/prog", "--bar", "wld", "hel", "lo"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Foo, "hel")
+	check(t, c.Zip, "lo")
+	check(t, c.Bar, "wld")
+}
+
+func TestInterspersedArgsFlags(t *testing.T) {
+	type Config struct {
+		Foo string `opts:"mode=arg"`
+		Zip string `opts:"mode=arg"`
+		Bar string
+	}
+	c := &Config{}
+	n := testNew(c)
+	n.Intersperse()
+	// args and flags interspersed: prog hel --bar wld lo
+	if err := n.parse([]string{"/bin/prog", "hel", "--bar", "wld", "lo"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Foo, "hel")
+	check(t, c.Zip, "lo")
+	check(t, c.Bar, "wld")
+}
+
+func TestInterspersedSliceArgs(t *testing.T) {
+	type Config struct {
+		Foo []string `opts:"mode=arg"`
+		Bar string
+	}
+	c := &Config{}
+	n := testNew(c)
+	n.Intersperse()
+	// slice args interspersed with flags
+	if err := n.parse([]string{"/bin/prog", "a", "--bar", "wld", "b", "c"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Foo, []string{"a", "b", "c"})
+	check(t, c.Bar, "wld")
+}
+
+func TestDoubleDashTerminator(t *testing.T) {
+	type Config struct {
+		Foo []string `opts:"mode=arg"`
+		Bar string
+	}
+	c := &Config{}
+	n := testNew(c)
+	n.Intersperse()
+	// -- terminates flag parsing, --bar becomes a positional arg
+	if err := n.parse([]string{"/bin/prog", "--bar", "wld", "--", "--notaflag", "x"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Foo, []string{"--notaflag", "x"})
+	check(t, c.Bar, "wld")
+}
+
+func TestDoubleDashTerminatorDefault(t *testing.T) {
+	type Config struct {
+		Foo []string `opts:"mode=arg"`
+		Bar string
+	}
+	c := &Config{}
+	// -- works in default mode too
+	if err := testNew(c).parse([]string{"/bin/prog", "--bar", "wld", "--", "--notaflag", "x"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Foo, []string{"--notaflag", "x"})
+	check(t, c.Bar, "wld")
+}
+
+func TestSubcommandStopsAtFirstNonFlag(t *testing.T) {
+	type Config struct {
+		Cmd     string `opts:"mode=cmdname"`
+		Verbose bool
+		Sub     struct {
+			Zip string
+		} `opts:"mode=cmd"`
+	}
+	c := &Config{}
+	// --verbose is parent flag, sub is the command, --zip is sub's flag
+	if err := testNew(c).parse([]string{"/bin/prog", "--verbose", "sub", "--zip", "hello"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Verbose, true)
+	check(t, c.Cmd, "sub")
+	check(t, c.Sub.Zip, "hello")
+}
+
+func TestSubcommandStopsEvenWithIntersperse(t *testing.T) {
+	type Config struct {
+		Cmd     string `opts:"mode=cmdname"`
+		Verbose bool
+		Sub     struct {
+			Zip string
+		} `opts:"mode=cmd"`
+	}
+	c := &Config{}
+	n := testNew(c)
+	n.Intersperse()
+	// intersperse on parent doesn't bleed into subcommand boundary
+	if err := n.parse([]string{"/bin/prog", "--verbose", "sub", "--zip", "hello"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Verbose, true)
+	check(t, c.Cmd, "sub")
+	check(t, c.Sub.Zip, "hello")
+}
+
 func testNew(config interface{}) *node {
 	o := New(config)
 	n := o.(*node)

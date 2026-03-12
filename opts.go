@@ -73,6 +73,11 @@ type Opts interface {
 
 	//AddCommand adds another Opts instance as a subcommand.
 	AddCommand(Opts) Opts
+	//Intersperse allows flags and positional arguments to be freely
+	//interspersed on the command line (e.g. "prog arg1 --flag val arg2").
+	//By default, flag parsing stops at the first non-flag argument,
+	//matching the stdlib flag package behavior.
+	Intersperse() Opts
 	//Group sets the command group name for this subcommand.
 	//When help is rendered, this command will appear under a named
 	//group heading (e.g. "Admin commands:") instead of the default

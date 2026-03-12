@@ -124,18 +124,18 @@ func (n *node) parse(args []string) error {
 			}
 		}
 	}
-	//create a new flagset, and link each item
-	flagset := flag.NewFlagSet(n.item.name, flag.ContinueOnError)
-	flagset.SetOutput(ioutil.Discard)
+	//build flag lookup map and parse
+	flagMap := make(map[string]*item)
 	for _, item := range n.flags() {
-		flagset.Var(item, item.name, "")
+		flagMap[item.name] = item
 		if sn := item.shortName; sn != "" && sn != "-" {
-			flagset.Var(item, sn, "")
+			flagMap[sn] = item
 		}
 	}
-	if err := flagset.Parse(args); err != nil {
-		//insert flag errors into help text
-		n.err = err
+	stopAtNonFlag := len(n.cmds) > 0 || !n.intersperse
+	remaining, parseErr := parseFlags(flagMap, args, stopAtNonFlag)
+	if parseErr != nil {
+		n.err = parseErr
 		n.internalOpts.Help = true
 	}
 	//handle help, version, install/uninstall
@@ -174,8 +174,7 @@ func (n *node) parse(args []string) error {
 			}
 		}
 	}
-	//get remaining args after extracting flags
-	remaining := flagset.Args()
+	//process remaining args
 	i := 0
 	for {
 		if len(n.args) == i {
