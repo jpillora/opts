@@ -847,6 +847,21 @@ func TestSubcommandLeafIntersperse(t *testing.T) {
 	check(t, c.Add.Args, []string{"foo", "bar"})
 }
 
+func TestFlagEqualsValue(t *testing.T) {
+	type Config struct {
+		Foo string `opts:"mode=arg"`
+		Bar string
+		Verbose bool
+	}
+	c := &Config{}
+	if err := testNew(c).parse([]string{"/bin/prog", "--bar=wld", "--verbose=false", "hello"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Bar, "wld")
+	check(t, c.Verbose, false)
+	check(t, c.Foo, "hello")
+}
+
 func testNew(config interface{}) *node {
 	o := New(config)
 	n := o.(*node)

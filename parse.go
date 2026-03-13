@@ -51,6 +51,9 @@ func parseFlags(flags map[string]*item, args []string, stopAtNonFlag bool) (rema
 			name = name[:eqIdx]
 			hasValue = true
 		}
+		if name == "" {
+			return remaining, fmt.Errorf("bad flag syntax: %s", arg)
+		}
 		item, ok := flags[name]
 		if !ok {
 			return remaining, fmt.Errorf("unknown flag: %s", arg)
@@ -59,11 +62,11 @@ func parseFlags(flags map[string]*item, args []string, stopAtNonFlag bool) (rema
 		if item.IsBoolFlag() {
 			if hasValue {
 				if err := item.Set(value); err != nil {
-					return remaining, fmt.Errorf("invalid value %q for flag -%s: %s", value, name, err)
+					return remaining, fmt.Errorf("invalid value %q for flag %s: %s", value, arg, err)
 				}
 			} else {
 				if err := item.Set("true"); err != nil {
-					return remaining, fmt.Errorf("invalid value \"true\" for flag -%s: %s", name, err)
+					return remaining, fmt.Errorf("invalid value \"true\" for flag %s: %s", arg, err)
 				}
 			}
 			i++
@@ -72,16 +75,16 @@ func parseFlags(flags map[string]*item, args []string, stopAtNonFlag bool) (rema
 		// non-bool flag needs a value
 		if hasValue {
 			if err := item.Set(value); err != nil {
-				return remaining, fmt.Errorf("invalid value %q for flag -%s: %s", value, name, err)
+				return remaining, fmt.Errorf("invalid value %q for flag %s: %s", value, arg, err)
 			}
 			i++
 		} else if i+1 < len(args) {
 			if err := item.Set(args[i+1]); err != nil {
-				return remaining, fmt.Errorf("invalid value %q for flag -%s: %s", args[i+1], name, err)
+				return remaining, fmt.Errorf("invalid value %q for flag %s: %s", args[i+1], arg, err)
 			}
 			i += 2
 		} else {
-			return remaining, fmt.Errorf("flag needs an argument: -%s", name)
+			return remaining, fmt.Errorf("flag needs an argument: %s", arg)
 		}
 	}
 	return
