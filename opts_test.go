@@ -750,6 +750,118 @@ func TestCmdGroupBackwardCompat(t *testing.T) {
 `)
 }
 
+func TestFlagsBeforeArgs(t *testing.T) {
+	type Config struct {
+		Foo string `opts:"mode=arg"`
+		Zip string `opts:"mode=arg"`
+		Bar string
+	}
+	c := &Config{}
+	if err := testNew(c).parse([]string{"/bin/prog", "--bar", "wld", "hel", "lo"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Foo, "hel")
+	check(t, c.Zip, "lo")
+	check(t, c.Bar, "wld")
+}
+
+func TestInterspersedArgsFlags(t *testing.T) {
+	type Config struct {
+		Foo string `opts:"mode=arg"`
+		Zip string `opts:"mode=arg"`
+		Bar string
+	}
+	c := &Config{}
+	// leaf command: args and flags interspersed by default
+	if err := testNew(c).parse([]string{"/bin/prog", "hel", "--bar", "wld", "lo"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Foo, "hel")
+	check(t, c.Zip, "lo")
+	check(t, c.Bar, "wld")
+}
+
+func TestInterspersedSliceArgs(t *testing.T) {
+	type Config struct {
+		Foo []string `opts:"mode=arg"`
+		Bar string
+	}
+	c := &Config{}
+	// leaf command: slice args interspersed with flags
+	if err := testNew(c).parse([]string{"/bin/prog", "a", "--bar", "wld", "b", "c"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Foo, []string{"a", "b", "c"})
+	check(t, c.Bar, "wld")
+}
+
+func TestDoubleDashTerminator(t *testing.T) {
+	type Config struct {
+		Foo []string `opts:"mode=arg"`
+		Bar string
+	}
+	c := &Config{}
+	// -- terminates flag parsing, --bar becomes a positional arg
+	if err := testNew(c).parse([]string{"/bin/prog", "--bar", "wld", "--", "--notaflag", "x"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Foo, []string{"--notaflag", "x"})
+	check(t, c.Bar, "wld")
+}
+
+func TestSubcommandStopsAtFirstNonFlag(t *testing.T) {
+	type Config struct {
+		Cmd     string `opts:"mode=cmdname"`
+		Verbose bool
+		Sub     struct {
+			Zip string
+		} `opts:"mode=cmd"`
+	}
+	c := &Config{}
+	// parent with subcommands stops at first non-flag to find command name
+	if err := testNew(c).parse([]string{"/bin/prog", "--verbose", "sub", "--zip", "hello"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Verbose, true)
+	check(t, c.Cmd, "sub")
+	check(t, c.Sub.Zip, "hello")
+}
+
+func TestSubcommandLeafIntersperse(t *testing.T) {
+	type Config struct {
+		Cmd string `opts:"mode=cmdname"`
+		Add struct {
+			Args  []string `opts:"mode=arg,min=0"`
+			Title string
+			Draft bool
+		} `opts:"mode=cmd" help:"Add a task"`
+	}
+	c := &Config{}
+	// leaf subcommand automatically intersperses flags and args
+	if err := testNew(c).parse([]string{"/bin/prog", "add", "--title", "hello", "foo", "--draft", "bar"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Cmd, "add")
+	check(t, c.Add.Title, "hello")
+	check(t, c.Add.Draft, true)
+	check(t, c.Add.Args, []string{"foo", "bar"})
+}
+
+func TestFlagEqualsValue(t *testing.T) {
+	type Config struct {
+		Foo string `opts:"mode=arg"`
+		Bar string
+		Verbose bool
+	}
+	c := &Config{}
+	if err := testNew(c).parse([]string{"/bin/prog", "--bar=wld", "--verbose=false", "hello"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Bar, "wld")
+	check(t, c.Verbose, false)
+	check(t, c.Foo, "hello")
+}
+
 func testNew(config interface{}) *node {
 	o := New(config)
 	n := o.(*node)
