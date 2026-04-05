@@ -191,3 +191,9 @@ type exitError string
 func (e exitError) Error() string {
 	return string(e)
 }
+
+type exitOkError string
+
+func (e exitOkError) Error() string {
+	return string(e)
+}

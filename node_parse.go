@@ -25,6 +25,11 @@ func (n *node) Parse() ParsedOpts {
 func (n *node) ParseArgs(args []string) ParsedOpts {
 	o, err := n.ParseArgsError(args)
 	if err != nil {
+		//expected ok exit (help, version), print message and exit 0
+		if ee, ok := err.(exitOkError); ok {
+			fmt.Fprint(os.Stderr, string(ee))
+			os.Exit(0)
+		}
 		//expected user error, print message as-is
 		if ee, ok := err.(exitError); ok {
 			fmt.Fprint(os.Stderr, string(ee))
@@ -56,9 +61,10 @@ func (n *node) ParseArgsError(args []string) (ParsedOpts, error) {
 	}
 	//parse, storing any errors on the node itself
 	if err := n.parse(args); err != nil {
+		_, eoe := err.(exitOkError)
 		_, ee := err.(exitError)
 		_, ae := err.(authorError)
-		if !ee && !ae {
+		if !eoe && !ee && !ae {
 			n.err = err
 		}
 		return n, err
@@ -139,9 +145,9 @@ func (n *node) parse(args []string) error {
 	}
 	//handle help, version, install/uninstall
 	if n.internalOpts.Help {
-		return exitError(n.Help())
+		return exitOkError(n.Help())
 	} else if n.internalOpts.Version {
-		return exitError(n.version)
+		return exitOkError(n.version)
 	} else if n.internalOpts.Install {
 		return n.manageCompletion(false)
 	} else if n.internalOpts.Uninstall {
