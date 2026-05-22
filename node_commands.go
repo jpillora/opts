@@ -97,8 +97,18 @@ func (n *node) run(test bool) (ParsedOpts, bool, error) {
 
 //Run the parsed configuration
 func (n *node) RunFatal() {
-	if err := n.Run(); err != nil {
-		fmt.Fprint(os.Stderr, err.Error())
-		os.Exit(1)
+	m, ok, err := n.run(false)
+	if err == nil {
+		return
 	}
+	//matched command has no run but has subcommands,
+	//show its help text instead of the error
+	if !ok {
+		if mn, isNode := m.(*node); isNode && len(mn.cmds) > 0 {
+			fmt.Fprint(os.Stderr, mn.Help())
+			os.Exit(1)
+		}
+	}
+	fmt.Fprint(os.Stderr, err.Error())
+	os.Exit(1)
 }
