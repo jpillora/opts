@@ -106,6 +106,11 @@ func (n *node) parse(args []string) error {
 				}
 			}
 		}
+		//find default version for root-node, using the version control
+		//information embedded in the binary by the go tool
+		if n.version == "" {
+			n.version = buildVersion()
+		}
 	}
 	//add this node and its fields (recurses if has sub-commands)
 	if err := n.addStructFields(defaultGroup, n.item.val); err != nil {

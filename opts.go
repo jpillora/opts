@@ -15,6 +15,12 @@ type Opts interface {
 	Name(name string) Opts
 	//Version of the command. Commonly set using a package main variable at compile
 	//time using ldflags (for example, go build -ldflags -X main.version=42).
+	//When unset, Version defaults to the version control information embedded in
+	//the binary by the go tool: the tag of the compiled commit (for example
+	//"v1.2.3"), otherwise its abbreviated hash (for example "e5cbf6f"). Builds
+	//which included uncommitted changes are suffixed with "-src" (for example
+	//"e5cbf6f-src"). Binaries built without this information (go run,
+	//go build -buildvcs=false, etc) have no version, and so no --version flag.
 	Version(version string) Opts
 	//ConfigPath is a path to a JSON file to use as defaults. This is useful in
 	//global paths like /etc/my-prog.json. For a user-specified path. Use the
