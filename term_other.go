@@ -2,8 +2,8 @@
 
 package opts
 
-//terminalWidth is unsupported on this platform, help text falls back
-//to the default line width.
-func terminalWidth(fd uintptr) int {
-	return 0
+// terminalSize is unsupported on this platform, help text falls back to
+// the default line width and is never highlighted.
+func terminalSize(fd uintptr) (int, bool) {
+	return 0, false
 }

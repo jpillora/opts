@@ -59,6 +59,7 @@ $ ./my-prog -f foo.txt -l 42
 - Promotes separation of CLI code and library code ([eg-app](https://github.com/jpillora/opts-examples/tree/master/eg-app/))
 - Automatically generated `--help` text via struct tags ([eg-help](https://github.com/jpillora/opts-examples/tree/master/eg-help/))
 - Help text adapts to the width of the terminal, and falls back to a fixed width when there isn't one (override with `SetLineWidth`)
+- Help text uses bold and color highlighting in a terminal, and stays plain when redirected (set `NO_COLOR` to disable)
 - Default values by modifying the struct prior to `Parse()` ([eg-defaults](https://github.com/jpillora/opts-examples/tree/master/eg-defaults/))
 - Default values from a JSON config file, unmarshalled via your config struct ([eg-config](https://github.com/jpillora/opts-examples/tree/master/eg-config/))
 - Default values from environment, defined by your field names ([eg-env](https://github.com/jpillora/opts-examples/tree/master/eg-env/))

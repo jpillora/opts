@@ -10,16 +10,21 @@ import (
 // TestMain ensures the help text tests below do not depend on the
 // dimensions of the terminal they happen to be run in.
 func TestMain(m *testing.M) {
-	termWidth = func() int { return 0 }
+	termInfo = func() terminalInfo { return terminalInfo{} }
 	os.Exit(m.Run())
 }
 
 // stubTermWidth simulates a terminal of the given width for the duration
 // of the test. A width of zero simulates no terminal at all.
 func stubTermWidth(t *testing.T, w int) {
-	prev := termWidth
-	termWidth = func() int { return w }
-	t.Cleanup(func() { termWidth = prev })
+	stubTerminal(t, w, false)
+}
+
+// stubTerminal simulates both the detected width and whether output is a TTY.
+func stubTerminal(t *testing.T, w int, isTTY bool) {
+	prev := termInfo
+	termInfo = func() terminalInfo { return terminalInfo{width: w, isTTY: isTTY} }
+	t.Cleanup(func() { termInfo = prev })
 }
 
 // widthConfig has help text long enough to wrap in a narrow terminal

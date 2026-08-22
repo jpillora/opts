@@ -65,9 +65,9 @@ func defaultOrder() []string {
 // the order defined above. All templates can be referenced using the keys in this map:
 var DefaultTemplates = map[string]string{
 	"help":          `{{ $root := . }}{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
-	"usage":         `Usage: {{.Name }} [options]{{template "usageargs" .}}{{template "usagecmd" .}}` + "\n",
-	"usageargs":     `{{range .Args}} {{.Name}}{{end}}`,
-	"usagecmd":      `{{if .CmdGroups}} <command>{{end}}`,
+	"usage":         `{{bold "Usage:"}} {{accentBold .Name }} {{accent "[options]"}}{{template "usageargs" .}}{{template "usagecmd" .}}` + "\n",
+	"usageargs":     `{{range .Args}} {{accent .Name}}{{end}}`,
+	"usagecmd":      `{{if .CmdGroups}} {{accent "<command>"}}{{end}}`,
 	"extradefault":  `{{if .}}default {{.}}{{end}}`,
 	"extraenv":      `{{if .}}env {{.}}{{end}}`,
 	"extramultiple": `{{if .}}allows multiple{{end}}`,
@@ -75,23 +75,81 @@ var DefaultTemplates = map[string]string{
 	"args":          `{{range .Args}}{{template "arg" .}}{{end}}`,
 	"arg":           "{{if .Help}}\n{{.Help}}\n{{end}}",
 	"flaggroups":    `{{ range $g := .FlagGroups}}{{template "flaggroup" $g}}{{end}}`,
-	"flaggroup": "{{if .Flags}}\n{{if .Name}}{{.Name}} options{{else}}Options{{end}}:\n" +
+	"flaggroup": "{{if .Flags}}\n{{if .Name}}{{bold (printf \"%s options:\" .Name)}}{{else}}{{bold \"Options:\"}}{{end}}\n" +
 		`{{ range $f := .Flags}}{{template "flag" $f}}{{end}}{{end}}`,
-	"flag":    `{{.Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
-	"cmds":     `{{ range $g := .CmdGroups}}{{template "cmdgroup" $g}}{{end}}`,
-	"cmdgroup": "{{if .Flags}}\n{{if .Name}}{{.Name}} commands{{else}}Commands{{end}}:\n" +
+	"flag": `{{accentPadded .Name}}{{if .Help}}{{.Pad}}{{.Help}}{{end}}` + "\n",
+	"cmds": `{{ range $g := .CmdGroups}}{{template "cmdgroup" $g}}{{end}}`,
+	"cmdgroup": "{{if .Flags}}\n{{if .Name}}{{bold (printf \"%s commands:\" .Name)}}{{else}}{{bold \"Commands:\"}}{{end}}\n" +
 		`{{ range $sub := .Flags}}{{template "cmd" $sub}}{{end}}{{end}}`,
-	"cmd": "· {{ .Name }}{{if .Help}}{{.Pad}}{{ .Help }}{{end}}\n",
-	"version": "{{if .Version}}\nVersion:\n{{.Pad}}{{.Version}}\n{{end}}",
-	"repo":    "{{if .Repo}}\nRead more:\n{{.Pad}}{{.Repo}}\n{{end}}",
-	"author":  "{{if .Author}}\nAuthor:\n{{.Pad}}{{.Author}}\n{{end}}",
-	"errmsg":  "{{if .ErrMsg}}\nError:\n{{.Pad}}{{.ErrMsg}}\n{{end}}",
+	"cmd":     "· {{accent .Name}}{{if .Help}}{{.Pad}}{{ .Help }}{{end}}\n",
+	"version": "{{if .Version}}\n{{bold \"Version:\"}}\n{{.Pad}}{{accent .Version}}\n{{end}}",
+	"repo":    "{{if .Repo}}\n{{bold \"Read more:\"}}\n{{.Pad}}{{accent .Repo}}\n{{end}}",
+	"author":  "{{if .Author}}\n{{bold \"Author:\"}}\n{{.Pad}}{{accent .Author}}\n{{end}}",
+	"errmsg":  "{{if .ErrMsg}}\n{{dangerBold \"Error:\"}}\n{{.Pad}}{{danger .ErrMsg}}\n{{end}}",
 }
 
 var (
-	trailingSpaces   = regexp.MustCompile(`(?m)\ +$`)
+	//Keep ANSI resets at the end of a line while removing spaces before them.
+	trailingSpaces   = regexp.MustCompile(`(?m) +((?:\x1b\[[0-9;]*m)*)$`)
 	trailingBrackets = regexp.MustCompile(`^(.+)\(([^\)]+)\)$`)
 )
+
+const (
+	ansiReset    = "\x1b[0m"
+	ansiBold     = "\x1b[1m"
+	ansiCyan     = "\x1b[36m"
+	ansiBoldCyan = "\x1b[1;36m"
+	ansiRed      = "\x1b[31m"
+	ansiBoldRed  = "\x1b[1;31m"
+)
+
+type helpStyler struct {
+	enabled bool
+}
+
+func (s helpStyler) wrap(code, text string) string {
+	if !s.enabled || text == "" {
+		return text
+	}
+	return code + text + ansiReset
+}
+
+func (s helpStyler) bold(text string) string {
+	return s.wrap(ansiBold, text)
+}
+
+func (s helpStyler) accent(text string) string {
+	return s.wrap(ansiCyan, text)
+}
+
+func (s helpStyler) accentBold(text string) string {
+	return s.wrap(ansiBoldCyan, text)
+}
+
+// accentPadded leaves alignment spaces outside the ANSI sequence so color is
+// applied only to the option name, not the gap between the two help columns.
+func (s helpStyler) accentPadded(text string) string {
+	name := strings.TrimRight(text, " ")
+	return s.accent(name) + text[len(name):]
+}
+
+func (s helpStyler) danger(text string) string {
+	return s.wrap(ansiRed, text)
+}
+
+func (s helpStyler) dangerBold(text string) string {
+	return s.wrap(ansiBoldRed, text)
+}
+
+// highlightHelp reports whether ANSI styling should be used for a terminal.
+// NO_COLOR and TERM=dumb follow the conventions used by other command-line
+// tools to explicitly request plain output.
+func highlightHelp(isTTY bool) bool {
+	if !isTTY || os.Getenv("NO_COLOR") != "" {
+		return false
+	}
+	return !strings.EqualFold(os.Getenv("TERM"), "dumb")
+}
 
 const (
 	//defaultLineWidth is used when the terminal dimensions are unknown
@@ -103,17 +161,17 @@ const (
 	cmdPrefixWidth = 2
 )
 
-//renderWidth returns the maximum number of characters to render on a single
-//line of help text (excluding the padAll indent). An explicit line width, set
-//on this node or any of its parents, is always used. Otherwise the width is
-//detected from the terminal, and when that fails, defaultLineWidth is used.
-func (o *node) renderWidth() int {
+// renderWidth returns the maximum number of characters to render on a single
+// line of help text (excluding the padAll indent). An explicit line width, set
+// on this node or any of its parents, is always used. Otherwise the width is
+// detected from the terminal, and when that fails, defaultLineWidth is used.
+func (o *node) renderWidth(detected int) int {
 	for n := o; n != nil; n = n.parent {
 		if n.lineWidth > 0 {
 			return n.lineWidth
 		}
 	}
-	w := termWidth()
+	w := detected
 	if w <= 0 {
 		return defaultLineWidth
 	}
@@ -133,11 +191,11 @@ func (o *node) renderWidth() int {
 	return w
 }
 
-//column computes the two column layout used by the option and command lists.
-//The first column is as wide as the longest name (plus padding) and the second
-//takes the remaining width. When the second column would be too narrow to be
-//useful, stacked is returned true, and the caller should instead render the
-//help text on its own line, indented by the (much smaller) first column.
+// column computes the two column layout used by the option and command lists.
+// The first column is as wide as the longest name (plus padding) and the second
+// takes the remaining width. When the second column would be too narrow to be
+// useful, stacked is returned true, and the caller should instead render the
+// help text on its own line, indented by the (much smaller) first column.
 func column(nameWidth, pad, total int) (indent int, help int, stacked bool) {
 	indent = nameWidth + pad
 	help = total - indent
@@ -152,8 +210,8 @@ func column(nameWidth, pad, total int) (indent int, help int, stacked bool) {
 	return
 }
 
-//wrap constrains help text to the given width, indenting every line after
-//the first, such that the text forms a column beginning at indent.
+// wrap constrains help text to the given width, indenting every line after
+// the first, such that the text forms a column beginning at indent.
 func wrap(help string, width int, indent string) string {
 	help = constrain(help, width)
 	lines := strings.Split(help, "\n")
@@ -176,6 +234,8 @@ func (o *node) Help() string {
 
 func renderHelp(o *node) (string, error) {
 	var err error
+	terminal := termInfo()
+	styler := helpStyler{enabled: highlightHelp(terminal.isTTY)}
 	//add default templates
 	for name, str := range DefaultTemplates {
 		if _, ok := o.templates[name]; !ok {
@@ -185,6 +245,12 @@ func renderHelp(o *node) (string, error) {
 	//prepare templates
 	t := template.New(o.name)
 	t = t.Funcs(map[string]interface{}{
+		"bold":         styler.bold,
+		"accent":       styler.accent,
+		"accentBold":   styler.accentBold,
+		"accentPadded": styler.accentPadded,
+		"danger":       styler.danger,
+		"dangerBold":   styler.dangerBold,
 		//reimplementation of "template" except with dynamic name
 		"templ": func(name string, data interface{}) (string, error) {
 			b := &bytes.Buffer{}
@@ -203,7 +269,7 @@ func renderHelp(o *node) (string, error) {
 		}
 	}
 	//convert node into template data
-	tf, err := convert(o)
+	tf, err := convert(o, terminal.width)
 	if err != nil {
 		return "", fmt.Errorf("node convert: %s", err)
 	}
@@ -230,13 +296,13 @@ func renderHelp(o *node) (string, error) {
 		}
 		out = "\n" + strings.Join(lines, "\n") + "\n"
 	}
-	out = trailingSpaces.ReplaceAllString(out, "")
+	out = trailingSpaces.ReplaceAllString(out, "$1")
 	return out, nil
 }
 
-func convert(o *node) (*data, error) {
+func convert(o *node, detectedWidth int) (*data, error) {
 	//the total width available for a single line of help text
-	width := o.renderWidth()
+	width := o.renderWidth(detectedWidth)
 	names := []string{}
 	curr := o
 	for curr != nil {

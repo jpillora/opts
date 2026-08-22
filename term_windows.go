@@ -28,13 +28,13 @@ type consoleScreenBufferInfo struct {
 	maximumWindowSize coord
 }
 
-//terminalWidth returns the number of columns of the console attached to fd.
-//Returns zero when fd is not a console.
-func terminalWidth(fd uintptr) int {
+// terminalSize returns the number of columns of the console attached to fd,
+// and whether fd is a console at all.
+func terminalSize(fd uintptr) (int, bool) {
 	info := consoleScreenBufferInfo{}
 	ret, _, _ := procGetConsoleScreenBufferInfo.Call(fd, uintptr(unsafe.Pointer(&info)))
 	if ret == 0 {
-		return 0
+		return 0, false
 	}
-	return int(info.window.right-info.window.left) + 1
+	return int(info.window.right-info.window.left) + 1, true
 }

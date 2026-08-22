@@ -11,9 +11,9 @@ type winsize struct {
 	rows, cols, xpixels, ypixels uint16
 }
 
-//terminalWidth returns the number of columns of the terminal attached
-//to fd, using the TIOCGWINSZ ioctl. Returns zero when fd is not a terminal.
-func terminalWidth(fd uintptr) int {
+// terminalSize returns the number of columns of the terminal attached to fd,
+// and whether fd is a terminal at all, using the TIOCGWINSZ ioctl.
+func terminalSize(fd uintptr) (int, bool) {
 	ws := winsize{}
 	_, _, errno := syscall.Syscall(
 		syscall.SYS_IOCTL,
@@ -22,7 +22,7 @@ func terminalWidth(fd uintptr) int {
 		uintptr(unsafe.Pointer(&ws)),
 	)
 	if errno != 0 {
-		return 0
+		return 0, false
 	}
-	return int(ws.cols)
+	return int(ws.cols), true
 }
