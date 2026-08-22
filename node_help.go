@@ -81,7 +81,7 @@ var DefaultTemplates = map[string]string{
 	"cmds":     `{{ range $g := .CmdGroups}}{{template "cmdgroup" $g}}{{end}}`,
 	"cmdgroup": "{{if .Flags}}\n{{if .Name}}{{.Name}} commands{{else}}Commands{{end}}:\n" +
 		`{{ range $sub := .Flags}}{{template "cmd" $sub}}{{end}}{{end}}`,
-	"cmd": "· {{ .Name }}{{if .Help}}{{.Pad}}  {{ .Help }}{{end}}\n",
+	"cmd": "· {{ .Name }}{{if .Help}}{{.Pad}}{{ .Help }}{{end}}\n",
 	"version": "{{if .Version}}\nVersion:\n{{.Pad}}{{.Version}}\n{{end}}",
 	"repo":    "{{if .Repo}}\nRead more:\n{{.Pad}}{{.Repo}}\n{{end}}",
 	"author":  "{{if .Author}}\nAuthor:\n{{.Pad}}{{.Author}}\n{{end}}",
@@ -92,6 +92,78 @@ var (
 	trailingSpaces   = regexp.MustCompile(`(?m)\ +$`)
 	trailingBrackets = regexp.MustCompile(`^(.+)\(([^\)]+)\)$`)
 )
+
+const (
+	//defaultLineWidth is used when the terminal dimensions are unknown
+	defaultLineWidth = 96
+	//minHelpWidth is the narrowest second column still worth rendering.
+	//Below this, help text is stacked underneath its name instead.
+	minHelpWidth = 24
+	//cmdPrefixWidth is the display width of the "· " command bullet
+	cmdPrefixWidth = 2
+)
+
+//renderWidth returns the maximum number of characters to render on a single
+//line of help text (excluding the padAll indent). An explicit line width, set
+//on this node or any of its parents, is always used. Otherwise the width is
+//detected from the terminal, and when that fails, defaultLineWidth is used.
+func (o *node) renderWidth() int {
+	for n := o; n != nil; n = n.parent {
+		if n.lineWidth > 0 {
+			return n.lineWidth
+		}
+	}
+	w := termWidth()
+	if w <= 0 {
+		return defaultLineWidth
+	}
+	//padAll indents every single line, leaving less room for text
+	if o.padAll {
+		w -= o.padWidth
+	}
+	//wide terminals are capped, very long lines are hard to read
+	if w > defaultLineWidth {
+		w = defaultLineWidth
+	}
+	//an absurdly narrow terminal is still honoured, rendering
+	//wider than the terminal only makes it harder to read
+	if w < 1 {
+		w = 1
+	}
+	return w
+}
+
+//column computes the two column layout used by the option and command lists.
+//The first column is as wide as the longest name (plus padding) and the second
+//takes the remaining width. When the second column would be too narrow to be
+//useful, stacked is returned true, and the caller should instead render the
+//help text on its own line, indented by the (much smaller) first column.
+func column(nameWidth, pad, total int) (indent int, help int, stacked bool) {
+	indent = nameWidth + pad
+	help = total - indent
+	if help < minHelpWidth {
+		indent = pad
+		help = total - indent
+		stacked = true
+	}
+	if help < 1 {
+		help = 1
+	}
+	return
+}
+
+//wrap constrains help text to the given width, indenting every line after
+//the first, such that the text forms a column beginning at indent.
+func wrap(help string, width int, indent string) string {
+	help = constrain(help, width)
+	lines := strings.Split(help, "\n")
+	for i, l := range lines {
+		if i > 0 {
+			lines[i] = indent + l
+		}
+	}
+	return strings.Join(lines, "\n")
+}
 
 // Help renders the help text as a string
 func (o *node) Help() string {
@@ -163,6 +235,8 @@ func renderHelp(o *node) (string, error) {
 }
 
 func convert(o *node) (*data, error) {
+	//the total width available for a single line of help text
+	width := o.renderWidth()
 	names := []string{}
 	curr := o
 	for curr != nil {
@@ -191,7 +265,7 @@ func convert(o *node) (*data, error) {
 		}
 		args[i] = &datum{
 			Name: n,
-			Help: constrain(arg.help, o.lineWidth),
+			Help: constrain(arg.help, width),
 		}
 	}
 	flagGroups := make([]*datumGroup, len(o.flagGroups))
@@ -229,16 +303,19 @@ func convert(o *node) (*data, error) {
 		}
 		extras[i] = t
 	}
-	//calculate...
-	padsInOption := o.padWidth
-	optionNameWidth := max + padsInOption
-	spaces := nletters(' ', optionNameWidth)
-	helpWidth := o.lineWidth - optionNameWidth
+	//calculate the two column layout
+	optionNameWidth, helpWidth, stacked := column(max, o.padWidth, width)
+	indent := nletters(' ', optionNameWidth)
 	//go back and render each option using calculated values
 	for i, dg := range flagGroups {
 		for j, to := range dg.Flags {
-			//pad all option names to be the same length
-			to.Name += spaces[:max-len(to.Name)]
+			if stacked {
+				//help text drops onto its own line
+				to.Pad = "\n" + indent
+			} else {
+				//pad all option names to be the same length
+				to.Name += nletters(' ', max-len(to.Name))
+			}
 			//constrain help text
 			item := o.flagGroups[i].flags[j]
 			//render flag help string
@@ -265,15 +342,8 @@ func convert(o *node) (*data, error) {
 					help += " (" + extra + ")"
 				}
 			}
-			help = constrain(help, helpWidth)
 			//align each row after the flag
-			lines := strings.Split(help, "\n")
-			for i, l := range lines {
-				if i > 0 {
-					lines[i] = spaces + l
-				}
-			}
-			to.Help = strings.Join(lines, "\n")
+			to.Help = wrap(help, helpWidth, indent)
 		}
 	}
 	//commands - find max name length across all groups
@@ -283,6 +353,9 @@ func convert(o *node) (*data, error) {
 			max = l
 		}
 	}
+	//commands are prefixed with a bullet, which shifts their columns across
+	cmdNameWidth, cmdHelpWidth, cmdStacked := column(cmdPrefixWidth+max, o.padWidth, width)
+	cmdIndent := nletters(' ', cmdNameWidth)
 	//build command groups from o.cmdGroups (ordered)
 	cmdGroups := make([]*datumGroup, len(o.cmdGroups))
 	for gi, cg := range o.cmdGroups {
@@ -312,8 +385,11 @@ func convert(o *node) (*data, error) {
 			}
 			d := &datum{
 				Name: s.name,
-				Help: h,
-				Pad:  nletters(' ', max-len(s.name)),
+				Help: wrap(h, cmdHelpWidth, cmdIndent),
+				Pad:  nletters(' ', max-len(s.name)+o.padWidth),
+			}
+			if cmdStacked {
+				d.Pad = "\n" + cmdIndent
 			}
 			dg.Flags[i] = d
 		}
@@ -322,7 +398,7 @@ func convert(o *node) (*data, error) {
 	//convert error to string
 	err := ""
 	if o.err != nil {
-		err = o.err.Error()
+		err = wrap(o.err.Error(), width-o.padWidth, pad)
 	}
 	return &data{
 		datum: datum{
@@ -335,7 +411,7 @@ func convert(o *node) (*data, error) {
 		CmdGroups:  cmdGroups,
 		Order:      o.order,
 		Version:    o.version,
-		Summary:    constrain(o.summary, o.lineWidth),
+		Summary:    constrain(o.summary, width),
 		Repo:       o.repo,
 		Author:     o.author,
 		ErrMsg:     err,

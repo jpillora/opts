@@ -33,7 +33,7 @@ type node struct {
 	templates                      map[string]string
 	repo, author, version, summary string
 	repoInfer, authorInfer         bool
-	lineWidth                      int
+	lineWidth                      int //zero means auto (detect the terminal)
 	padAll                         bool
 	padWidth                       int
 	//pretend these are in the user struct :)
@@ -59,7 +59,7 @@ func newNode(val reflect.Value) *node {
 		order:     defaultOrder(),
 		templates: map[string]string{},
 		//public defaults
-		lineWidth: 96,
+		lineWidth: 0, //auto-detect from the terminal
 		padAll:    true,
 		padWidth:  2,
 	}

@@ -36,26 +36,31 @@ func nletters(r rune, n int) string {
 	return string(str)
 }
 
+//constrain word-wraps str to maxWidth characters. Existing newlines are
+//preserved, and words longer than maxWidth are left to overflow rather
+//than being broken mid-word.
 func constrain(str string, maxWidth int) string {
-	lines := strings.Split(str, "\n")
-	for i, line := range lines {
-		words := strings.Split(line, " ")
-		width := 0
-		for i, w := range words {
-			remain := maxWidth - width
-			wordWidth := len(w) + 1 //+space
-			width += wordWidth
-			overflow := width > maxWidth
-			fits := width-maxWidth > remain
-			if overflow && fits {
-				width = wordWidth
-				w = "\n" + w
-			}
-			words[i] = w
-		}
-		lines[i] = strings.Join(words, " ")
+	if maxWidth <= 0 {
+		return str
 	}
-	return strings.Join(lines, "\n")
+	out := []string{}
+	for _, line := range strings.Split(str, "\n") {
+		curr := ""
+		for i, w := range strings.Split(line, " ") {
+			if i == 0 {
+				curr = w
+				continue
+			}
+			if len(curr)+1+len(w) > maxWidth {
+				out = append(out, curr)
+				curr = w
+				continue
+			}
+			curr += " " + w
+		}
+		out = append(out, curr)
+	}
+	return strings.Join(out, "\n")
 }
 
 //borrowed from https://github.com/huandu/xstrings/blob/master/convert.go#L77

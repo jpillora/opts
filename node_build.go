@@ -54,7 +54,7 @@ func (n *node) PkgAuthor() Opts {
 }
 
 //Set the padding width, which defines the amount padding
-//when rendering help text (defaults to 72)
+//when rendering help text (defaults to 2)
 func (n *node) SetPadWidth(p int) Opts {
 	n.padWidth = p
 	return n
@@ -65,6 +65,8 @@ func (n *node) DisablePadAll() Opts {
 	return n
 }
 
+//Set the line width, which defines the maximum width of the
+//help text. Zero (the default) means auto-detect the terminal.
 func (n *node) SetLineWidth(l int) Opts {
 	n.lineWidth = l
 	return n

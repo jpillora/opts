@@ -2,6 +2,7 @@ package opts
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -35,6 +36,49 @@ func TestKVMap(t *testing.T) {
 				testcase.output,
 				m,
 			)
+		}
+	}
+}
+
+func TestConstrain(t *testing.T) {
+	for _, testcase := range []struct {
+		input  string
+		width  int
+		output string
+	}{
+		//exactly the width is not wrapped
+		{"hello worl", 10, "hello worl"},
+		//one over is
+		{"hello world", 10, "hello\nworld"},
+		//words longer than the width overflow rather than being broken
+		{"a supercalifragilistic word", 10, "a\nsupercalifragilistic\nword"},
+		//existing newlines are preserved
+		{"one\ntwo three four", 8, "one\ntwo\nthree\nfour"},
+		//consecutive spaces are preserved
+		{"a  b", 10, "a  b"},
+		//a zero width disables wrapping
+		{"hello world", 0, "hello world"},
+		{
+			"the address to listen on. it may be a host or a port or both",
+			24,
+			"the address to listen\non. it may be a host or\na port or both",
+		},
+	} {
+		got := constrain(testcase.input, testcase.width)
+		if got != testcase.output {
+			t.Fatalf("input: %q (width %d)\n  expected: %q\n       got: %q",
+				testcase.input,
+				testcase.width,
+				testcase.output,
+				got,
+			)
+		}
+		//no line may exceed the width, unless it is a single long word
+		for _, line := range strings.Split(got, "\n") {
+			if testcase.width > 0 && len(line) > testcase.width && strings.Contains(line, " ") {
+				t.Fatalf("input: %q (width %d)\n  line too long: %q",
+					testcase.input, testcase.width, line)
+			}
 		}
 	}
 }

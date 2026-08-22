@@ -74,7 +74,11 @@ type Opts interface {
 	//By default, pad width is 2.
 	SetPadWidth(padding int) Opts
 	//SetLineWidth alters the maximum number of characters in a
-	//line (excluding padding). By default, line width is 96.
+	//line (excluding padding). By default, line width is zero,
+	//which means the width of the attached terminal is used
+	//(capped at 96). When the terminal dimensions cannot be
+	//detected, for example when the help text is piped into
+	//another program, the line width falls back to 96.
 	SetLineWidth(width int) Opts
 
 	//AddCommand adds another Opts instance as a subcommand.
