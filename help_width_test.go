@@ -74,8 +74,8 @@ func TestHelpAutoMedium(t *testing.T) {
   Usage: myapp [options] <command>
 
   Options:
-  --listen, -l   the address to listen on. it may be a host
-                 or a port or both
+  --listen, -l   the address to listen on. it may be a
+                 host or a port or both
   --retries, -r  number of times to retry before giving up
   --help, -h     display help
 
@@ -96,19 +96,21 @@ func TestHelpAutoNarrow(t *testing.T) {
 
   Options:
   --listen, -l
-    the address to listen on. it may
-    be a host or a port or both
+    the address to listen on. it
+    may be a host or a port or
+    both
   --retries, -r
-    number of times to retry before
-    giving up
+    number of times to retry
+    before giving up
   --help, -h
     display help
 
   Commands:
-  · backup  back everything up
-  · serve   serve the current
-            directory over http
-            until interrupted
+  · backup
+    back everything up
+  · serve
+    serve the current directory
+    over http until interrupted
 
 `)
 }
@@ -120,22 +122,52 @@ func TestHelpExplicitWidth(t *testing.T) {
   Usage: myapp [options] <command>
 
   Options:
-  --listen, -l   the address to listen on. it may be
-                 a host or a port or both
+  --listen, -l   the address to listen on. it
+                 may be a host or a port or both
   --retries, -r  number of times to retry before
                  giving up
   --help, -h     display help
 
   Commands:
   · backup  back everything up
-  · serve   serve the current directory over http
-            until interrupted
+  · serve   serve the current directory over
+            http until interrupted
 
 `
 	//same output in a wide terminal, a narrow terminal and no terminal
 	check(t, widthHelp(t, 200, with), expect)
 	check(t, widthHelp(t, 30, with), expect)
 	check(t, widthHelp(t, 0, with), expect)
+}
+
+// SetLineWidth is the width of the complete rendered line. The padAll margins
+// must not spill beyond it and force the terminal to split a word.
+func TestHelpExplicitWidthIncludesPadding(t *testing.T) {
+	help := widthHelp(t, 0, func(o Opts) Opts {
+		return o.SetLineWidth(32).SetPadWidth(4)
+	})
+	for i, line := range strings.Split(help, "\n") {
+		// The usage synopsis is intentionally rendered as one indivisible unit.
+		if strings.HasPrefix(strings.TrimSpace(line), "Usage:") {
+			continue
+		}
+		if w := utf8.RuneCountInString(line); w > 32-4 {
+			t.Fatalf("line %d is %d chars, want at least 4 right-margin columns:\n%s", i+1, w, line)
+		}
+	}
+	if strings.Contains(help, "lis\nten") {
+		t.Fatal("help was split in the middle of a word")
+	}
+}
+
+// The fallback is also a complete line width, including the default padding.
+func TestHelpFallbackWidthIncludesPadding(t *testing.T) {
+	help := widthHelp(t, 0, nil)
+	for i, line := range strings.Split(help, "\n") {
+		if w := utf8.RuneCountInString(line); w > defaultLineWidth-2 {
+			t.Fatalf("line %d is %d chars, want at least 2 right-margin columns:\n%s", i+1, w, line)
+		}
+	}
 }
 
 // an explicit line width set on the root is inherited by subcommands
@@ -151,8 +183,9 @@ func TestHelpExplicitWidthInherited(t *testing.T) {
   Usage: myapp backup [options]
 
   Options:
-  --path, -p  where the backup should be written to.
-              defaults to the working directory
+  --path, -p  where the backup should be written
+              to. defaults to the working
+              directory
   --help, -h  display help
 
 `)

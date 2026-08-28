@@ -161,27 +161,33 @@ const (
 	cmdPrefixWidth = 2
 )
 
-// renderWidth returns the maximum number of characters to render on a single
-// line of help text (excluding the padAll indent). An explicit line width, set
-// on this node or any of its parents, is always used. Otherwise the width is
-// detected from the terminal, and when that fails, defaultLineWidth is used.
+// renderWidth returns the number of characters available between the left and
+// right padAll margins. The configured, detected, or fallback width always
+// describes the complete rendered line, so both margins are removed after
+// choosing that width.
 func (o *node) renderWidth(detected int) int {
+	w := 0
+	explicit := false
 	for n := o; n != nil; n = n.parent {
 		if n.lineWidth > 0 {
-			return n.lineWidth
+			w = n.lineWidth
+			explicit = true
+			break
 		}
 	}
-	w := detected
-	if w <= 0 {
-		return defaultLineWidth
+	if !explicit {
+		w = detected
+		if w <= 0 {
+			w = defaultLineWidth
+		}
+		//wide terminals are capped, very long lines are hard to read
+		if w > defaultLineWidth {
+			w = defaultLineWidth
+		}
 	}
-	//padAll indents every single line, leaving less room for text
+	//padAll leaves the configured margin at both edges
 	if o.padAll {
-		w -= o.padWidth
-	}
-	//wide terminals are capped, very long lines are hard to read
-	if w > defaultLineWidth {
-		w = defaultLineWidth
+		w -= 2 * o.padWidth
 	}
 	//an absurdly narrow terminal is still honoured, rendering
 	//wider than the terminal only makes it harder to read

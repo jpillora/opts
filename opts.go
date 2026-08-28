@@ -70,11 +70,11 @@ type Opts interface {
 	DocAfter(existingID, newID, template string) Opts
 	//DisablePadAll removes the padding from the help text.
 	DisablePadAll() Opts
-	//SetPadWidth alters the padding to specific number of spaces.
-	//By default, pad width is 2.
+	//SetPadWidth alters the left and right help margins and the spacing
+	//between help columns. By default, pad width is 2.
 	SetPadWidth(padding int) Opts
 	//SetLineWidth alters the maximum number of characters in a
-	//line (excluding padding). By default, line width is zero,
+	//rendered line (including padding). By default, line width is zero,
 	//which means the width of the attached terminal is used
 	//(capped at 96). When the terminal dimensions cannot be
 	//detected, for example when the help text is piped into
