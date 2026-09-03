@@ -76,6 +76,21 @@ func TestHelpDoesNotHighlightRedirectedOutput(t *testing.T) {
 	}
 }
 
+func TestHelpDoesNotHighlightTerminalWithoutANSI(t *testing.T) {
+	prev := termInfo
+	termInfo = func() terminalInfo {
+		return terminalInfo{width: 80, isTTY: true, supportsANSI: false}
+	}
+	t.Cleanup(func() { termInfo = prev })
+	t.Setenv("TERM", "xterm")
+	t.Setenv("NO_COLOR", "")
+	p, _ := New(&highlightConfig{}).Name("myapp").
+		ParseArgsError([]string{"/bin/myapp", "--help"})
+	if out := p.Help(); strings.Contains(out, "\x1b[") {
+		t.Fatalf("terminal without ANSI support contains escapes:\n%q", out)
+	}
+}
+
 func TestHelpHighlightOptOut(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -112,7 +127,7 @@ func TestHighlightedHelpFitsTerminal(t *testing.T) {
 	width := 0
 	prev := termInfo
 	termInfo = func() terminalInfo {
-		return terminalInfo{width: width, isTTY: true}
+		return terminalInfo{width: width, isTTY: true, supportsANSI: true}
 	}
 	t.Cleanup(func() { termInfo = prev })
 	t.Setenv("TERM", "xterm")

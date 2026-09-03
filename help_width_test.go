@@ -23,7 +23,9 @@ func stubTermWidth(t *testing.T, w int) {
 // stubTerminal simulates both the detected width and whether output is a TTY.
 func stubTerminal(t *testing.T, w int, isTTY bool) {
 	prev := termInfo
-	termInfo = func() terminalInfo { return terminalInfo{width: w, isTTY: isTTY} }
+	termInfo = func() terminalInfo {
+		return terminalInfo{width: w, isTTY: isTTY, supportsANSI: isTTY}
+	}
 	t.Cleanup(func() { termInfo = prev })
 }
 

@@ -144,8 +144,8 @@ func (s helpStyler) dangerBold(text string) string {
 // highlightHelp reports whether ANSI styling should be used for a terminal.
 // NO_COLOR and TERM=dumb follow the conventions used by other command-line
 // tools to explicitly request plain output.
-func highlightHelp(isTTY bool) bool {
-	if !isTTY || os.Getenv("NO_COLOR") != "" {
+func highlightHelp(supportsANSI bool) bool {
+	if !supportsANSI || os.Getenv("NO_COLOR") != "" {
 		return false
 	}
 	return !strings.EqualFold(os.Getenv("TERM"), "dumb")
@@ -241,7 +241,7 @@ func (o *node) Help() string {
 func renderHelp(o *node) (string, error) {
 	var err error
 	terminal := termInfo()
-	styler := helpStyler{enabled: highlightHelp(terminal.isTTY)}
+	styler := helpStyler{enabled: highlightHelp(terminal.isTTY && terminal.supportsANSI)}
 	//add default templates
 	for name, str := range DefaultTemplates {
 		if _, ok := o.templates[name]; !ok {
