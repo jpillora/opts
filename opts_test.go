@@ -663,7 +663,7 @@ func TestCmdGroupStructTag(t *testing.T) {
 		Start struct {
 			Port int
 		} `opts:"mode=cmd, help=start the server"`
-		Stop struct{} `opts:"mode=cmd, help=stop the server"`
+		Stop   struct{} `opts:"mode=cmd, help=stop the server"`
 		Backup struct{} `opts:"mode=cmd, group=Admin, help=create a backup"`
 		Reset  struct{} `opts:"mode=cmd, group=Admin, help=factory reset"`
 	}
@@ -731,7 +731,7 @@ func TestCmdGroupRootValidation(t *testing.T) {
 func TestCmdGroupBackwardCompat(t *testing.T) {
 	//commands with no group should render as "Commands:" exactly as before
 	type Config struct {
-		Cmd string `opts:"mode=cmdname"`
+		Cmd string   `opts:"mode=cmdname"`
 		Foo struct{} `opts:"mode=cmd, help=do foo"`
 		Bar struct{} `opts:"mode=cmd, help=do bar"`
 	}
@@ -827,6 +827,91 @@ func TestSubcommandStopsAtFirstNonFlag(t *testing.T) {
 	check(t, c.Sub.Zip, "hello")
 }
 
+func TestSubcommandTakesPrecedenceOverParentArgument(t *testing.T) {
+	type Config struct {
+		Auth string `opts:"mode=arg"`
+		Cmd  string `opts:"mode=cmdname"`
+		Run  struct {
+			Destination string `opts:"mode=arg"`
+		} `opts:"mode=cmd"`
+	}
+
+	command := &Config{}
+	if err := testNew(command).parse([]string{"/bin/prog", "run", "user@example.com"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, command.Auth, "")
+	check(t, command.Cmd, "run")
+	check(t, command.Run.Destination, "user@example.com")
+	if help := commandOptsHelp(t); !strings.Contains(help, "(<auth> | <command>)") {
+		t.Fatalf("combined argument/command usage is ambiguous:\n%s", help)
+	}
+
+	argument := &Config{}
+	if err := testNew(argument).parse([]string{"/bin/prog", "user:pass"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, argument.Auth, "user:pass")
+	check(t, argument.Cmd, "")
+}
+
+func TestParentArgumentKeepsInterspersedFlagsWithCommands(t *testing.T) {
+	type Config struct {
+		Auth string `opts:"mode=arg"`
+		Port string
+		Run  struct{} `opts:"mode=cmd"`
+	}
+	c := &Config{}
+	if err := testNew(c).parse([]string{"/bin/prog", "user:pass", "--port", "2222"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Auth, "user:pass")
+	check(t, c.Port, "2222")
+}
+
+func TestCommandNameAsParentFlagValue(t *testing.T) {
+	type Config struct {
+		Auth string `opts:"mode=arg"`
+		Seed string
+		Run  struct{} `opts:"mode=cmd"`
+	}
+	c := &Config{}
+	if err := testNew(c).parse([]string{"/bin/prog", "--seed", "run", "user:pass"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Seed, "run")
+	check(t, c.Auth, "user:pass")
+}
+
+func TestPreselectedCommandTakesPrecedenceOverParentArgument(t *testing.T) {
+	type Config struct {
+		Auth string `opts:"mode=arg"`
+		Cmd  string `opts:"mode=cmdname"`
+		Run  struct {
+			Value string `opts:"mode=arg"`
+		} `opts:"mode=cmd"`
+	}
+	c := &Config{Cmd: "run"}
+	if err := testNew(c).parse([]string{"/bin/prog", "value"}); err != nil {
+		t.Fatal(err)
+	}
+	check(t, c.Auth, "")
+	check(t, c.Run.Value, "value")
+}
+
+func commandOptsHelp(t *testing.T) string {
+	t.Helper()
+	type Config struct {
+		Auth string   `opts:"mode=arg"`
+		Run  struct{} `opts:"mode=cmd"`
+	}
+	o, err := New(&Config{}).Name("app").ParseArgsError([]string{"app", "--help"})
+	if err == nil {
+		t.Fatal("help did not return its successful exit signal")
+	}
+	return o.Help()
+}
+
 func TestSubcommandLeafIntersperse(t *testing.T) {
 	type Config struct {
 		Cmd string `opts:"mode=cmdname"`
@@ -849,8 +934,8 @@ func TestSubcommandLeafIntersperse(t *testing.T) {
 
 func TestFlagEqualsValue(t *testing.T) {
 	type Config struct {
-		Foo string `opts:"mode=arg"`
-		Bar string
+		Foo     string `opts:"mode=arg"`
+		Bar     string
 		Verbose bool
 	}
 	c := &Config{}

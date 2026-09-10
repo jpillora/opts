@@ -3,10 +3,10 @@ package opts
 import "fmt"
 
 // parseFlags parses command-line flags from args using the provided flag map.
-// When stopAtNonFlag is true, parsing stops at the first non-flag argument
-// (used for subcommand boundaries). Otherwise, flags and positional arguments
-// can be freely interspersed.
-func parseFlags(flags map[string]*item, args []string, stopAtNonFlag bool) (remaining []string, err error) {
+// Parsing stops when a non-flag token names a subcommand. Other positional
+// arguments remain interspersed with parent flags, including when the parent
+// also exposes subcommands.
+func parseFlags(flags map[string]*item, args []string, commands map[string]*node) (remaining []string, err error) {
 	i := 0
 	for i < len(args) {
 		arg := args[i]
@@ -17,7 +17,7 @@ func parseFlags(flags map[string]*item, args []string, stopAtNonFlag bool) (rema
 		}
 		// not a flag
 		if len(arg) == 0 || arg[0] != '-' {
-			if stopAtNonFlag {
+			if _, command := commands[arg]; command {
 				remaining = append(remaining, args[i:]...)
 				return
 			}
@@ -27,10 +27,6 @@ func parseFlags(flags map[string]*item, args []string, stopAtNonFlag bool) (rema
 		}
 		// single "-" is not a flag
 		if arg == "-" {
-			if stopAtNonFlag {
-				remaining = append(remaining, args[i:]...)
-				return
-			}
 			remaining = append(remaining, arg)
 			i++
 			continue

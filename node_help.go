@@ -65,7 +65,7 @@ func defaultOrder() []string {
 // the order defined above. All templates can be referenced using the keys in this map:
 var DefaultTemplates = map[string]string{
 	"help":          `{{ $root := . }}{{range $t := .Order}}{{ templ $t $root }}{{end}}`,
-	"usage":         `{{bold "Usage:"}} {{accentBold .Name }} {{accent "[options]"}}{{template "usageargs" .}}{{template "usagecmd" .}}` + "\n",
+	"usage":         `{{bold "Usage:"}} {{accentBold .Name }} {{accent "[options]"}}{{if and .Args .CmdGroups}} {{accent "("}}{{range .Args}}{{accent .Name}} {{end}}{{accent "| <command>)"}}{{else}}{{template "usageargs" .}}{{template "usagecmd" .}}{{end}}` + "\n",
 	"usageargs":     `{{range .Args}} {{accent .Name}}{{end}}`,
 	"usagecmd":      `{{if .CmdGroups}} {{accent "<command>"}}{{end}}`,
 	"extradefault":  `{{if .}}default {{.}}{{end}}`,

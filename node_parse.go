@@ -143,7 +143,7 @@ func (n *node) parse(args []string) error {
 			flagMap[sn] = item
 		}
 	}
-	remaining, parseErr := parseFlags(flagMap, args, len(n.cmds) > 0)
+	remaining, parseErr := parseFlags(flagMap, args, n.cmds)
 	if parseErr != nil {
 		n.err = parseErr
 		n.internalOpts.Help = true
@@ -184,6 +184,43 @@ func (n *node) parse(args []string) error {
 			}
 		}
 	}
+	// A matching command takes precedence over positional arguments on its
+	// parent. This lets a root command keep a backwards-compatible default
+	// positional form while still exposing named subcommands. If the first
+	// remaining token is not a command, it continues through ordinary argument
+	// parsing below.
+	if len(n.cmds) > 0 && len(remaining) > 0 {
+		cmd := remaining[0]
+		if sub, exists := n.cmds[cmd]; exists {
+			n.cmd = sub
+			if n.cmdname != nil {
+				*n.cmdname = cmd
+			}
+			return sub.parse(remaining[1:])
+		}
+	}
+	// A command selected through its environment variable or a preinitialized
+	// cmdname has the same precedence as an explicit command token. Pass all
+	// remaining argv to it rather than first requiring parent positional args.
+	if len(n.cmds) > 0 {
+		cmd := ""
+		if n.cmdnameEnv != "" && os.Getenv(n.cmdnameEnv) != "" {
+			cmd = os.Getenv(n.cmdnameEnv)
+		} else if n.cmdname != nil {
+			cmd = *n.cmdname
+		}
+		if cmd != "" {
+			sub, exists := n.cmds[cmd]
+			if !exists {
+				return fmt.Errorf("command '%s' does not exist", cmd)
+			}
+			n.cmd = sub
+			if n.cmdname != nil {
+				*n.cmdname = cmd
+			}
+			return sub.parse(remaining)
+		}
+	}
 	//process remaining args
 	i := 0
 	for {
@@ -221,26 +258,13 @@ func (n *node) parse(args []string) error {
 		// use next arg as command
 		args := remaining
 		cmd := ""
-		must := false
 		if len(args) > 0 {
 			cmd = args[0]
 			args = args[1:]
 		}
-		// fallback to pre-initialised cmdname
-		if cmd == "" {
-			if n.cmdnameEnv != "" && os.Getenv(n.cmdnameEnv) != "" {
-				cmd = os.Getenv(n.cmdnameEnv)
-			} else if n.cmdname != nil && *n.cmdname != "" {
-				cmd = *n.cmdname
-			}
-			must = true
-		}
 		//matching command
 		if cmd != "" {
 			sub, exists := n.cmds[cmd]
-			if must && !exists {
-				return fmt.Errorf("command '%s' does not exist", cmd)
-			}
 			if exists {
 				//store matched command
 				n.cmd = sub
@@ -446,9 +470,6 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 		//validations
 		if group != "" {
 			return n.errorf("args cannot be placed into a group")
-		}
-		if len(n.cmds) > 0 {
-			return n.errorf("args and commands cannot be used together")
 		}
 		for _, item := range n.args {
 			if item.slice {

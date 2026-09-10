@@ -81,7 +81,8 @@ type Opts interface {
 	//another program, the line width falls back to 96.
 	SetLineWidth(width int) Opts
 
-	//AddCommand adds another Opts instance as a subcommand.
+	//AddCommand adds another Opts instance as a subcommand. A matching command
+	//name takes precedence over positional arguments declared on the parent.
 	AddCommand(Opts) Opts
 	//Group sets the command group name for this subcommand.
 	//When help is rendered, this command will appear under a named
