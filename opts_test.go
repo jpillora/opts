@@ -594,6 +594,31 @@ func TestCustomFlags(t *testing.T) {
 	}
 }
 
+func TestDefault(t *testing.T) {
+	//config
+	type Config struct {
+		Foo string `opts:"default=bar"`
+		Bar int    `opts:"default=1337"`
+	}
+	c := &Config{}
+	//flag example parse
+	New(c).Name("docargs").ParseArgs([]string{"/bin/prog"})
+	if c.Foo != "bar" {
+		t.Fatalf("incorrect foo: %v", c.Foo)
+	}
+	if c.Bar != 1337 {
+		t.Fatalf("incorrect bar: %v", c.Bar)
+	}
+
+	New(c).Name("docargs").ParseArgs([]string{"/bin/prog", "--foo", "qux"})
+	if c.Foo != "qux" {
+		t.Fatalf("incorrect foo: %v", c.Foo)
+	}
+	if c.Bar != 1337 {
+		t.Fatalf("incorrect bar: %v", c.Bar)
+	}
+}
+
 var spaces = regexp.MustCompile(`\ `)
 var newlines = regexp.MustCompile(`\n`)
 
